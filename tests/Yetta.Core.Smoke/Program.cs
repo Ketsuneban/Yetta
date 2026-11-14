@@ -55,4 +55,25 @@ Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false)==27,"safe i
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,false)==26,"danger icon 26");
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,true)==35,"safe-mode icon 35");
 Assert(WarningPolicy.RequiresAdditionalAcknowledgement(YettaWarningLevel.Consent),"consent checkbox required");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Information)==22, "standard warning icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Consent)==2, "agreement icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Caution)==23, "security caution icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Dangerous)==24, "dangerous files and Windows icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Critical)==25, "critical system warning icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Fatal)==48, "fatal warning icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Dax)==33, "DAX notice icon");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Fatal,false)==0,"fatal has no status badge");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false,"Guest")==35,
+    "Guest warning always shows restricted status");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dax,false,"User")==35,
+    "DAX notification status is restricted");
+Assert(WarningPolicy.RequiresTty(YettaWarningLevel.Critical,"Guest"),"critical always requires TTY");
+Assert(WarningPolicy.RequiresTty(YettaWarningLevel.Information,"System"),"SYSTEM requires TTY");
+Assert(!WarningPolicy.RequiresTty(YettaWarningLevel.Information,"User"),"USER does not require TTY");
+Assert(!WarningPolicy.CanApprove(false,true,true,false),"unchecked agreement never approves");
+Assert(!WarningPolicy.CanApprove(true,false,true,true),"invalid TTY never approves");
+Assert(WarningPolicy.CanApprove(true,true,true,true),"checked agreement and valid TTY approve UI");
+Assert(WarningPolicy.ObjectIcon(WarningObjectKind.PythonScript)==37,"Python icon");
+Assert(WarningPolicy.ObjectIcon(WarningObjectKind.Folder)==43,"folder icon");
+Assert(WarningPolicy.ObjectIcon(WarningObjectKind.Unknown)==46,"unknown icon");
 Console.WriteLine("All Yetta Core smoke tests passed.");
