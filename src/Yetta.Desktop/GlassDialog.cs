@@ -77,7 +77,7 @@ internal static class GlassDialog
         var content = new ScrollViewer
         {
             Content = scrollableBody,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             PanningMode = PanningMode.VerticalOnly,
             Margin = new Thickness(0, 8, 0, 12)
@@ -103,12 +103,14 @@ internal static class GlassDialog
         return container;
     }
 
-    internal static UIElement Surface(UIElement content, Thickness? padding = null)
+    internal static UIElement Surface(UIElement content, Thickness? padding = null,
+        Color? accent = null, Visual? ownerBackdrop = null)
     {
         // There is no secondary rectangular backplate: the border below *is*
         // the modal's full visible outline, with truly transparent pixels outside
         // its rounded corners. Alpha lets the desktop or owner window show through.
         var panel = new Grid();
+        Color tint = accent ?? Color.FromRgb(96, 138, 205);
         var rim = new Border
         {
             CornerRadius = new CornerRadius(23),
@@ -122,13 +124,29 @@ internal static class GlassDialog
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(226, 76, 96, 139), 0),
-                    new GradientStop(Color.FromArgb(222, 37, 48, 79), 0.45),
-                    new GradientStop(Color.FromArgb(232, 30, 39, 70), 1)
+                    new GradientStop(Color.FromArgb(238, (byte)((tint.R + 66) / 2),
+                        (byte)((tint.G + 85) / 2), (byte)((tint.B + 130) / 2)), 0),
+                    new GradientStop(Color.FromArgb(241, 30, 41, 68), 0.46),
+                    new GradientStop(Color.FromArgb(245, 20, 28, 51), 1)
                 }
             }
         };
         panel.Children.Add(rim);
+        // Optional live blur of Yetta's underlying UI. It is not a capture of
+        // other desktop windows and does not claim unsupported DWM Acrylic.
+        // The opaque-tinted rim remains in place for contrast and accessibility.
+        if (ownerBackdrop is not null && !SystemParameters.HighContrast)
+        {
+            var blurLayer = new Border
+            {
+                CornerRadius = new CornerRadius(23),
+                Background = new VisualBrush(ownerBackdrop) { Stretch = Stretch.UniformToFill },
+                Opacity = 0.10,
+                Effect = new BlurEffect { Radius = 22, RenderingBias = RenderingBias.Quality },
+                IsHitTestVisible = false
+            };
+            panel.Children.Add(blurLayer);
+        }
         // Inset highlight follows the same silhouette. No square panels are
         // drawn behind the round border, and window corners remain transparent.
         var highlight = new Border
