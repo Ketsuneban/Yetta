@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
@@ -160,8 +161,24 @@ internal static class DaxWarningDialog
         int subjectIcon = request.SubjectIconId ??
             (fatal ? 48 : agreement ? 2 : level == YettaWarningLevel.Dax
                 ? 29 : WarningPolicy.SubjectIcon(request.SubjectType));
-        var iconBorder = Panel(IconLibrary.CreateSubject(subjectIcon, request.TargetPath, 40),
-            accent, new Thickness(12));
+        UIElement objectIcon;
+        if (agreement || level == YettaWarningLevel.Dax)
+        {
+            // The owner specifically requested the brand logo, not the
+            // generic file/app fallback icon, for Consent and DAX messages.
+            objectIcon = new Image
+            {
+                Source = new BitmapImage(new Uri(agreement
+                    ? "pack://application:,,,/Assets/yetta-logo.png"
+                    : "pack://application:,,,/Assets/dax-logo.png")),
+                Width = 42, Height = 42,
+                Stretch = Stretch.Uniform,
+                SnapsToDevicePixels = true
+            };
+        }
+        else
+            objectIcon = IconLibrary.CreateSubject(subjectIcon, request.TargetPath, 40);
+        var iconBorder = Panel(objectIcon, accent, new Thickness(12));
         iconBorder.Width = 68;
         iconBorder.Height = 68;
         iconBorder.Margin = new Thickness(0, 0, 17, 0);
