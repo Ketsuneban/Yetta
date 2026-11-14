@@ -318,7 +318,7 @@ public partial class MainWindow : Window
                 Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")),
                 Width = 90, Height = 90,
                 Stretch = Stretch.Uniform,
-                RenderOptions.BitmapScalingMode = BitmapScalingMode.HighQuality
+                SnapsToDevicePixels = true
             }
         };
         brandRow.Children.Add(logoFrame);
