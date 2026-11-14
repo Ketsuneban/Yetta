@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
@@ -283,6 +284,7 @@ public partial class MainWindow : Window
             Foreground = Ink
         };
         var panel = new StackPanel { Margin = new Thickness(26) };
+        panel.Children.Add(new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")), Width = 62, Height = 62, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0,0,0,8) });
         panel.Children.Add(Text("DAX · Defense & Access eXecutive", 23, heading: true));
         panel.Children.Add(Text("Исполнительный модуль защиты и доступа", 13));
         panel.Children.Add(Text(
