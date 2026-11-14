@@ -11,7 +11,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.2.1-preview";
+    private const string ReleaseVersion = "0.3.0-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private string _consoleMode = "Mavrine";
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
+    private EmbeddedShellSession? _embeddedShell;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
         };
         ApplyTheme();
         Navigate("overview");
+        Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private static Brush Resource(string key) => (Brush)Application.Current.Resources[key];
@@ -113,6 +115,8 @@ public partial class MainWindow : Window
     private void Navigate(string page)
     {
         if (!_navigation.ContainsKey(page)) return;
+        _embeddedShell?.Dispose();
+        _embeddedShell = null;
         _page = page;
         _consoleOutput = null;
         _consoleInput = null;
@@ -430,8 +434,8 @@ public partial class MainWindow : Window
 
     private void BuildConsole()
     {
-        AddIntro("Yetta / Console", "Консоль и терминалы",
-            "Mavrine встроена в Yetta. Windows Terminal и PowerShell — настоящие приложения Windows: при разрешении DAX Guard они открываются в собственных окнах, сохраняя оригинальные функции.");
+        AddIntro("Yetta / Console", "Встроенная консоль",
+            "Mavrine — команды Yetta. Вкладки Windows Terminal и Windows PowerShell используют встроенную текстовую панель, которая передаёт введённые команды настоящему процессу Windows PowerShell текущего пользователя.");
         var tabs = new WrapPanel();
         foreach (string mode in new[] { "Mavrine", "Windows Terminal", "Windows PowerShell" })
         {
@@ -443,12 +447,10 @@ public partial class MainWindow : Window
             }, _consoleMode == mode));
         }
         ContentPanel.Children.Add(tabs);
-
         var terminal = new Border
         {
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 4 : 14),
+            BorderBrush = Line, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 5 : 14),
             Background = _consoleMode switch
             {
                 "Windows PowerShell" => new SolidColorBrush(Color.FromRgb(1, 36, 86)),
@@ -457,42 +459,21 @@ public partial class MainWindow : Window
             },
             Margin = new Thickness(0, 12, 0, 14),
             Padding = new Thickness(17),
-            MinHeight = 280
+            MinHeight = 290
         };
         var body = new StackPanel();
-        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Mavrine" ? "Yetta" : "Windows"), 14, heading: true);
+        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Mavrine" ? "Yetta" : "PowerShell engine"), 14, heading: true);
         heading.Foreground = _consoleMode == "Windows PowerShell" ? Brushes.White : Accent;
         heading.Margin = new Thickness(0, 0, 0, 12);
         body.Children.Add(heading);
-        if (_consoleMode != "Mavrine")
-        {
-            string warning = _consoleMode == "Windows Terminal"
-                ? "Обычный терминал Windows без повышения прав. Доступ разрешается только в профиле «Пользователь». Встроить все функции Windows Terminal в окно Yetta без полноценного терминального хоста нельзя."
-                : "Административная Windows PowerShell запускается только после настоящей проверки прав и Windows UAC. Сейчас у Yetta нет такого брокера, поэтому запуск отключён.";
-            var desc = Text(warning, 13);
-            desc.Foreground = Brushes.White;
-            body.Children.Add(desc);
-            if (_consoleMode == "Windows Terminal")
-            {
-                body.Children.Add(ActionButton("Открыть Windows Terminal ↗",
-                    () => OpenExternal("wt.exe", "Windows Terminal"),
-                    enabled: AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)));
-                if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
-                    body.Children.Add(Text("Для запуска установите и примените уровень «Пользователь» в DAX Guard.", 12));
-            }
-            else
-            {
-                body.Children.Add(ActionButton("Запуск PowerShell (Администратор) — недоступен",
-                    () => {}, enabled: AccessProfiles.CanLaunchElevatedShell(_settings)));
-            }
-        }
-        else
+
+        if (_consoleMode == "Mavrine")
         {
             var display = new StackPanel();
             if (_history.Count == 0)
             {
                 display.Children.Add(ConsoleLine("Mavrine / Yetta " + ReleaseVersion, true));
-                display.Children.Add(ConsoleLine("Введите help. Произвольные команды Windows не выполняются.", false));
+                display.Children.Add(ConsoleLine("Введите help. Системные команды здесь не исполняются.", false));
             }
             else
             {
@@ -505,38 +486,150 @@ public partial class MainWindow : Window
             _consoleOutput = display;
             body.Children.Add(new ScrollViewer
             {
-                Height = 238,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
             });
-            _consoleInput = new TextBox
-            {
-                Background = Surface,
-                Foreground = Ink,
-                BorderBrush = Line,
-                BorderThickness = new Thickness(1),
-                FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
-                FontSize = 13,
-                Padding = new Thickness(12, 10, 12, 10),
-                CaretBrush = Accent,
-                ToolTip = "Введите команду Mavrine"
-            };
-            _consoleInput.KeyDown += (_, e) =>
-            {
-                if (e.Key == Key.Enter)
-                {
-                    RunMavrine();
-                    e.Handled = true;
-                }
-            };
+            _consoleInput = BuildTerminalInput("Команда Mavrine", RunMavrine);
             body.Children.Add(_consoleInput);
             body.Children.Add(ActionButton("Выполнить ↵", RunMavrine, true));
         }
+        else if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
+        {
+            var note = Text(
+                "Для использования настоящего PowerShell установите и примените профиль USER в DAX Guard. " +
+                "Этот профиль не повышает полномочия Windows.", 13);
+            note.Foreground = Brushes.White;
+            body.Children.Add(note);
+            body.Children.Add(ActionButton("Перейти в DAX Guard", () => Navigate("guard")));
+        }
+        else if (IsProcessAdministrator())
+        {
+            var note = Text(
+                "Yetta запущена с повышенными правами Windows. Чтобы встроенная оболочка не наследовала " +
+                "административный токен, закройте Yetta и запустите её обычным способом, без повышения.", 13);
+            note.Foreground = Brushes.White;
+            body.Children.Add(note);
+        }
+        else if (!_settings.EmbeddedShellConsentGranted)
+        {
+            var note = Text(
+                "Команды могут изменять или удалять файлы, к которым у вашей учётной записи есть доступ. " +
+                "Нужно явное подтверждение. Предоставить Windows-права или обойти UAC это не может.", 13);
+            note.Foreground = Brushes.White;
+            note.Margin = new Thickness(0, 0, 0, 15);
+            body.Children.Add(note);
+            body.Children.Add(ActionButton("Прочитать и принять условия", () =>
+            {
+                if (ConsentDialog.Confirm(this,
+                    "Разрешить выполнение собственных команд в PowerShell?",
+                    "Yetta откроет настоящий powershell.exe в текстовой панели. Любая введённая команда " +
+                    "будет выполняться с действующими разрешениями текущего пользователя Windows. " +
+                    "Команды могут изменять личные файлы и настройки. " +
+                    "Используйте эту функцию только осознанно. Отозвать согласие можно в Настройках.",
+                    YettaWarningLevel.Consent))
+                {
+                    _settings.EmbeddedShellConsentGranted = true;
+                    SavePreferences();
+                    Navigate("console");
+                }
+            }, true));
+        }
+        else
+        {
+            var description = Text(
+                "Реальный Windows PowerShell внутри интерфейса Yetta. " +
+                "Обработка текстовых команд доступна; полноэкранные TTY-программы, цветовые escape-коды " +
+                "и нативный интерфейс Windows Terminal пока не поддерживаются.", 11);
+            description.Foreground = Brushes.LightGray;
+            description.Margin = new Thickness(0, 0, 0, 10);
+            body.Children.Add(description);
+
+            var display = new StackPanel();
+            _consoleOutput = display;
+            var scrolling = new ScrollViewer
+            {
+                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = display
+            };
+            body.Children.Add(scrolling);
+            display.Children.Add(ConsoleLine("Windows PowerShell · текущий пользователь · без UAC / SYSTEM", true));
+            _consoleInput = BuildTerminalInput("Введите команду PowerShell", RunPowerShell);
+            body.Children.Add(_consoleInput);
+            var controls = new WrapPanel();
+            controls.Children.Add(ActionButton("Выполнить ↵", RunPowerShell, true));
+            controls.Children.Add(ActionButton("Остановить сессию", () =>
+            {
+                _embeddedShell?.Dispose();
+                _embeddedShell = null;
+                display.Children.Add(ConsoleLine("Сессия завершена. Переключите вкладку, чтобы начать новую.", false));
+            }));
+            body.Children.Add(controls);
+            try
+            {
+                _embeddedShell = EmbeddedShellSession.Start(line =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (_consoleOutput == display)
+                        {
+                            display.Children.Add(ConsoleLine(line, false));
+                            if (display.Children.Count > 500) display.Children.RemoveAt(1);
+                            scrolling.ScrollToEnd();
+                        }
+                    }));
+                });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                System.ComponentModel.Win32Exception or IOException)
+            {
+                display.Children.Add(ConsoleLine("Не удалось запустить PowerShell: " + ex.Message, false));
+            }
+        }
+
         terminal.Child = body;
         ContentPanel.Children.Add(terminal);
-        AddNotice("Разделение прав",
-            "Windows Terminal не наследует права системы Yetta: он запускается с токеном текущего пользователя. Mavrine соблюдает логическую политику Yetta, но не предоставляет права администратора или SYSTEM.");
+        AddNotice("Реальные права Windows",
+            "Запуск команд разрешён только на профиле USER и только без повышения самого приложения. " +
+            "Принятое согласие не предоставляет ADMIN или SYS и не отключает защиту Windows. " +
+            "Новые привилегированные функции потребуют отдельного подтверждения и аудита.");
         _consoleInput?.Focus();
+    }
+
+    private TextBox BuildTerminalInput(string hint, Action execute)
+    {
+        var field = new TextBox
+        {
+            Background = Surface, Foreground = Ink,
+            BorderBrush = Line, BorderThickness = new Thickness(1),
+            FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
+            FontSize = 13, Padding = new Thickness(12, 10, 12, 10),
+            CaretBrush = Accent, ToolTip = hint
+        };
+        field.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                execute();
+                e.Handled = true;
+            }
+        };
+        return field;
+    }
+
+    private async void RunPowerShell()
+    {
+        if (_consoleInput is null || _embeddedShell is null) return;
+        if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
+        var command = _consoleInput.Text;
+        if (string.IsNullOrWhiteSpace(command)) return;
+        _consoleInput.Clear();
+        _consoleOutput?.Children.Add(ConsoleLine("> " + command, true));
+        try { await _embeddedShell.SendAsync(command); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or
+            ObjectDisposedException)
+        {
+            _consoleOutput?.Children.Add(ConsoleLine("Ошибка: " + ex.Message, false));
+        }
     }
 
     private TextBlock ConsoleLine(string message, bool prompt)
