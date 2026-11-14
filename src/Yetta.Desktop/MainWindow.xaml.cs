@@ -765,14 +765,19 @@ public partial class MainWindow : Window
 
             var process = Process.Start(new ProcessStartInfo(file)
             {
-                UseShellExecute = true,
+                // Do not use ShellExecute: elevation manifests cannot silently
+                // escape the USER-only DAX launch path, and Windows returns a
+                // directly supervised process PID.
+                UseShellExecute = false,
+                CreateNoWindow = false,
                 WorkingDirectory = Path.GetDirectoryName(file) ?? ""
             });
             if (process is null)
                 throw new InvalidOperationException("Windows не вернула идентификатор процесса.");
+            int pid = process.Id;
             DaxProcessTreeMonitor.Monitor(process, line =>
                 Dispatcher.BeginInvoke(new Action(() => Notify("DAX Process", line))));
-            Notify("DAX Process", "Запущен " + subject + " (PID " + process.Id + ").");
+            Notify("DAX Process", "Запущен " + subject + " (PID " + pid + ").");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
             InvalidDataException or System.ComponentModel.Win32Exception or
