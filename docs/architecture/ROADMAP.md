@@ -3,9 +3,9 @@
 ## Phase 0 — Infrastructure (current)
 - [x] Create public repository.
 - [x] Publish project website and written specifications.
-- [ ] Verify Cloudflare Pages production deployment.
+- [x] Verify Cloudflare Pages production deployment.
 - [ ] Confirm repository license with project owner.
-- [ ] Configure repository branch protection and security settings.
+- [ ] Configure repository branch protection and security settings (manual GitHub Settings step; connector write API unavailable).
 - [ ] Create encrypted project continuity archive.
 
 ## Phase 1 — Product specification
