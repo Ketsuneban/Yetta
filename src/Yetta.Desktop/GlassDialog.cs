@@ -206,13 +206,13 @@ internal static class GlassDialog
         var border = new FrameworkElementFactory(typeof(Border));
         border.SetValue(Border.CornerRadiusProperty, new CornerRadius(11));
         border.SetBinding(Border.BackgroundProperty,
-            new System.Windows.Data.Binding(nameof(Button.Background)) { RelativeSource =
+            new System.Windows.Data.Binding("Background") { RelativeSource =
                 new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         border.SetBinding(Border.BorderBrushProperty,
-            new System.Windows.Data.Binding(nameof(Button.BorderBrush)) { RelativeSource =
+            new System.Windows.Data.Binding("BorderBrush") { RelativeSource =
                 new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         border.SetBinding(Border.BorderThicknessProperty,
-            new System.Windows.Data.Binding(nameof(Button.BorderThickness)) { RelativeSource =
+            new System.Windows.Data.Binding("BorderThickness") { RelativeSource =
                 new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
         presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
