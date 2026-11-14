@@ -18,6 +18,8 @@ internal static class CursorAssets
         }
         catch (IOException) { return fallback; }
         catch (ArgumentException) { return fallback; }
+        catch (InvalidOperationException) { return fallback; }
+        catch (NotSupportedException) { return fallback; }
     }
 
     internal static Cursor Pointer { get; } = Load(17, Cursors.Arrow);
