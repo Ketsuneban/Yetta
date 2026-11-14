@@ -7,12 +7,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta</AssemblyName>
     <RootNamespace>Yetta.Desktop</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.3.0</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Yetta.Core/Yetta.Core.csproj" />
     <Resource Include="Assets/Inter.ttf" />
+    <Resource Include="Assets/26.png" />
+    <Resource Include="Assets/27.png" />
+    <Resource Include="Assets/35.png" />
+    <Resource Include="Assets/yetta-logo.png" />
+    <Resource Include="Assets/dax-logo.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
 </Project>

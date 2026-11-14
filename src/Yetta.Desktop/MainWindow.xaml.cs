@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Principal;
@@ -5,13 +6,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.2.1-preview";
+    private const string ReleaseVersion = "0.3.0-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -20,6 +22,7 @@ public partial class MainWindow : Window
     private string _consoleMode = "Mavrine";
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
+    private EmbeddedShellSession? _embeddedShell;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -44,6 +47,7 @@ public partial class MainWindow : Window
         };
         ApplyTheme();
         Navigate("overview");
+        Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private static Brush Resource(string key) => (Brush)Application.Current.Resources[key];
@@ -113,6 +117,8 @@ public partial class MainWindow : Window
     private void Navigate(string page)
     {
         if (!_navigation.ContainsKey(page)) return;
+        _embeddedShell?.Dispose();
+        _embeddedShell = null;
         _page = page;
         _consoleOutput = null;
         _consoleInput = null;
@@ -257,10 +263,41 @@ public partial class MainWindow : Window
         tiles.Children.Add(SummaryTile("Уровень доступа",
             AccessProfiles.DisplayName(_settings.ActiveProfile),
             AccessProfiles.Description(_settings.ActiveProfile)));
-        tiles.Children.Add(SummaryTile("DAX", "В разработке",
-            "Анализ процессов и защита не установлены."));
+        var daxTile = SummaryTile("DAX", "В разработке",
+            "Нажмите для информации о DAX.");
+        daxTile.Cursor = Cursors.Hand;
+        daxTile.MouseLeftButtonUp += (_, _) => ShowDaxInfo();
+        tiles.Children.Add(daxTile);
         ContentPanel.Children.Add(tiles);
         AddNotice("Заглушка", "Этот блок зарезервирован для будущих сведений Yetta. Новые действия здесь не выполняются.");
+    }
+
+    private void ShowDaxInfo()
+    {
+        var window = new Window
+        {
+            Owner = this,
+            Title = "Yetta · DAX",
+            Width = 590, Height = 430, ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Resource("WindowBackground"),
+            Foreground = Ink
+        };
+        var panel = new StackPanel { Margin = new Thickness(26) };
+        panel.Children.Add(new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")), Width = 62, Height = 62, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0,0,0,8) });
+        panel.Children.Add(Text("DAX · Defense & Access eXecutive", 23, heading: true));
+        panel.Children.Add(Text("Исполнительный модуль защиты и доступа", 13));
+        panel.Children.Add(Text(
+            "Версия: проектная спецификация · DAX runtime ещё не установлен.\n\n" +
+            "Назначение: проверять политики Yetta, помогать пользователю принимать решения и " +
+            "регистрировать результаты операций, инициированных из Yetta.\n\n" +
+            "Планируемая внутренняя структура: DAX Gate / Guard, DAX Process, DAX Threat, " +
+            "DAX System, DAX Audit, DAX Update.\n\n" +
+            "Ограничения: нет контроля процессов Windows, мониторинга потомков, анализа антивируса, " +
+            "службы SYSTEM или восстановительных операций. Никакая защита не заявляется как действующая.", 13));
+        panel.Children.Add(ActionButton("Закрыть", window.Close));
+        window.Content = new ScrollViewer { Content = panel };
+        window.ShowDialog();
     }
 
     private static bool IsProcessAdministrator()
@@ -375,7 +412,13 @@ public partial class MainWindow : Window
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var description = new StackPanel();
-            description.Children.Add(Text(number.ToString("00") + "  " +
+            string code = profile switch
+            {
+                "Guest" => "GUEST", "SafeUser" => "sUSER",
+                "User" => "USER", "Administrator" => "ADMIN",
+                _ => "SYS"
+            };
+            description.Children.Add(Text(code + "   " +
                 AccessProfiles.DisplayName(profile), 15, heading: true));
             description.Children.Add(Text(AccessProfiles.Description(profile), 12, muted: true));
             Grid.SetColumn(description, 0);
@@ -430,8 +473,8 @@ public partial class MainWindow : Window
 
     private void BuildConsole()
     {
-        AddIntro("Yetta / Console", "Консоль и терминалы",
-            "Mavrine встроена в Yetta. Windows Terminal и PowerShell — настоящие приложения Windows: при разрешении DAX Guard они открываются в собственных окнах, сохраняя оригинальные функции.");
+        AddIntro("Yetta / Console", "Встроенная консоль",
+            "Mavrine — команды Yetta. Вкладки Windows Terminal и Windows PowerShell используют встроенную текстовую панель, которая передаёт введённые команды настоящему процессу Windows PowerShell текущего пользователя.");
         var tabs = new WrapPanel();
         foreach (string mode in new[] { "Mavrine", "Windows Terminal", "Windows PowerShell" })
         {
@@ -443,12 +486,10 @@ public partial class MainWindow : Window
             }, _consoleMode == mode));
         }
         ContentPanel.Children.Add(tabs);
-
         var terminal = new Border
         {
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 4 : 14),
+            BorderBrush = Line, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 5 : 14),
             Background = _consoleMode switch
             {
                 "Windows PowerShell" => new SolidColorBrush(Color.FromRgb(1, 36, 86)),
@@ -457,42 +498,21 @@ public partial class MainWindow : Window
             },
             Margin = new Thickness(0, 12, 0, 14),
             Padding = new Thickness(17),
-            MinHeight = 280
+            MinHeight = 290
         };
         var body = new StackPanel();
-        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Mavrine" ? "Yetta" : "Windows"), 14, heading: true);
+        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Mavrine" ? "Yetta" : "PowerShell engine"), 14, heading: true);
         heading.Foreground = _consoleMode == "Windows PowerShell" ? Brushes.White : Accent;
         heading.Margin = new Thickness(0, 0, 0, 12);
         body.Children.Add(heading);
-        if (_consoleMode != "Mavrine")
-        {
-            string warning = _consoleMode == "Windows Terminal"
-                ? "Обычный терминал Windows без повышения прав. Доступ разрешается только в профиле «Пользователь». Встроить все функции Windows Terminal в окно Yetta без полноценного терминального хоста нельзя."
-                : "Административная Windows PowerShell запускается только после настоящей проверки прав и Windows UAC. Сейчас у Yetta нет такого брокера, поэтому запуск отключён.";
-            var desc = Text(warning, 13);
-            desc.Foreground = Brushes.White;
-            body.Children.Add(desc);
-            if (_consoleMode == "Windows Terminal")
-            {
-                body.Children.Add(ActionButton("Открыть Windows Terminal ↗",
-                    () => OpenExternal("wt.exe", "Windows Terminal"),
-                    enabled: AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)));
-                if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
-                    body.Children.Add(Text("Для запуска установите и примените уровень «Пользователь» в DAX Guard.", 12));
-            }
-            else
-            {
-                body.Children.Add(ActionButton("Запуск PowerShell (Администратор) — недоступен",
-                    () => {}, enabled: AccessProfiles.CanLaunchElevatedShell(_settings)));
-            }
-        }
-        else
+
+        if (_consoleMode == "Mavrine")
         {
             var display = new StackPanel();
             if (_history.Count == 0)
             {
                 display.Children.Add(ConsoleLine("Mavrine / Yetta " + ReleaseVersion, true));
-                display.Children.Add(ConsoleLine("Введите help. Произвольные команды Windows не выполняются.", false));
+                display.Children.Add(ConsoleLine("Введите help. Системные команды здесь не исполняются.", false));
             }
             else
             {
@@ -505,38 +525,150 @@ public partial class MainWindow : Window
             _consoleOutput = display;
             body.Children.Add(new ScrollViewer
             {
-                Height = 238,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
             });
-            _consoleInput = new TextBox
-            {
-                Background = Surface,
-                Foreground = Ink,
-                BorderBrush = Line,
-                BorderThickness = new Thickness(1),
-                FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
-                FontSize = 13,
-                Padding = new Thickness(12, 10, 12, 10),
-                CaretBrush = Accent,
-                ToolTip = "Введите команду Mavrine"
-            };
-            _consoleInput.KeyDown += (_, e) =>
-            {
-                if (e.Key == Key.Enter)
-                {
-                    RunMavrine();
-                    e.Handled = true;
-                }
-            };
+            _consoleInput = BuildTerminalInput("Команда Mavrine", RunMavrine);
             body.Children.Add(_consoleInput);
             body.Children.Add(ActionButton("Выполнить ↵", RunMavrine, true));
         }
+        else if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
+        {
+            var note = Text(
+                "Для использования настоящего PowerShell установите и примените профиль USER в DAX Guard. " +
+                "Этот профиль не повышает полномочия Windows.", 13);
+            note.Foreground = Brushes.White;
+            body.Children.Add(note);
+            body.Children.Add(ActionButton("Перейти в DAX Guard", () => Navigate("guard")));
+        }
+        else if (IsProcessAdministrator())
+        {
+            var note = Text(
+                "Yetta запущена с повышенными правами Windows. Чтобы встроенная оболочка не наследовала " +
+                "административный токен, закройте Yetta и запустите её обычным способом, без повышения.", 13);
+            note.Foreground = Brushes.White;
+            body.Children.Add(note);
+        }
+        else if (!_settings.EmbeddedShellConsentGranted)
+        {
+            var note = Text(
+                "Команды могут изменять или удалять файлы, к которым у вашей учётной записи есть доступ. " +
+                "Нужно явное подтверждение. Предоставить Windows-права или обойти UAC это не может.", 13);
+            note.Foreground = Brushes.White;
+            note.Margin = new Thickness(0, 0, 0, 15);
+            body.Children.Add(note);
+            body.Children.Add(ActionButton("Прочитать и принять условия", () =>
+            {
+                if (ConsentDialog.Confirm(this,
+                    "Разрешить выполнение собственных команд в PowerShell?",
+                    "Yetta откроет настоящий powershell.exe в текстовой панели. Любая введённая команда " +
+                    "будет выполняться с действующими разрешениями текущего пользователя Windows. " +
+                    "Команды могут изменять личные файлы и настройки. " +
+                    "Используйте эту функцию только осознанно. Отозвать согласие можно в Настройках.",
+                    YettaWarningLevel.Consent))
+                {
+                    _settings.EmbeddedShellConsentGranted = true;
+                    SavePreferences();
+                    Navigate("console");
+                }
+            }, true));
+        }
+        else
+        {
+            var description = Text(
+                "Реальный Windows PowerShell внутри интерфейса Yetta. " +
+                "Обработка текстовых команд доступна; полноэкранные TTY-программы, цветовые escape-коды " +
+                "и нативный интерфейс Windows Terminal пока не поддерживаются.", 11);
+            description.Foreground = Brushes.LightGray;
+            description.Margin = new Thickness(0, 0, 0, 10);
+            body.Children.Add(description);
+
+            var display = new StackPanel();
+            _consoleOutput = display;
+            var scrolling = new ScrollViewer
+            {
+                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = display
+            };
+            body.Children.Add(scrolling);
+            display.Children.Add(ConsoleLine("Windows PowerShell · текущий пользователь · без UAC / SYSTEM", true));
+            _consoleInput = BuildTerminalInput("Введите команду PowerShell", RunPowerShell);
+            body.Children.Add(_consoleInput);
+            var controls = new WrapPanel();
+            controls.Children.Add(ActionButton("Выполнить ↵", RunPowerShell, true));
+            controls.Children.Add(ActionButton("Остановить сессию", () =>
+            {
+                _embeddedShell?.Dispose();
+                _embeddedShell = null;
+                display.Children.Add(ConsoleLine("Сессия завершена. Переключите вкладку, чтобы начать новую.", false));
+            }));
+            body.Children.Add(controls);
+            try
+            {
+                _embeddedShell = EmbeddedShellSession.Start(line =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (_consoleOutput == display)
+                        {
+                            display.Children.Add(ConsoleLine(line, false));
+                            if (display.Children.Count > 500) display.Children.RemoveAt(1);
+                            scrolling.ScrollToEnd();
+                        }
+                    }));
+                });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                System.ComponentModel.Win32Exception or IOException)
+            {
+                display.Children.Add(ConsoleLine("Не удалось запустить PowerShell: " + ex.Message, false));
+            }
+        }
+
         terminal.Child = body;
         ContentPanel.Children.Add(terminal);
-        AddNotice("Разделение прав",
-            "Windows Terminal не наследует права системы Yetta: он запускается с токеном текущего пользователя. Mavrine соблюдает логическую политику Yetta, но не предоставляет права администратора или SYSTEM.");
+        AddNotice("Реальные права Windows",
+            "Запуск команд разрешён только на профиле USER и только без повышения самого приложения. " +
+            "Принятое согласие не предоставляет ADMIN или SYS и не отключает защиту Windows. " +
+            "Новые привилегированные функции потребуют отдельного подтверждения и аудита.");
         _consoleInput?.Focus();
+    }
+
+    private TextBox BuildTerminalInput(string hint, Action execute)
+    {
+        var field = new TextBox
+        {
+            Background = Surface, Foreground = Ink,
+            BorderBrush = Line, BorderThickness = new Thickness(1),
+            FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
+            FontSize = 13, Padding = new Thickness(12, 10, 12, 10),
+            CaretBrush = Accent, ToolTip = hint
+        };
+        field.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                execute();
+                e.Handled = true;
+            }
+        };
+        return field;
+    }
+
+    private async void RunPowerShell()
+    {
+        if (_consoleInput is null || _embeddedShell is null) return;
+        if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
+        var command = _consoleInput.Text;
+        if (string.IsNullOrWhiteSpace(command)) return;
+        _consoleInput.Clear();
+        _consoleOutput?.Children.Add(ConsoleLine("> " + command, true));
+        try { await _embeddedShell.SendAsync(command); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or
+            ObjectDisposedException)
+        {
+            _consoleOutput?.Children.Add(ConsoleLine("Ошибка: " + ex.Message, false));
+        }
     }
 
     private TextBlock ConsoleLine(string message, bool prompt)
@@ -593,6 +725,33 @@ public partial class MainWindow : Window
         confirmation.Unchecked += (_, _) => { _settings.ConfirmExternalLinks = false; SavePreferences(); };
         ContentPanel.Children.Add(Card(confirmation));
 
+        AddSection("Встроенная PowerShell");
+        ContentPanel.Children.Add(Card(Text(
+            _settings.EmbeddedShellConsentGranted
+                ? "Согласие на пользовательскую PowerShell принято. Его можно отозвать."
+                : "Согласие ещё не предоставлено. При первом входе в консоль появится серое предупреждение.",
+            12, muted: true)));
+        ContentPanel.Children.Add(ActionButton("Отозвать согласие PowerShell", () =>
+        {
+            _settings.EmbeddedShellConsentGranted = false;
+            _embeddedShell?.Dispose();
+            _embeddedShell = null;
+            SavePreferences();
+            Navigate("settings");
+        }, enabled: _settings.EmbeddedShellConsentGranted));
+
+        AddSection("Обновления Yetta", "По нажатию проверяется GitHub Releases. Автоматической проверки в фоне нет.");
+        ContentPanel.Children.Add(Card(Text(
+            "Версия: " + ReleaseVersion +
+            "\nУстановщик для текущего пользователя: YettaSetup.exe. " +
+            "Скачанный файл проверяется по SHA-256 из GitHub Releases. " +
+            "В preview-период цифровая подпись пока отсутствует; SHA-256 не доказывает личность издателя.",
+            12, muted: true)));
+        ContentPanel.Children.Add(ActionButton("Проверить и обновить", async () =>
+        {
+            await CheckAndInstallUpdateAsync();
+        }, true));
+
         AddSection("Локальные данные");
         ContentPanel.Children.Add(Card(Text(
             "Файл настроек: " + _store.FilePath +
@@ -608,6 +767,40 @@ public partial class MainWindow : Window
             SavePreferences();
             Navigate("settings");
         }));
+    }
+
+    private async Task CheckAndInstallUpdateAsync()
+    {
+        try
+        {
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 0));
+            if (latest is null)
+            {
+                MessageBox.Show(this, "Новой версии с установщиком пока нет.",
+                    "Обновления Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!ConsentDialog.Confirm(this,
+                "Установить обновление Yetta " + latest.Version + "?",
+                "Установщик будет загружен с официального GitHub Releases. Yetta проверит SHA-256 файла, " +
+                "но этот ранний релиз пока не подписан цифровой подписью. После загрузки будет запущен " +
+                "стандартный установщик с правами текущего пользователя; он может закрыть Yetta для замены " +
+                "её файлов. Закройте несохранённую работу. Для будущих привилегированных компонентов " +
+                "потребуется отдельная подписанная цепочка обновления.",
+                YettaWarningLevel.Consent))
+                return;
+
+            var path = await YettaUpdater.DownloadInstallerAsync(latest);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Close();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or
+            InvalidDataException or InvalidOperationException or
+            System.ComponentModel.Win32Exception or TaskCanceledException)
+        {
+            MessageBox.Show(this, "Ошибка получения обновления: " + ex.Message,
+                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void BuildSources()
