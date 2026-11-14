@@ -21,7 +21,8 @@ internal sealed record WarningRequest(
     bool RequireAcknowledgement = false,
     bool RequireTty = false,
     bool PotentialDamage = false,
-    Action? RecoveryNavigation = null);
+    Action? RecoveryNavigation = null,
+    int? HeaderIconId = null);
 
 /// <summary>
 /// Seven documented warning layouts. A visual permission or TTY acknowledgement
@@ -29,8 +30,8 @@ internal sealed record WarningRequest(
 /// </summary>
 internal static class YettaWarningWindow
 {
-    private static readonly Brush Pale = new SolidColorBrush(Color.FromRgb(247, 248, 255));
-    private static readonly Brush Dim = new SolidColorBrush(Color.FromRgb(211, 221, 238));
+    private static readonly Brush Pale = new SolidColorBrush(Color.FromRgb(28, 35, 49));
+    private static readonly Brush Dim = new SolidColorBrush(Color.FromRgb(76, 87, 107));
 
     private static Color ColorFor(WarningKind kind) => kind switch
     {
@@ -43,12 +44,108 @@ internal static class YettaWarningWindow
         _ => Color.FromRgb(153, 222, 241)
     };
 
-    private static int HeadingIcon(WarningKind kind) => kind switch
+    // Title-area illustrations identify the event/source, not the warning severity.
+    // Producers can supply HeaderIconId explicitly; the default is informational.
+    private static int HeadingIcon(WarningRequest request) =>
+        request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : 22;
+
+    private static Color BackgroundFor(WarningKind kind) => kind switch
     {
-        WarningKind.Caution => 23, WarningKind.Dangerous => 24,
-        WarningKind.Critical => 25, WarningKind.Fatal => 48,
-        WarningKind.Agreement => 2, WarningKind.Dax => 33, _ => 22
+        WarningKind.Caution => Color.FromRgb(255, 245, 219),
+        WarningKind.Dangerous => Color.FromRgb(255, 232, 231),
+        WarningKind.Critical => Color.FromRgb(247, 218, 224),
+        WarningKind.Fatal => Color.FromRgb(225, 228, 234),
+        WarningKind.Agreement => Color.FromRgb(235, 238, 247),
+        WarningKind.Dax => Color.FromRgb(225, 237, 251),
+        _ => Color.FromRgb(233, 246, 251)
     };
+
+    private static Button WindowsAction(string caption, bool primary = false)
+    {
+        var button = new Button
+        {
+            Content = caption,
+            MinWidth = 145, Height = 39,
+            Padding = new Thickness(18, 6, 18, 6),
+            Margin = new Thickness(6, 0, 6, 0),
+            FontSize = 13, FontWeight = FontWeights.Medium,
+            Foreground = Pale,
+            Background = primary
+                ? new SolidColorBrush(Color.FromRgb(183, 215, 255))
+                : new SolidColorBrush(Color.FromRgb(248, 249, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(142, 154, 176)),
+            BorderThickness = new Thickness(1),
+            Cursor = Cursors.Hand
+        };
+        var template = new ControlTemplate(typeof(Button));
+        var frame = new FrameworkElementFactory(typeof(Border));
+        frame.SetValue(Border.CornerRadiusProperty, new CornerRadius(0));
+        frame.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
+        { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+        frame.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
+        { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+        frame.SetBinding(Border.BorderThicknessProperty, new System.Windows.Data.Binding("BorderThickness")
+        { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+        var center = new FrameworkElementFactory(typeof(ContentPresenter));
+        center.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        center.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        frame.AppendChild(center);
+        template.VisualTree = frame;
+        var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.78));
+        template.Triggers.Add(hover);
+        var disabled = new Trigger { Property = UIElement.IsEnabledProperty, Value = false };
+        disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.45));
+        template.Triggers.Add(disabled);
+        button.Template = template;
+        return button;
+    }
+
+    private static CheckBox Acknowledgement()
+    {
+        var checkbox = new CheckBox
+        {
+            Content = "Я прочитал предупреждение и осознанно подтверждаю действие",
+            Foreground = Pale, FontSize = 12, IsChecked = false,
+            Margin = new Thickness(0, 0, 0, 9),
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        var template = new ControlTemplate(typeof(CheckBox));
+        var row = new FrameworkElementFactory(typeof(StackPanel));
+        row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        var square = new FrameworkElementFactory(typeof(Border));
+        square.Name = "CheckSurface";
+        square.SetValue(FrameworkElement.WidthProperty, 20.0);
+        square.SetValue(FrameworkElement.HeightProperty, 20.0);
+        square.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 11, 0));
+        square.SetValue(Border.CornerRadiusProperty, new CornerRadius(0));
+        square.SetValue(Border.BorderThicknessProperty, new Thickness(1.5));
+        square.SetValue(Border.BackgroundProperty, Brushes.White);
+        square.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(112, 127, 153)));
+        var mark = new FrameworkElementFactory(typeof(TextBlock));
+        mark.Name = "CheckMark";
+        mark.SetValue(TextBlock.TextProperty, "✓");
+        mark.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        mark.SetValue(TextBlock.FontSizeProperty, 15.0);
+        mark.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+        mark.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+        mark.SetValue(UIElement.VisibilityProperty, Visibility.Collapsed);
+        square.AppendChild(mark);
+        row.AppendChild(square);
+        var text = new FrameworkElementFactory(typeof(ContentPresenter));
+        text.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        row.AppendChild(text);
+        template.VisualTree = row;
+        var checkedTrigger = new Trigger { Property = System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, Value = true };
+        checkedTrigger.Setters.Add(new Setter(Border.BackgroundProperty,
+            new SolidColorBrush(Color.FromRgb(0, 100, 190)), "CheckSurface"));
+        checkedTrigger.Setters.Add(new Setter(Border.BorderBrushProperty,
+            new SolidColorBrush(Color.FromRgb(0, 100, 190)), "CheckSurface"));
+        checkedTrigger.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Visible, "CheckMark"));
+        template.Triggers.Add(checkedTrigger);
+        checkbox.Template = template;
+        return checkbox;
+    }
 
     private static string Title(WarningKind kind) => kind switch
     {
@@ -131,7 +228,8 @@ internal static class YettaWarningWindow
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var titleIcon = IconAssets.Image(HeadingIcon(request.Kind), 35);
+        var titleIcon = IconAssets.Image(HeadingIcon(request), 30);
+        RenderOptions.SetBitmapScalingMode(titleIcon, BitmapScalingMode.HighQuality);
         titleIcon.Margin = new Thickness(0, 0, 12, 0);
         top.Children.Add(titleIcon);
         var heading = Label(Title(request.Kind) + " · " + request.Reason, 17, Pale, bold: true);
@@ -142,12 +240,17 @@ internal static class YettaWarningWindow
         {
             Content = IconAssets.Image(16, 20),
             Width = 36, Height = 34,
+            Foreground = Pale,
             BorderThickness = new Thickness(0),
             Background = Brushes.Transparent,
             Cursor = Cursors.Hand,
             ToolTip = "Закрыть"
         };
         close.Click += (_, _) => window.DialogResult = false;
+        heading.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.LeftButton == MouseButtonState.Pressed) window.DragMove();
+        };
         Grid.SetColumn(close, 2);
         top.Children.Add(close);
 
@@ -157,6 +260,7 @@ internal static class YettaWarningWindow
         var subject = new Grid { Margin = new Thickness(0, 0, 0, 15) };
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         int objectIcon = ObjectIcon(request);
         var subjectIcon = request.Kind == WarningKind.Dax
             ? new Image
@@ -173,13 +277,14 @@ internal static class YettaWarningWindow
                     Width = 46, Height = 46, Stretch = Stretch.Uniform
                 }
                 : IconAssets.Image(objectIcon, 46);
+        RenderOptions.SetBitmapScalingMode(subjectIcon, BitmapScalingMode.HighQuality);
         var container = new Border
         {
-            Width = 63, Height = 63, Padding = new Thickness(7),
+            Width = 61, Height = 61, Padding = new Thickness(7),
             BorderThickness = new Thickness(1),
             BorderBrush = new SolidColorBrush(Color.FromArgb(125, accent.R, accent.G, accent.B)),
             Background = new SolidColorBrush(Color.FromArgb(80, accent.R, accent.G, accent.B)),
-            CornerRadius = new CornerRadius(15),
+            CornerRadius = new CornerRadius(0),
             Child = subjectIcon, Margin = new Thickness(0, 0, 12, 0)
         };
         subject.Children.Add(container);
@@ -212,14 +317,25 @@ internal static class YettaWarningWindow
         subjectContent.Children.Add(publisherText);
         Grid.SetColumn(subjectContent, 1);
         subject.Children.Add(subjectContent);
+        int state = Status(request, activeProfile);
+        if (state != 0)
+        {
+            var status = IconAssets.Image(state, 30);
+            RenderOptions.SetBitmapScalingMode(status, BitmapScalingMode.HighQuality);
+            status.Margin = new Thickness(16, 0, 2, 0);
+            status.HorizontalAlignment = HorizontalAlignment.Center;
+            status.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(status, 2);
+            subject.Children.Add(status);
+        }
         main.Children.Add(subject);
 
         var paragraph = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(230, 18, 26, 46)),
+            Background = new SolidColorBrush(Color.FromArgb(245, 255, 255, 255)),
             BorderBrush = new SolidColorBrush(Color.FromArgb(90, accent.R, accent.G, accent.B)),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(16),
+            CornerRadius = new CornerRadius(0),
             Padding = new Thickness(18, 17, 18, 17),
             Margin = new Thickness(0, 0, 0, 5),
             Child = Label(request.Description, 13, Pale)
@@ -242,13 +358,7 @@ internal static class YettaWarningWindow
         CheckBox? checkbox = null;
         if (requiresCheck)
         {
-            checkbox = new CheckBox
-            {
-                Content = "Я прочитал предупреждение и осознанно подтверждаю действие",
-                Foreground = Pale,
-                FontSize = 12, Margin = new Thickness(0, 0, 0, 9),
-                IsChecked = false
-            };
+            checkbox = Acknowledgement();
             gate.Children.Add(checkbox);
         }
 
@@ -272,14 +382,14 @@ internal static class YettaWarningWindow
             secret = new PasswordBox
             {
                 PasswordChar = '•', MaxLength = 64, FontSize = 13,
-                Foreground = Pale, Background = Brushes.Transparent,
+                Foreground = Pale, Background = Brushes.White,
                 BorderThickness = new Thickness(0), Padding = new Thickness(8),
                 CaretBrush = Brushes.White, ToolTip = "TTY-Ключ"
             };
             visibleSecret = new TextBox
             {
                 Visibility = Visibility.Collapsed, MaxLength = 64,
-                Foreground = Pale, Background = Brushes.Transparent,
+                Foreground = Pale, Background = Brushes.White,
                 BorderThickness = new Thickness(0), Padding = new Thickness(8),
                 FontSize = 13, CaretBrush = Brushes.White, ToolTip = "TTY-Ключ"
             };
@@ -289,10 +399,10 @@ internal static class YettaWarningWindow
             keyRow.Children.Add(input);
             secretBorder = new Border
             {
-                CornerRadius = new CornerRadius(11),
+                CornerRadius = new CornerRadius(0),
                 BorderThickness = new Thickness(1),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(120, 160, 183, 218)),
-                Background = new SolidColorBrush(Color.FromArgb(80, 29, 40, 63)),
+                Background = Brushes.White,
                 Padding = new Thickness(10, 4, 10, 4),
                 Child = keyRow
             };
@@ -322,27 +432,15 @@ internal static class YettaWarningWindow
             };
         }
 
-        var footer = new Grid();
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        footer.Margin = new Thickness(0, 6, 0, 0);
+        var footer = new Grid { Margin = new Thickness(0, 8, 0, 0) };
         Grid.SetRow(footer, 1);
         bottom.Children.Add(footer);
-
-        int state = Status(request, activeProfile);
-        if (state != 0)
-        {
-            var status = IconAssets.Image(state, 29);
-            status.HorizontalAlignment = HorizontalAlignment.Left;
-            status.VerticalAlignment = VerticalAlignment.Center;
-            footer.Children.Add(status);
-        }
+        // Buttons belong to the center of the modal, never next to a status icon.
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Center
         };
-        Grid.SetColumn(actions, 1);
         footer.Children.Add(actions);
 
         bool isAgreement = request.Kind == WarningKind.Agreement;
@@ -350,7 +448,7 @@ internal static class YettaWarningWindow
         Button? deny = null;
         if (!oneButton)
         {
-            deny = GlassDialog.Button("Запретить");
+            deny = WindowsAction("Запретить");
             deny.Click += (_, _) => window.DialogResult = false;
             actions.Children.Add(deny);
         }
@@ -361,8 +459,8 @@ internal static class YettaWarningWindow
             WarningKind.Agreement => "Согласен",
             _ => "Разрешить"
         };
-        var allow = GlassDialog.Button(actionName, primary: true);
-        if (oneButton) allow.MinWidth = 240;
+        var allow = WindowsAction(actionName, primary: true);
+        if (oneButton) allow.MinWidth = 188;
         actions.Children.Add(allow);
 
         void CheckGate()
@@ -429,7 +527,17 @@ internal static class YettaWarningWindow
         layout.Children.Add(scroller);
         Grid.SetRow(bottom, 2);
         layout.Children.Add(bottom);
-        window.Content = GlassDialog.Surface(layout, new Thickness(24), owner);
+        // Solid, severity-tinted Windows-style dialog. No Glass surface,
+        // backdrop blur or rounded corners in the warning subsystem.
+        window.Content = new Border
+        {
+            Background = new SolidColorBrush(BackgroundFor(request.Kind)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(138, 153, 179)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(0),
+            Padding = new Thickness(25, 20, 25, 22),
+            Child = layout
+        };
         CheckGate();
         DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
         bool result = window.ShowDialog() == true;
