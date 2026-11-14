@@ -1,5 +1,19 @@
 # Yetta Changelog
 
+## 0.4.0-preview — 2026-11-15
+
+- Introduce seven warning families (standard, caution, dangerous, critical, fatal, consent and DAX), the owner's numbered icons and cursor symbols, distinct severity tints, scrollable description and fixed actions.
+- Replace WPF MessageBox windows with Yetta warning windows; approval, optional agreement checkbox and 64-character TTY verification are explicitly separated from OS permissions.
+- Persist a random TTY confirmation key in user-scoped Windows DPAPI, supporting copy and rotation; add Windows security smoke tests.
+- Add DAX Process: on-demand SHA-256, Authenticode signature status, Defender file scan, user-approved non-elevated launch and limited WMI child-process observation. Fail closed when Defender reports a nonzero result or a file changes during scan.
+- Extend monitoring to Yetta's own embedded user PowerShell process; append bounded real event records to DAX Logs.
+- Add opt-in VirusTotal lookup by SHA-256 hash only, without automatic file upload.
+- Add warning preview in Settings; fatal warning has topmost priority and its «Сброс» button navigates to DAX Recovery without attempting to reset Windows.
+- Request Desktop Acrylic through DWM on Windows 11 22621+ in the Glass theme, with Fluent opaque and older Windows fallback variants; improve text contrast and single-rounded modal chrome.
+- Extend the safe Marvine commands and add DAX Process navigation; preserve per-user installation and in-app update checks.
+- Still not shipped: privileged ADMIN/SYS broker, ConPTY terminal emulation, automatic Windows recovery, full malware detection, signed release/update chain.
+
+
 ## 0.3.5-preview — 2026-11-14
 
 - Remove the second, rectangular native frame from the glass DAX and consent windows.
