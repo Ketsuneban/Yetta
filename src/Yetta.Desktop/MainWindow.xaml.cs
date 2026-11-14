@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
+    private DaxFileAssessment? _lastDaxAssessment;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -674,6 +675,16 @@ public partial class MainWindow : Window
             await LaunchSelectedExecutableAsync();
         }, true, enabled: _settings.ActiveProfile == "User" &&
             !IsProcessAdministrator()));
+        ContentPanel.Children.Add(ActionButton("Проверить SHA-256 через VirusTotal", () =>
+        {
+            if (_lastDaxAssessment is null) return;
+            OpenExternal("https://www.virustotal.com/gui/file/" +
+                _lastDaxAssessment.Sha256,
+                "VirusTotal · анализ по хешу");
+        }, enabled: _lastDaxAssessment is not null));
+        ContentPanel.Children.Add(Card(Text(
+            "VirusTotal открывается только по вашему нажатию. Yetta передаёт в URL " +
+            "SHA-256 файла, но не загружает сам файл на внешний сервер.", 11, muted: true)));
         AddSection("Наблюдение");
         ContentPanel.Children.Add(Card(Text(
             "После запуска DAX наблюдает за корневым PID и известными дочерними процессами " +
@@ -715,6 +726,7 @@ public partial class MainWindow : Window
                 "DAX Process", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        _lastDaxAssessment = analysis;
         string subject = Path.GetFileName(file);
         string publisher = "";
         try { publisher = FileVersionInfo.GetVersionInfo(file).CompanyName ?? ""; }
@@ -739,8 +751,9 @@ public partial class MainWindow : Window
                 subject, "Defender blocked/failed", "blocked");
             return;
         }
-        bool uncertain = analysis.DefenderUnavailable ||
-            analysis.SignatureStatus != "Valid";
+        // No local scan can prove a file fully safe. Always show caution and
+        // explicit user choice even when the signature and scan succeeded.
+        bool uncertain = true;
         var accepted = DaxWarningDialog.Show(this, new DaxWarningRequest(
             uncertain ? YettaWarningLevel.Caution : YettaWarningLevel.Standard,
             "Разрешить запуск выбранной программы?",
