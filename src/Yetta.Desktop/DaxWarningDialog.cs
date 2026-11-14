@@ -108,7 +108,7 @@ internal static class DaxWarningDialog
 
     public static DaxWarningResult Show(Window owner, DaxWarningRequest request,
         TtyKeyStore? ttyStore = null, Action? onRecovery = null,
-        string activeProfile = "User", bool safeMode = false)
+        string activeProfile = "User", bool safeMode = false, bool modeless = false)
     {
         var level = request.Level;
         bool fatal = level == YettaWarningLevel.Fatal;
@@ -373,7 +373,8 @@ internal static class DaxWarningDialog
         void Finish(DaxWarningResult result)
         {
             decision = result;
-            dialog.DialogResult = result is DaxWarningResult.Allowed or
+            if (modeless) dialog.Close();
+            else dialog.DialogResult = result is DaxWarningResult.Allowed or
                 DaxWarningResult.Acknowledged or DaxWarningResult.RecoveryOpened;
         }
 
@@ -442,6 +443,16 @@ internal static class DaxWarningDialog
         {
             dialog.Topmost = true;
             dialog.Activate();
+        }
+        if (modeless)
+        {
+            // Informational windows can overlap like ordinary Windows windows.
+            // Authorization prompts remain modal so the caller cannot continue
+            // until an explicit decision has been returned.
+            dialog.Closed += (_, _) =>
+                DaxAuditLog.Append(level, request.SubjectName, request.Title, decision.ToString());
+            dialog.Show();
+            return decision;
         }
         dialog.ShowDialog();
         DaxAuditLog.Append(level, request.SubjectName, request.Title, decision.ToString());
