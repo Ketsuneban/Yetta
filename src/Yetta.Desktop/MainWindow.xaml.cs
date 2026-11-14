@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.1-preview";
+    private const string ReleaseVersion = "0.3.2-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -54,17 +54,17 @@ public partial class MainWindow : Window
         Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
-    private void OnWindowMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void OnWindowMinimize(object sender, RoutedEventArgs e) => WindowState = System.Windows.WindowState.Minimized;
 
     private void OnWindowMaximize(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        WindowState = WindowState == System.Windows.WindowState.Maximized ? System.Windows.WindowState.Normal : System.Windows.WindowState.Maximized;
 
     private void OnWindowClose(object sender, RoutedEventArgs e) => Close();
 
     private void UpdateCaptionState()
     {
         if (CaptionMaximize is null) return;
-        bool maximized = WindowState == WindowState.Maximized;
+        bool maximized = WindowState == System.Windows.WindowState.Maximized;
         CaptionMaximize.Content = maximized ? "❐" : "□";
         CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
@@ -901,7 +901,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 1));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 2));
             if (latest is null)
             {
                 MessageBox.Show(this, "Новой версии с установщиком пока нет.",
