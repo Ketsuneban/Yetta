@@ -515,7 +515,7 @@ public partial class MainWindow : Window
                 Foreground = Ink,
                 BorderBrush = Line,
                 BorderThickness = new Thickness(1),
-                FontFamily = new FontFamily("Consolas"),
+                FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
                 FontSize = 13,
                 Padding = new Thickness(12, 10, 12, 10),
                 CaretBrush = Accent,
@@ -542,7 +542,7 @@ public partial class MainWindow : Window
     private TextBlock ConsoleLine(string message, bool prompt)
     {
         var line = Text(message, 12);
-        line.FontFamily = new FontFamily("Consolas");
+        line.FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter");
         line.Foreground = prompt ? Accent : Ink;
         line.Margin = new Thickness(0, 0, 0, 10);
         return line;
