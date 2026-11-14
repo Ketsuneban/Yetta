@@ -1,5 +1,16 @@
 # Yetta Changelog
 
+## 0.3.1-preview — 2026-11-14
+
+- Add the Activity Center: up to five timed toast notifications, details, entry animation and optional sound.
+- Make the navigation pane scrollable and reset page scroll on section changes.
+- Consolidate device details in one card and display the user-local data folder.
+- Improve DAX Guard dropdown contrast and gray access level identifiers.
+- Rename Mavrine to Marvine; add safe activity/overview commands and reserve /snob without OS elevation.
+- Link Icons8 in the footer, include owner-provided icon 31 and update website branding and release links.
+- ADMIN/SYS, threat detection and recovery remain unavailable until security-reviewed implementation.
+
+
 ## 0.3.0-preview — 2026-11-14
 
 - Build and publish YettaSetup.exe per-user installer and direct portable Yetta.exe.

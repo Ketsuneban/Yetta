@@ -1,12 +1,12 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.0-preview");
+    string Version = "0.3.1-preview");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false);
 
 /// <summary>
-/// Mavrine is an original, strictly allowlisted UI command router. No shell,
+/// Marvine is an original, strictly allowlisted UI command router. No shell,
 /// arbitrary process execution, registry modification or privileged actions.
 /// </summary>
 public static class ConsoleEngine
@@ -18,13 +18,16 @@ public static class ConsoleEngine
         {
             "" => new ConsoleResult("Введите help для списка команд."),
             "help" => new ConsoleResult(
-                "help             Справка по Mavrine\n" +
+                "help             Справка по Marvine\n" +
                 "version          Версия Yetta\n" +
                 "status           Реальное состояние компонентов\n" +
                 "access           Текущий логический уровень\n" +
                 "info             Системная информация\n" +
                 "guard            DAX Guard\n" +
                 "logs             DAX Logs\n" +
+                "activity         Центр активности\n" +
+                "overview         Главная\n" +
+                "/snob            Зарезервированная защищённая команда\n" +
                 "recovery         DAX Recovery\n" +
                 "settings         Настройки\n" +
                 "sources          Источники\n" +
@@ -32,7 +35,7 @@ public static class ConsoleEngine
                 "theme glass      Оформление Glass\n" +
                 "clear            Очистить консоль"),
             "version" or "about" => new ConsoleResult("Yetta " + context.Version +
-                "\nMavrine — внутренняя консоль. SYSTEM, DAX и UAC-брокер отсутствуют."),
+                "\nMarvine — внутренняя консоль. SYSTEM, DAX и UAC-брокер отсутствуют."),
             "status" => new ConsoleResult(
                 "Yetta UI: работает\n" +
                 "Профиль Yetta: " + AccessProfiles.DisplayName(context.ActiveProfile) + "\n" +
@@ -43,6 +46,9 @@ public static class ConsoleEngine
             "info" => new ConsoleResult("Открываю раздел «Информация».", NavigateTo: "info"),
             "guard" => new ConsoleResult("Открываю DAX Guard.", NavigateTo: "guard"),
             "logs" => new ConsoleResult("Открываю DAX Logs.", NavigateTo: "logs"),
+            "activity" or "notifications" => new ConsoleResult("Открываю Центр активности.", NavigateTo: "activity"),
+            "overview" or "home" => new ConsoleResult("Открываю главную.", NavigateTo: "overview"),
+            "/snob" or "/snob help" => new ConsoleResult("Команда /snob зарезервирована для защищённых операций. Брокер DAX отсутствует; команда не запускает программы, не повышает права Windows и не отключает UAC."),
             "recovery" => new ConsoleResult("Открываю DAX Recovery.", NavigateTo: "recovery"),
             "settings" => new ConsoleResult("Открываю настройки.", NavigateTo: "settings"),
             "sources" => new ConsoleResult("Открываю источники.", NavigateTo: "sources"),
@@ -51,7 +57,7 @@ public static class ConsoleEngine
             "theme" => new ConsoleResult("Использование: theme fluent | theme glass"),
             "clear" => new ConsoleResult("", ClearOutput: true),
             _ => new ConsoleResult("Команда не поддерживается: " + command +
-                "\nMavrine не выполняет системные команды. Введите help.")
+                "\nMarvine не выполняет системные команды. Введите help.")
         };
     }
 }

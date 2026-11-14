@@ -13,13 +13,14 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.0-preview";
+    private const string ReleaseVersion = "0.3.1-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
     private readonly List<(string Command, string Reply)> _history = [];
+    private readonly List<(DateTime Time, string Source, string Message)> _notifications = [];
     private string _page = "overview";
-    private string _consoleMode = "Mavrine";
+    private string _consoleMode = "Marvine";
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
             ["console"] = NavConsole,
             ["guard"] = NavGuard,
             ["logs"] = NavLogs,
+            ["activity"] = NavActivity,
             ["recovery"] = NavRecovery,
             ["settings"] = NavSettings,
             ["sources"] = NavSources
@@ -97,6 +99,7 @@ public partial class MainWindow : Window
         ApplyTheme();
         SavePreferences();
         Navigate(_page);
+        Notify("Yetta", "Оформление изменено: " + theme + ".");
     }
 
     private void SavePreferences()
@@ -134,9 +137,10 @@ public partial class MainWindow : Window
         {
             ["overview"] = ("Главная", "Рабочее пространство Yetta"),
             ["info"] = ("Информация", "Приложение, права и устройство"),
-            ["console"] = ("Консоль", "Mavrine и встроенные консоли Windows"),
+            ["console"] = ("Консоль", "Marvine и встроенные консоли Windows"),
             ["guard"] = ("DAX Guard", "Уровни доступа и их установка"),
             ["logs"] = ("DAX Logs", "Будущий журнал событий безопасности"),
+            ["activity"] = ("Центр активности", "Локальные уведомления текущей сессии"),
             ["recovery"] = ("DAX Recovery", "Центр будущего восстановления"),
             ["settings"] = ("Настройки", "Предпочтения приложения"),
             ["sources"] = ("Источники", "Разработка, релизы, авторство")
@@ -151,10 +155,12 @@ public partial class MainWindow : Window
             case "console": BuildConsole(); break;
             case "guard": BuildGuard(); break;
             case "logs": BuildLogs(); break;
+            case "activity": BuildActivity(); break;
             case "recovery": BuildRecovery(); break;
             case "settings": BuildSettings(); break;
             case "sources": BuildSources(); break;
         }
+        MainScroll.ScrollToTop();
     }
 
     private TextBlock Text(string value, double size = 13, bool heading = false, bool muted = false)
@@ -331,7 +337,7 @@ public partial class MainWindow : Window
         capabilities.Children.Add(Text(
             "Yetta выполняется в рамках токена текущего пользователя. Нет установленной службы SYSTEM, драйвера, защищённого брокера, специальных разрешений на системные файлы или полномочий изменять защиту Windows.", 12, muted: true));
         capabilities.Children.Add(Text(
-            "Чтение файлов возможно только там, где Windows разрешает это текущему процессу. Запись в системные папки, управление службами и изменения реестра Yetta не выполняет. Mavrine допускает только внутренние команды. Windows Terminal доступен через DAX Guard лишь при активном профиле «Пользователь».", 12, muted: true));
+            "Чтение файлов возможно только там, где Windows разрешает это текущему процессу. Запись в системные папки, управление службами и изменения реестра Yetta не выполняет. Marvine допускает только внутренние команды. Windows Terminal доступен через DAX Guard лишь при активном профиле «Пользователь».", 12, muted: true));
         ContentPanel.Children.Add(Card(capabilities));
 
         AddSection("Информация об устройстве");
@@ -347,13 +353,17 @@ public partial class MainWindow : Window
             ("Режим оформления", _settings.Theme),
             ("Путь настроек", _store.FilePath)
         };
+        var deviceCard = new StackPanel();
         foreach (var (label, value) in specs)
         {
-            var row = new StackPanel();
+            var row = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
             row.Children.Add(Text(label, 10, heading: true, muted: true));
             row.Children.Add(Text(value, 13));
-            ContentPanel.Children.Add(Card(row));
+            deviceCard.Children.Add(row);
         }
+        deviceCard.Children.Add(Text("Папка данных Yetta: " +
+            (Path.GetDirectoryName(_store.FilePath) ?? "Недоступно"), 12, muted: true));
+        ContentPanel.Children.Add(Card(deviceCard));
         AddNotice("Прозрачность", "Yetta не собирает и не отправляет на сервер сведения об устройстве. Эта страница — только локальный просмотр.");
     }
 
@@ -372,8 +382,10 @@ public partial class MainWindow : Window
 
         var choices = new ComboBox
         {
-            Foreground = Brushes.Black,
-            Background = Brushes.White,
+            Foreground = Ink,
+            Background = Surface,
+            BorderBrush = Line,
+            BorderThickness = new Thickness(1),
             Margin = new Thickness(0, 16, 0, 0),
             MaxWidth = 350,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -385,7 +397,9 @@ public partial class MainWindow : Window
             var item = new ComboBoxItem
             {
                 Tag = profile,
-                Content = (profile == _settings.ActiveProfile ? "✓  " : "    ") + AccessProfiles.DisplayName(profile)
+                Content = (profile == _settings.ActiveProfile ? "✓  " : "    ") + AccessProfiles.DisplayName(profile),
+                Foreground = Ink,
+                Background = Surface
             };
             choices.Items.Add(item);
             if (profile == _settings.ActiveProfile) choices.SelectedItem = item;
@@ -403,7 +417,7 @@ public partial class MainWindow : Window
         ContentPanel.Children.Add(Card(current));
 
         AddSection("Профили", "Сначала «Установить», затем «Применить». Активный профиль отображается в выпадающем списке.");
-        foreach (var (profile, number) in AccessProfiles.All.Select((name, i) => (name, i + 1)))
+        foreach (string profile in AccessProfiles.All)
         {
             bool installed = _settings.InstalledProfiles.Contains(profile);
             bool applied = profile == _settings.ActiveProfile;
@@ -418,8 +432,10 @@ public partial class MainWindow : Window
                 "User" => "USER", "Administrator" => "ADMIN",
                 _ => "SYS"
             };
-            description.Children.Add(Text(code + "   " +
-                AccessProfiles.DisplayName(profile), 15, heading: true));
+            var headingLine = new StackPanel { Orientation = Orientation.Horizontal };
+            headingLine.Children.Add(Text(code + "   ", 12, heading: true, muted: true));
+            headingLine.Children.Add(Text(AccessProfiles.DisplayName(profile), 15, heading: true));
+            description.Children.Add(headingLine);
             description.Children.Add(Text(AccessProfiles.Description(profile), 12, muted: true));
             Grid.SetColumn(description, 0);
             row.Children.Add(description);
@@ -452,7 +468,93 @@ public partial class MainWindow : Window
         else
             AccessProfiles.Install(_settings, profile);
         SavePreferences();
+        Notify("DAX Guard", "Профиль " + AccessProfiles.DisplayName(profile) + " изменён. Это внутренний уровень Yetta, а не полномочия Windows.");
         Navigate("guard");
+    }
+
+
+    private void OnFooterLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        e.Handled = true;
+        if (e.Uri.Scheme == Uri.UriSchemeHttps && e.Uri.Host == "icons8.ru")
+            OpenExternal(e.Uri.AbsoluteUri, "Icons8");
+    }
+
+    private void Notify(string source, string message)
+    {
+        _notifications.Add((DateTime.Now, source, message));
+        if (_notifications.Count > 100) _notifications.RemoveAt(0);
+
+        var toast = new Border
+        {
+            Width = 314,
+            Background = Surface,
+            BorderBrush = Line,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(13),
+            Padding = new Thickness(14),
+            Margin = new Thickness(0, 0, 0, 8),
+            Opacity = 0
+        };
+        var body = new StackPanel();
+        var header = new DockPanel();
+        var close = new Button
+        {
+            Content = "×", Width = 30, Height = 26,
+            Background = Brushes.Transparent, Foreground = Muted,
+            BorderThickness = new Thickness(0), Cursor = Cursors.Hand
+        };
+        close.Click += (_, _) => ToastHost.Children.Remove(toast);
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+        var icon = new Image
+        {
+            Source = new BitmapImage(new Uri("pack://application:,,,/Assets/31.png")),
+            Width = 25, Height = 25, Margin = new Thickness(0, 0, 10, 0)
+        };
+        DockPanel.SetDock(icon, Dock.Left);
+        header.Children.Add(icon);
+        header.Children.Add(Text(source, 13, heading: true));
+        body.Children.Add(header);
+        var details = Text(message, 12, muted: true);
+        details.Margin = new Thickness(0, 8, 0, 4);
+        body.Children.Add(details);
+        body.Children.Add(ActionButton("Подробнее", () =>
+        {
+            ToastHost.Children.Remove(toast);
+            Navigate("activity");
+        }));
+        toast.Child = body;
+        if (ToastHost.Children.Count >= 5) ToastHost.Children.RemoveAt(0);
+        ToastHost.Children.Add(toast);
+        toast.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(
+            0, 1, TimeSpan.FromMilliseconds(220)));
+        if (_settings.NotificationSoundsEnabled)
+        {
+            try { System.Media.SystemSounds.Asterisk.Play(); }
+            catch (InvalidOperationException) { }
+        }
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
+        timer.Tick += (_, _) => { timer.Stop(); ToastHost.Children.Remove(toast); };
+        timer.Start();
+    }
+
+    private void BuildActivity()
+    {
+        AddIntro("Yetta / Activity Center", "Центр активности",
+            "Локальные события текущего запуска Yetta. Это не журнал безопасности DAX и не мониторинг Windows.");
+        if (_notifications.Count == 0)
+        {
+            AddNotice("Пока нет событий", "После изменений оформления или уровня Yetta события появятся здесь.");
+            return;
+        }
+        foreach (var note in _notifications.AsEnumerable().Reverse())
+        {
+            var panel = new StackPanel();
+            panel.Children.Add(Text(note.Source + " · " + note.Time.ToString("HH:mm:ss"), 13, heading: true));
+            panel.Children.Add(Text(note.Message, 12, muted: true));
+            ContentPanel.Children.Add(Card(panel));
+        }
     }
 
     private void BuildLogs()
@@ -474,9 +576,9 @@ public partial class MainWindow : Window
     private void BuildConsole()
     {
         AddIntro("Yetta / Console", "Встроенная консоль",
-            "Mavrine — команды Yetta. Вкладки Windows Terminal и Windows PowerShell используют встроенную текстовую панель, которая передаёт введённые команды настоящему процессу Windows PowerShell текущего пользователя.");
+            "Marvine — команды Yetta. Вкладки Windows Terminal и Windows PowerShell используют встроенную текстовую панель, которая передаёт введённые команды настоящему процессу Windows PowerShell текущего пользователя.");
         var tabs = new WrapPanel();
-        foreach (string mode in new[] { "Mavrine", "Windows Terminal", "Windows PowerShell" })
+        foreach (string mode in new[] { "Marvine", "Windows Terminal", "Windows PowerShell" })
         {
             string selected = mode;
             tabs.Children.Add(ActionButton(mode, () =>
@@ -501,17 +603,17 @@ public partial class MainWindow : Window
             MinHeight = 290
         };
         var body = new StackPanel();
-        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Mavrine" ? "Yetta" : "PowerShell engine"), 14, heading: true);
+        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Marvine" ? "Yetta" : "PowerShell engine"), 14, heading: true);
         heading.Foreground = _consoleMode == "Windows PowerShell" ? Brushes.White : Accent;
         heading.Margin = new Thickness(0, 0, 0, 12);
         body.Children.Add(heading);
 
-        if (_consoleMode == "Mavrine")
+        if (_consoleMode == "Marvine")
         {
             var display = new StackPanel();
             if (_history.Count == 0)
             {
-                display.Children.Add(ConsoleLine("Mavrine / Yetta " + ReleaseVersion, true));
+                display.Children.Add(ConsoleLine("Marvine / Yetta " + ReleaseVersion, true));
                 display.Children.Add(ConsoleLine("Введите help. Системные команды здесь не исполняются.", false));
             }
             else
@@ -528,9 +630,9 @@ public partial class MainWindow : Window
                 Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
             });
-            _consoleInput = BuildTerminalInput("Команда Mavrine", RunMavrine);
+            _consoleInput = BuildTerminalInput("Команда Marvine", RunMarvine);
             body.Children.Add(_consoleInput);
-            body.Children.Add(ActionButton("Выполнить ↵", RunMavrine, true));
+            body.Children.Add(ActionButton("Выполнить ↵", RunMarvine, true));
         }
         else if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
         {
@@ -680,7 +782,7 @@ public partial class MainWindow : Window
         return line;
     }
 
-    private void RunMavrine()
+    private void RunMarvine()
     {
         if (_consoleInput is null) return;
         string command = _consoleInput.Text.Trim();
@@ -712,6 +814,18 @@ public partial class MainWindow : Window
         modes.Children.Add(ActionButton("Glass Preview",
             () => SetTheme("Glass"), primary: _settings.Theme == "Glass"));
         ContentPanel.Children.Add(modes);
+
+        AddSection("Уведомления");
+        var sounds = new CheckBox
+        {
+            Content = "Воспроизводить звук уведомлений",
+            IsChecked = _settings.NotificationSoundsEnabled,
+            Foreground = Ink,
+            Margin = new Thickness(0, 3, 0, 3)
+        };
+        sounds.Checked += (_, _) => { _settings.NotificationSoundsEnabled = true; SavePreferences(); };
+        sounds.Unchecked += (_, _) => { _settings.NotificationSoundsEnabled = false; SavePreferences(); };
+        ContentPanel.Children.Add(Card(sounds));
 
         AddSection("Подтверждения");
         var confirmation = new CheckBox
@@ -755,7 +869,7 @@ public partial class MainWindow : Window
         AddSection("Локальные данные");
         ContentPanel.Children.Add(Card(Text(
             "Файл настроек: " + _store.FilePath +
-            "\nВнутренняя история Mavrine удаляется после завершения работы.", 12, muted: true)));
+            "\nВнутренняя история Marvine удаляется после завершения работы.", 12, muted: true)));
         ContentPanel.Children.Add(ActionButton("Сбросить оформление", () =>
         {
             if (MessageBox.Show(this, "Сбросить оформление и подтверждения? Уровни доступа сохранятся.",
@@ -773,7 +887,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 0));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 1));
             if (latest is null)
             {
                 MessageBox.Show(this, "Новой версии с установщиком пока нет.",

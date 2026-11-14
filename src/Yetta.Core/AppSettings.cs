@@ -5,6 +5,7 @@ public sealed class AppSettings
 {
     public string Theme { get; set; } = "Fluent";
     public bool ConfirmExternalLinks { get; set; } = true;
+    public bool NotificationSoundsEnabled { get; set; } = true;
     public List<string> InstalledProfiles { get; set; } = ["Guest"];
     public string ActiveProfile { get; set; } = "Guest";
     // Consent to the embedded user-level PowerShell session; never grants OS privileges.
