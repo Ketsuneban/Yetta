@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
+    private DaxProcessMonitor? _processMonitor;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -53,7 +54,7 @@ public partial class MainWindow : Window
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
-        Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
+        Closed += (_, _) => { _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private void InitializeIconsAndCursors()
@@ -189,6 +190,8 @@ public partial class MainWindow : Window
     private void Navigate(string page)
     {
         if (!_navigation.ContainsKey(page)) return;
+        _processMonitor?.Dispose();
+        _processMonitor = null;
         _embeddedShell?.Dispose();
         _embeddedShell = null;
         _page = page;
@@ -809,6 +812,8 @@ public partial class MainWindow : Window
             controls.Children.Add(ActionButton("Выполнить ↵", RunPowerShell, true));
             controls.Children.Add(ActionButton("Остановить сессию", () =>
             {
+                _processMonitor?.Dispose();
+                _processMonitor = null;
                 _embeddedShell?.Dispose();
                 _embeddedShell = null;
                 display.Children.Add(ConsoleLine("Сессия завершена. Переключите вкладку, чтобы начать новую.", false));
@@ -828,6 +833,8 @@ public partial class MainWindow : Window
                         }
                     }));
                 });
+                _processMonitor = new DaxProcessMonitor(_embeddedShell.ProcessId,
+                    message => Notify("DAX Process", message));
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 System.ComponentModel.Win32Exception or IOException)
@@ -976,6 +983,8 @@ public partial class MainWindow : Window
         ContentPanel.Children.Add(ActionButton("Отозвать согласие PowerShell", () =>
         {
             _settings.EmbeddedShellConsentGranted = false;
+            _processMonitor?.Dispose();
+            _processMonitor = null;
             _embeddedShell?.Dispose();
             _embeddedShell = null;
             SavePreferences();
