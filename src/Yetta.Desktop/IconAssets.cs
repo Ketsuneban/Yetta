@@ -74,7 +74,7 @@ internal static class IconAssets
             35 => (Fill(150, 201, 255), Fill(53, 108, 198)),
             _ => (Fill(255, 213, 57), Fill(180, 129, 13))
         };
-        var gradient = new LinearGradientBrush(bg.Item1, bg.Item2, 90);
+        var gradient = new LinearGradientBrush(((SolidColorBrush)bg.Item1).Color, ((SolidColorBrush)bg.Item2).Color, 90);
         if (number is 22 or 23)
         {
             Shape outline;
@@ -120,7 +120,7 @@ internal static class IconAssets
             canvas.Children.Add(foot);
             if (number == 35)
             {
-                var shield = new Path
+                var shield = new System.Windows.Shapes.Path
                 {
                     Data = Geometry.Parse("M32,14 L47,20 L46,34 Q43,43 32,47 Q21,43 18,34 L17,20 Z"),
                     Fill = Fill(38, 112, 203), Stroke = Fill(21, 87, 179), StrokeThickness = 1.5
