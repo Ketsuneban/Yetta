@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta</AssemblyName>
     <RootNamespace>Yetta.Desktop</RootNamespace>
-    <Version>0.3.7</Version>
+    <Version>0.3.8</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -18,6 +18,7 @@
     <Resource Include="Assets/31.png" />
     <Resource Include="Assets/35.png" />
     <Resource Include="Assets/yetta-logo.png" />
+    <Resource Include="Assets/external-link.png" />
     <Resource Include="Assets/dax-logo.png" />
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
