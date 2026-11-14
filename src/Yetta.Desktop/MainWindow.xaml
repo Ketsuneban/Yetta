@@ -9,7 +9,7 @@
         Background="{DynamicResource WindowBackground}"
         FontFamily="./Assets/#Inter" FontSize="14">
   <shell:WindowChrome.WindowChrome>
-    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="0"
+    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="-1"
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
   <Window.Resources>
