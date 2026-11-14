@@ -42,6 +42,7 @@ public partial class MainWindow : Window
             ["info"] = NavInfo,
             ["console"] = NavConsole,
             ["guard"] = NavGuard,
+            ["process"] = NavProcess,
             ["logs"] = NavLogs,
             ["activity"] = NavActivity,
             ["recovery"] = NavRecovery,
@@ -194,6 +195,7 @@ public partial class MainWindow : Window
             ["info"] = ("Информация", "Приложение, права и устройство"),
             ["console"] = ("Консоль", "Marvine и встроенные консоли Windows"),
             ["guard"] = ("DAX Guard", "Уровни доступа и их установка"),
+            ["process"] = ("DAX Process", "Проверка и запуск выбранных программ"),
             ["logs"] = ("DAX Logs", "Будущий журнал событий безопасности"),
             ["activity"] = ("Центр активности", "Локальные уведомления текущей сессии"),
             ["recovery"] = ("DAX Recovery", "Центр будущего восстановления"),
@@ -209,6 +211,7 @@ public partial class MainWindow : Window
             case "info": BuildInfo(); break;
             case "console": BuildConsole(); break;
             case "guard": BuildGuard(); break;
+            case "process": BuildProcess(); break;
             case "logs": BuildLogs(); break;
             case "activity": BuildActivity(); break;
             case "recovery": BuildRecovery(); break;
@@ -649,6 +652,133 @@ public partial class MainWindow : Window
             panel.Children.Add(Text(note.Source + " · " + note.Time.ToString("HH:mm:ss"), 13, heading: true));
             panel.Children.Add(Text(note.Message, 12, muted: true));
             ContentPanel.Children.Add(Card(panel));
+        }
+    }
+
+    private void BuildProcess()
+    {
+        AddIntro("Yetta / DAX Process", "Проверка запускаемых программ",
+            "Выберите EXE, чтобы проверить подпись и запросить локальное сканирование Defender. " +
+            "Только процессы, запущенные этой кнопкой, и их потомки отслеживаются DAX. " +
+            "Система не просматривает другие программы Windows.");
+
+        AddSection("Реальные ограничения");
+        AddNotice("User · стандартный токен Windows",
+            "Запуск доступен только в логическом профиле USER и если сама Yetta не запущена " +
+            "с правами администратора. DAX не повышает привилегии, не подменяет Defender " +
+            "и не доказывает полную безопасность исполняемых файлов.");
+
+        ContentPanel.Children.Add(ActionButton("Выбрать и проверить EXE", async () =>
+        {
+            await LaunchSelectedExecutableAsync();
+        }, true, enabled: _settings.ActiveProfile == "User" &&
+            !IsProcessAdministrator()));
+        AddSection("Наблюдение");
+        ContentPanel.Children.Add(Card(Text(
+            "После запуска DAX наблюдает за корневым PID и известными дочерними процессами " +
+            "через WMI с периодическим опросом. Короткоживущие процессы могут быть пропущены; " +
+            "никаких глобальных драйверов или скрытых полномочий не устанавливается.", 12, muted: true)));
+    }
+
+    private async Task LaunchSelectedExecutableAsync()
+    {
+        if (_settings.ActiveProfile != "User" || IsProcessAdministrator())
+        {
+            DaxWarningDialog.Show(this, new DaxWarningRequest(
+                YettaWarningLevel.Dax,
+                "Запуск отклонён",
+                "Необходим логический профиль USER без повышенных прав самого приложения.",
+                SubjectName: "DAX Guard", AccessDenied: true),
+                activeProfile: _settings.ActiveProfile,
+                safeMode: ConsentDialog.InWindowsSafeMode);
+            return;
+        }
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Выберите программу для проверки DAX",
+            Filter = "Windows executable (*.exe)|*.exe",
+            CheckFileExists = true, Multiselect = false
+        };
+        if (picker.ShowDialog(this) != true) return;
+        string file = picker.FileName;
+        DaxFileAssessment analysis;
+        try
+        {
+            Notify("DAX Process", "Выполняется проверка выбранного файла…");
+            analysis = await DaxFileScanner.AssessAsync(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            InvalidDataException or System.Security.Cryptography.CryptographicException)
+        {
+            YettaMessageBox.Show(this, "Не удалось проверить файл: " + ex.Message,
+                "DAX Process", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        string subject = Path.GetFileName(file);
+        string publisher = "";
+        try { publisher = FileVersionInfo.GetVersionInfo(file).CompanyName ?? ""; }
+        catch (System.ComponentModel.Win32Exception) { }
+        string details = "Подпись Authenticode: " + analysis.SignatureStatus +
+            "\\nSHA-256: " + analysis.Sha256 + "\\n" + analysis.DefenderStatus;
+        if (analysis.ScanFailedOrThreat)
+        {
+            DaxWarningDialog.Show(this, new DaxWarningRequest(
+                YettaWarningLevel.Dangerous,
+                "DAX заблокировал запуск",
+                details + "\\n\\nПричина результата Defender неоднозначна: это может быть угроза " +
+                "или ошибка сканирования. Без подтверждённого защищённого брокера " +
+                "продолжение не разрешено.",
+                SubjectName: subject, TargetPath: file,
+                Publisher: publisher, SubjectType: WarningSubjectType.Executable,
+                DaxDenied: true, PotentialHarm: true,
+                AcknowledgmentOnly: true),
+                activeProfile: _settings.ActiveProfile,
+                safeMode: ConsentDialog.InWindowsSafeMode);
+            DaxAuditLog.Append(YettaWarningLevel.Dangerous,
+                subject, "Defender blocked/failed", "blocked");
+            return;
+        }
+        bool uncertain = analysis.DefenderUnavailable ||
+            analysis.SignatureStatus != "Valid";
+        var accepted = DaxWarningDialog.Show(this, new DaxWarningRequest(
+            uncertain ? YettaWarningLevel.Caution : YettaWarningLevel.Standard,
+            "Разрешить запуск выбранной программы?",
+            details + "\\n\\nПроверка не гарантирует отсутствия угроз. " +
+            "После запуска DAX сможет наблюдать только за выбранным деревом процессов.",
+            SubjectName: subject, TargetPath: file, Publisher: publisher,
+            SubjectType: WarningSubjectType.Executable,
+            CheckRequired: uncertain, PotentialHarm: uncertain),
+            ttyStore: _ttyKeys,
+            activeProfile: _settings.ActiveProfile,
+            safeMode: ConsentDialog.InWindowsSafeMode);
+        if (accepted != DaxWarningResult.Allowed) return;
+        try
+        {
+            // Recheck identity to reduce time-of-check/time-of-use races.
+            byte[] fresh;
+            using (var stream = File.OpenRead(file))
+                fresh = await System.Security.Cryptography.SHA256.HashDataAsync(stream);
+            if (!string.Equals(Convert.ToHexStringLower(fresh),
+                analysis.Sha256, StringComparison.Ordinal))
+                throw new InvalidDataException("Файл изменился после сканирования.");
+
+            var process = Process.Start(new ProcessStartInfo(file)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(file) ?? ""
+            });
+            if (process is null)
+                throw new InvalidOperationException("Windows не вернула идентификатор процесса.");
+            DaxProcessTreeMonitor.Monitor(process, line =>
+                Dispatcher.BeginInvoke(new Action(() => Notify("DAX Process", line))));
+            Notify("DAX Process", "Запущен " + subject + " (PID " + process.Id + ").");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            InvalidDataException or System.ComponentModel.Win32Exception or
+            InvalidOperationException)
+        {
+            YettaMessageBox.Show(this, "Запуск не выполнен: " + ex.Message,
+                "DAX Process", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
