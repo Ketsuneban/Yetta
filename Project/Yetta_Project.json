@@ -91,13 +91,14 @@
     "security_policy": "SECURITY.md",
     "contribution_guidelines": "CONTRIBUTING.md",
     "changelog": "CHANGELOG.md",
-    "branch_protection": "Not configured through the currently available GitHub connector actions. Owner should enable branch protection for main in GitHub Settings.",
+    "branch_protection": "Not configured through available connector actions. Owner must enable main branch protection and required checks in GitHub Settings; see docs/security/GITHUB-HARDENING.md.",
     "automated_checks": [
       "Node.js syntax check for site/app.js",
       "Python HTML structure and local asset checks",
       "JSON parsing"
     ],
-    "latest_verified_ci": "Site validation passed for commit b9475028efd2870306c250120f4935004804cea3."
+    "latest_verified_ci": "Site validation passed for commit b9475028efd2870306c250120f4935004804cea3.",
+    "github_hardening_document": "docs/security/GITHUB-HARDENING.md"
   },
   "application_concept": {
     "status": "Not implemented; specification only.",
@@ -274,7 +275,24 @@
       "Safe update and recovery procedures"
     ],
     "threat_model": "Yetta and DAX are high-value targets. A compromise of the privileged service could expose the host to serious risk, so the service must have a very small, explicit API and never trust the UI blindly.",
-    "limitation": "No user-mode application can promise absolute protection against a compromised Windows kernel or a fully privileged host administrator."
+    "limitation": "No user-mode application can promise absolute protection against a compromised Windows kernel or a fully privileged host administrator.",
+    "tamper_resistance": {
+      "goal": "Resist tampering by unrelated local programs and malware, while preserving the normal Windows uninstall path.",
+      "controls": [
+        "Signed components",
+        "Restrictive installation and service ACLs",
+        "Authenticated IPC",
+        "Integrity checks",
+        "Accept privileged requests only from an authenticated Yetta caller"
+      ],
+      "uninstall": "The supported Windows uninstall path must be able to stop/remove the service and clean up Yetta files and configuration.",
+      "prohibited": [
+        "Stealth/rootkit behavior",
+        "Exploit-based persistence",
+        "Blocking the owner or Windows from uninstalling Yetta"
+      ],
+      "limitation": "A fully privileged administrator or compromised kernel can still interfere with user-mode protections."
+    }
   },
   "testing": {
     "current_phase": "Infrastructure only; no Windows app to test yet.",
