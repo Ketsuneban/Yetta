@@ -341,7 +341,7 @@ internal static class WarningDialog
         headerRegion.Children.Add(titleLine);
         window.Content = GlassDialog.Surface(
             GlassDialog.Layout(headerRegion, description, actionRow, inputs),
-            new Thickness(24, 20, 24, 20), color);
+            new Thickness(24, 20, 24, 20), color, owner.Content as Visual);
 
         // ShowDialog returns an explicit decision; non-modal information-only
         // notices may overlap, but confirmations must return a decision.
