@@ -19,88 +19,69 @@ public static class ConsentDialog
     {
         bool safeMode = InWindowsSafeMode;
         int iconId = WarningPolicy.StatusIcon(level, safeMode);
-        var window = new Window
-        {
-            Owner = owner,
-            Title = "Yetta · " + WarningPolicy.Heading(level),
-            Width = 620,
-            Height = 445,
-            MinWidth = 500,
-            MinHeight = 390,
-            MaxHeight = SystemParameters.WorkArea.Height * 0.9,
-            ResizeMode = ResizeMode.CanResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(44, 48, 58)),
-            Foreground = Brushes.White
-        };
-
-        // Keep the required consent controls outside the scrollable description.
-        // Long explanations and Windows text scaling must never hide the checkbox.
-        var root = new Grid { Margin = new Thickness(24, 18, 24, 22) };
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var window = GlassDialog.Create(owner, "Yetta · " + WarningPolicy.Heading(level),
+            660, 485, minWidth: 520, minHeight: 380);
 
         var header = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Margin = new Thickness(0, 0, 0, 14)
         };
-        header.Children.Add(new Image
+        header.Children.Add(new Border
         {
-            Width = 42, Height = 42, Margin = new Thickness(0, 0, 12, 0),
-            Source = new BitmapImage(new Uri($"pack://application:,,,/Assets/{iconId}.png"))
+            Width = 60, Height = 60, CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(9), Margin = new Thickness(0, 0, 16, 0),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(85, 204, 224, 255)),
+            BorderThickness = new Thickness(1),
+            Background = new SolidColorBrush(Color.FromArgb(64, 126, 166, 215)),
+            Child = new Image
+            {
+                Source = new BitmapImage(new Uri($"pack://application:,,,/Assets/{iconId}.png")),
+                Stretch = Stretch.Uniform,
+                SnapsToDevicePixels = true
+            }
         });
-        header.Children.Add(new TextBlock
+        var heading = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        heading.Children.Add(new TextBlock
         {
             Text = "Yetta · " + WarningPolicy.Heading(level),
             FontSize = 20, FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
             Foreground = Brushes.White,
             TextWrapping = TextWrapping.Wrap
         });
-        Grid.SetRow(header, 0);
-        root.Children.Add(header);
-
-        var descriptionPanel = new StackPanel();
-        descriptionPanel.Children.Add(new TextBlock
+        heading.Children.Add(new TextBlock
         {
-            Text = title,
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 15,
-            Foreground = Brushes.White,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 12)
+            Text = "Подтверждение операции",
+            FontSize = 11,
+            Margin = new Thickness(0, 5, 0, 0),
+            Foreground = GlassDialog.SecondaryText
         });
-        descriptionPanel.Children.Add(new TextBlock
+        header.Children.Add(heading);
+
+        var text = new StackPanel { Margin = new Thickness(0, 2, 12, 0) };
+        text.Children.Add(new TextBlock
+        {
+            Text = title, FontWeight = FontWeights.SemiBold, FontSize = 16,
+            Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 14)
+        });
+        text.Children.Add(new TextBlock
         {
             Text = description + "\n\n" +
-                   "Это согласие касается только функций Yetta. Оно НЕ изменяет разрешения Windows, " +
-                   "не отключает UAC и не предоставляет ADMIN/SYSTEM.",
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Color.FromRgb(211, 214, 225)),
+                "Согласие относится только к функциям Yetta. Оно не изменяет разрешения Windows, " +
+                "не отключает UAC и не предоставляет ADMIN/SYSTEM.",
+            FontSize = 13, Foreground = GlassDialog.SecondaryText,
+            LineHeight = 19,
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 12)
+            Margin = new Thickness(0, 0, 0, 14)
         });
         if (safeMode)
-            descriptionPanel.Children.Add(new TextBlock
+            text.Children.Add(new TextBlock
             {
-                Text = "Обнаружен безопасный режим Windows (иконка 35).",
-                Foreground = Brushes.Gold,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 8)
+                Text = "Windows запущена в безопасном режиме.",
+                FontSize = 12, Foreground = Brushes.Gold,
+                TextWrapping = TextWrapping.Wrap
             });
-
-        var detailsScroll = new ScrollViewer
-        {
-            Content = descriptionPanel,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-        Grid.SetRow(detailsScroll, 1);
-        root.Children.Add(detailsScroll);
 
         var checkbox = new CheckBox
         {
@@ -108,48 +89,31 @@ public static class ConsentDialog
             Foreground = Brushes.White,
             IsChecked = false,
             FontSize = 12,
-            Margin = new Thickness(0, 6, 0, 16),
+            Margin = new Thickness(0, 10, 0, 12),
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetRow(checkbox, 2);
-        root.Children.Add(checkbox);
-
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right
         };
-        var accept = new Button
-        {
-            Content = "Я согласен",
-            IsEnabled = false,
-            IsDefault = true,
-            MinWidth = 125,
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(8, 0, 0, 0)
-        };
-        var reject = new Button
-        {
-            Content = "Отмена",
-            IsCancel = true,
-            MinWidth = 100,
-            Padding = new Thickness(12, 8, 12, 8)
-        };
-
+        var reject = GlassDialog.Button("Отмена");
+        reject.IsCancel = true;
+        var accept = GlassDialog.Button("Я согласен", primary: true);
+        accept.IsEnabled = false;
+        accept.IsDefault = true;
         checkbox.Checked += (_, _) => accept.IsEnabled = checkbox.IsChecked == true;
         checkbox.Unchecked += (_, _) => accept.IsEnabled = false;
         accept.Click += (_, _) =>
         {
-            // A checked box is required even if a command reaches the button.
             if (checkbox.IsChecked == true) window.DialogResult = true;
         };
         reject.Click += (_, _) => window.DialogResult = false;
         buttons.Children.Add(reject);
         buttons.Children.Add(accept);
-        Grid.SetRow(buttons, 3);
-        root.Children.Add(buttons);
 
-        window.Content = root;
+        window.Content = GlassDialog.Surface(
+            GlassDialog.Layout(header, text, buttons, checkbox));
         return window.ShowDialog() == true;
     }
 }
