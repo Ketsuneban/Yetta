@@ -491,6 +491,11 @@ public partial class MainWindow : Window
             var headingLine = new StackPanel { Orientation = Orientation.Horizontal };
             headingLine.Children.Add(Text(code + "   ", 12, heading: true, muted: true));
             headingLine.Children.Add(Text(AccessProfiles.DisplayName(profile), 15, heading: true));
+            headingLine.Children.Insert(0, IconAtlas.Image(profile switch
+            {
+                "Guest" => 11, "SafeUser" => 12, "Administrator" => 6,
+                "System" => 5, _ => 2
+            }, 25));
             description.Children.Add(headingLine);
             description.Children.Add(Text(AccessProfiles.Description(profile), 12, muted: true));
             Grid.SetColumn(description, 0);
@@ -505,6 +510,55 @@ public partial class MainWindow : Window
             row.Children.Add(button);
             ContentPanel.Children.Add(Card(row));
         }
+        AddSection("TTY-Ключ", "Дополнительное подтверждение критических действий — не предоставляет прав Windows.");
+        var ttyCard = new StackPanel();
+        ttyCard.Children.Add(Text(_tty.Exists
+            ? "Текущий TTY: " + new string('•', 64)
+            : "TTY-Ключ ещё не создан. Сгенерируй свой ключ перед использованием защищённых подтверждений.",
+            12, muted: true));
+        ttyCard.Children.Add(Text(
+            "Длина: 64 символа. Шифрование: Windows DPAPI / текущий пользователь. " +
+            "Не сохраняй ключ в открытом виде, не отправляй его в чаты и не включай историю буфера обмена.",
+            12, muted: true));
+        var ttyActions = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+        ttyActions.Children.Add(ActionButton(_tty.Exists ? "Перевыпустить TTY-Ключ" : "Создать TTY-Ключ",
+            () =>
+            {
+                if (!AskUser("Выдать новый TTY-Ключ?",
+                    "Предыдущий ключ перестанет подходить. Новый ключ шифруется DPAPI и не записывается в настройки. " +
+                    "Для копирования используй отдельную кнопку.", needsAgreement: true)) return;
+                try
+                {
+                    _ = _tty.CreateOrRotate();
+                    DaxAuditLog.Write("DAX Guard", "TTY rotation", "Успешно");
+                    Notify("DAX Guard", "TTY-Ключ создан или перевыпущен. Храни его безопасно.");
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+                    System.ComponentModel.Win32Exception)
+                {
+                    ShowNotice("Ошибка TTY", "Не удалось сохранить ключ: " + ex.Message,
+                        YettaWarningLevel.Caution);
+                }
+                Navigate("guard");
+            }));
+        ttyActions.Children.Add(ActionButton("Скопировать TTY-Ключ", () =>
+        {
+            if (!AskUser("Скопировать TTY-Ключ?",
+                "Ключ окажется в буфере обмена. Другие приложения и история буфера могут получить доступ к нему. " +
+                "После переноса очисти буфер.", needsAgreement: true)) return;
+            try
+            {
+                Clipboard.SetText(_tty.ReadForCopy());
+                DaxAuditLog.Write("DAX Guard", "TTY copy", "Подтверждено пользователем");
+                Notify("DAX Guard", "Ключ скопирован. Не сохраняй его в открытом файле.");
+            }
+            catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception or
+                System.Runtime.InteropServices.ExternalException or InvalidDataException)
+            { ShowNotice("Ошибка TTY", ex.Message, YettaWarningLevel.Caution); }
+        }, enabled: _tty.Exists));
+        ttyCard.Children.Add(ttyActions);
+        ContentPanel.Children.Add(Card(ttyCard));
+
         AddNotice("Ограничение уровня SYSTEM",
             "Выбор в приложении не способен предоставить SYSTEM-права. Для уровней Администратор и Система потребуются отдельная служба, UAC/TTY, независимый аудит и проверка доступа.");
     }
@@ -513,10 +567,10 @@ public partial class MainWindow : Window
     {
         if (!AccessProfiles.CanInstallLogicalProfile(profile))
         {
-            MessageBox.Show(this,
+            ShowNotice("DAX Guard",
                 "Профиль «" + AccessProfiles.DisplayName(profile) +
-                "» пока недоступен. Нельзя считать его установленным без настоящего механизма повышения прав и проверки безопасности.",
-                "DAX Guard", MessageBoxButton.OK, MessageBoxImage.Information);
+                "» недоступен. Настоящий проверенный Windows-брокер ещё не установлен.",
+                YettaWarningLevel.Dax);
             return;
         }
         if (_settings.InstalledProfiles.Contains(profile))
@@ -524,6 +578,7 @@ public partial class MainWindow : Window
         else
             AccessProfiles.Install(_settings, profile);
         SavePreferences();
+        DaxAuditLog.Write("DAX Guard", "Profile " + profile, "Логический уровень установлен/применён");
         Notify("DAX Guard", "Профиль " + AccessProfiles.DisplayName(profile) + " изменён. Это внутренний уровень Yetta, а не полномочия Windows.");
         Navigate("guard");
     }
@@ -615,10 +670,15 @@ public partial class MainWindow : Window
 
     private void BuildLogs()
     {
-        AddIntro("Yetta / DAX Logs", "Журнал событий DAX",
-            "Раздел зарезервирован для аудита решений DAX Guard, проверок угроз и операций, запущенных из Yetta.");
-        AddNotice("Заглушка — нет активного логирования",
-            "DAX Process, Threat, Audit пока не реализованы. Эта страница не заявляет, что выполняется наблюдение за процессами, и не содержит фиктивных записей.");
+        AddIntro("Yetta / DAX Logs", "Журнал действий Yetta",
+            "Реальные записи локальных решений приложения, хранящиеся в %LOCALAPPDATA%\\Yetta. " +
+            "Не является журналом Windows Defender или мониторингом всех процессов.");
+        AddNotice("Локальное хранение", "Путь: " + DaxAuditLog.PathOnDisk);
+        var events = DaxAuditLog.Recent();
+        if (events.Count == 0)
+            ContentPanel.Children.Add(Card(Text("Событий пока нет.", 12, muted: true)));
+        foreach (string entry in events)
+            ContentPanel.Children.Add(Card(Text(entry, 12)));
     }
 
     private void BuildRecovery()
