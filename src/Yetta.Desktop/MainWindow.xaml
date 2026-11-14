@@ -79,7 +79,7 @@
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.2.1 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.3.0 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Top">
@@ -91,9 +91,9 @@
                          Foreground="{DynamicResource AccentBrush}" FontSize="27" FontWeight="Bold"/>
             </Border>
             <StackPanel Margin="13,3,0,0">
-              <TextBlock Text="YETTA." Foreground="{DynamicResource TextPrimary}"
+              <TextBlock Text="YETTA" Foreground="{DynamicResource TextPrimary}"
                          FontSize="19" FontWeight="Bold"/>
-              <TextBlock Text="WINDOWS, REFINED" Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
+              <TextBlock Text="Windows, on your terms." Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
             </StackPanel>
           </StackPanel>
           <TextBlock Text="РАБОЧЕЕ ПРОСТРАНСТВО" FontSize="10" FontWeight="SemiBold"
@@ -140,9 +140,9 @@
       </ScrollViewer>
       <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
         <Grid Margin="34,0">
-          <TextBlock Text="●  Локальный режим · системные операции отключены"
+          <TextBlock Text="Иконки предоставлены сервисом Icons8 · icons8.ru"
                      VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-          <TextBlock Text="0.2.1-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="0.3.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>
