@@ -13,6 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="../Yetta.Core/Yetta.Core.csproj" />
     <Resource Include="Assets/Inter.ttf" />
-    <Content Include="Assets/OFL-Inter.txt" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
 </Project>
