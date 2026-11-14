@@ -1003,6 +1003,30 @@ public partial class MainWindow : Window
             await CheckAndInstallUpdateAsync();
         }, true));
 
+        AddSection("Проверка окон предупреждений", "Демонстрация всех семи типов и их оформления; это не обнаружение угроз.");
+        var demos = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
+        foreach (WarningKind kind in Enum.GetValues<WarningKind>())
+        {
+            WarningKind choice = kind;
+            var btn = ActionButton("Показать · " + kind, () =>
+            {
+                _ = YettaWarningWindow.Show(this,
+                    new WarningRequest(choice, "Демонстрационный пример",
+                        "Это пример оформления и проверки элементов Yetta.\\n\\n" +
+                        "Никакая угроза не обнаружена, системные файлы не повреждены. " +
+                        "Длинный текст будет прокручиваться отдельно от кнопок. " +
+                        "TTY-проверка действует только как дополнительное подтверждение. ",
+                        Subject: "Yetta · UI Test",
+                        RequireAcknowledgement: choice is WarningKind.Caution or WarningKind.Dangerous,
+                        PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
+                        RecoveryNavigation: choice == WarningKind.Fatal
+                            ? () => Navigate("recovery") : null),
+                    _settings.ActiveProfile);
+            });
+            demos.Children.Add(btn);
+        }
+        ContentPanel.Children.Add(demos);
+
         AddSection("Локальные данные");
         ContentPanel.Children.Add(Card(Text(
             "Файл настроек: " + _store.FilePath +
