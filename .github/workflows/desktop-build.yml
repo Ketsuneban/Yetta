@@ -7,6 +7,7 @@ on:
       - "src/**"
       - "tests/**"
       - "scripts/**"
+      - "installer/**"
       - "Project/**"
       - "docs/**"
       - "README.md"
@@ -63,13 +64,37 @@ jobs:
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
           "SHA256  Yetta.exe  $hash" | Set-Content "artifacts/Yetta-win-x64/SHA256SUMS.txt" -Encoding ascii
           Get-Content "artifacts/Yetta-win-x64/SHA256SUMS.txt" | Add-Content $env:GITHUB_STEP_SUMMARY
+      - name: Install Inno Setup compiler
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed." }
+          }
+          if (!(Test-Path $iscc)) { throw "ISCC.exe was not installed." }
+
+      - name: Build per-user YettaSetup.exe
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "installer\Yetta.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          $setup = "artifacts/setup/YettaSetup.exe"
+          if (!(Test-Path $setup)) { throw "Installer output is missing." }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          "SHA256  YettaSetup.exe  $hash" | Set-Content "artifacts/setup/INSTALLER-SHA256.txt" -Encoding ascii
+          New-Item -ItemType Directory -Force -Path "artifacts/release" | Out-Null
+          Copy-Item "artifacts/Yetta-win-x64/Yetta.exe" "artifacts/release/Yetta.exe"
+          Copy-Item "artifacts/Yetta-win-x64/SHA256SUMS.txt" "artifacts/release/SHA256SUMS.txt"
+          Copy-Item $setup "artifacts/release/YettaSetup.exe"
+          Copy-Item "artifacts/setup/INSTALLER-SHA256.txt" "artifacts/release/INSTALLER-SHA256.txt"
+
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.2.1-preview-win-x64-QA
-          path: |
-            artifacts/Yetta-win-x64/Yetta.exe
-            artifacts/Yetta-win-x64/SHA256SUMS.txt
+          name: Yetta-0.3.0-preview-win-x64-QA
+          path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
 
@@ -86,7 +111,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.2.1-preview-win-x64-QA
+          name: Yetta-0.3.0-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh
@@ -108,5 +133,5 @@ jobs:
           }
           $notes = "docs/releases/v$version-preview.md"
           if (!(Test-Path $notes)) { throw "Missing release notes: $notes" }
-          gh release create $tag 'artifacts/release/Yetta.exe' 'artifacts/release/SHA256SUMS.txt' 'LICENSE' 'src/Yetta.Desktop/Assets/OFL-Inter.txt' --target $env:GITHUB_SHA --title "Yetta $version Preview" --notes-file $notes --prerelease
+          gh release create $tag 'artifacts/release/Yetta.exe' 'artifacts/release/SHA256SUMS.txt' 'artifacts/release/YettaSetup.exe' 'artifacts/release/INSTALLER-SHA256.txt' 'LICENSE' 'src/Yetta.Desktop/Assets/OFL-Inter.txt' --target $env:GITHUB_SHA --title "Yetta $version Preview" --notes-file $notes --prerelease
           if ($LASTEXITCODE -ne 0) { throw "GitHub release publication failed." }
