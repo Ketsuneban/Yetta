@@ -43,13 +43,15 @@ internal static class IconAssets
             }
             catch (IOException) { }
         }
-        return new Image
+        var control = new Image
         {
             Source = image,
             Width = size, Height = size,
             Stretch = Stretch.Uniform,
             SnapsToDevicePixels = true
         };
+        RenderOptions.SetBitmapScalingMode(control, BitmapScalingMode.HighQuality);
+        return control;
     }
 
     internal static void SetNav(Button button, int number, string text)
@@ -61,6 +63,26 @@ internal static class IconAssets
             Text = text, Margin = new Thickness(13, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.Medium,
+        });
+        button.Content = stack;
+    }
+
+    internal static void SetNavLogo(Button button, string asset, string text)
+    {
+        var stack = new StackPanel { Orientation = Orientation.Horizontal };
+        var logo = new Image
+        {
+            Source = new BitmapImage(new Uri("pack://application:,,,/Assets/" + asset)),
+            Width = 23, Height = 23, Stretch = Stretch.Uniform,
+            SnapsToDevicePixels = true
+        };
+        RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+        stack.Children.Add(logo);
+        stack.Children.Add(new TextBlock
+        {
+            Text = text, Margin = new Thickness(12, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = FontWeights.Medium
         });
         button.Content = stack;
     }
