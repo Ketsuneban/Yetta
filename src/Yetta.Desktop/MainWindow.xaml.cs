@@ -568,6 +568,48 @@ public partial class MainWindow : Window
             row.Children.Add(button);
             ContentPanel.Children.Add(Card(row));
         }
+        AddSection("Ключ TTY", "Дополнительное подтверждение критических операций. Ключ не повышает права Windows.");
+        var ttyPanel = new StackPanel();
+        ttyPanel.Children.Add(Text("•••• •••• •••• •••• •••• •••• •••• ••••", 17, heading: true));
+        ttyPanel.Children.Add(Text(
+            "64-символьный ключ хранится для текущей учётной записи в Windows Credential Manager. " +
+            "Его содержимое здесь не отображается. Не сохраняйте ключ в текстовых файлах. " +
+            "При копировании Windows может сохранить его в истории буфера обмена — отключите историю при необходимости.",
+            12, muted: true));
+        var ttyActions = new WrapPanel { Margin = new Thickness(0, 15, 0, 0) };
+        ttyActions.Children.Add(ActionButton("Копировать TTY-ключ", () =>
+        {
+            if (!ConfirmYettaAction("Доступ к TTY-ключу",
+                "Скопировать секретный ключ в буфер обмена Windows? Другое ПО и история буфера обмена " +
+                "могут получить к нему доступ. Не вставляйте ключ в документы и чаты.")) return;
+            try
+            {
+                Clipboard.SetText(TtyKeyStore.Current());
+                Notify("DAX Guard", "TTY-ключ скопирован. Буфер обмена может хранить историю.");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
+                System.Runtime.InteropServices.ExternalException or IOException or InvalidDataException)
+            {
+                ShowYettaNotice("TTY-ключ недоступен", ex.Message, WarningKind.Caution);
+            }
+        }));
+        ttyActions.Children.Add(ActionButton("Перевыпустить ключ", () =>
+        {
+            if (!ConfirmYettaAction("Перевыпуск TTY-ключа",
+                "Старый ключ станет недействительным. Новый будет сохранён в Windows Credential Manager. Продолжить?"))
+                return;
+            try
+            {
+                _ = TtyKeyStore.Rotate();
+                Notify("DAX Guard", "Создан новый TTY-ключ; старый больше не принимается.");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
+            {
+                ShowYettaNotice("TTY-ключ недоступен", ex.Message, WarningKind.Caution);
+            }
+        }, true));
+        ttyPanel.Children.Add(ttyActions);
+        ContentPanel.Children.Add(Card(ttyPanel));
         AddNotice("Ограничение уровня SYSTEM",
             "Выбор в приложении не способен предоставить SYSTEM-права. Для уровней Администратор и Система потребуются отдельная служба, UAC/TTY, независимый аудит и проверка доступа.");
     }
