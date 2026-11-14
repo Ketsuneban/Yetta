@@ -116,7 +116,7 @@ internal static class WarningDialog
         close.Width = 39; close.MinWidth = 39; close.Height = 36;
         close.ToolTip = "Закрыть";
         close.IsCancel = !fatal;
-        close.Click += (_, _) => { if (!fatal) window.DialogResult = false; };
+        close.Click += (_, _) => { if (!fatal) Finish(false); };
         if (!fatal)
         {
             DockPanel.SetDock(close, Dock.Right);
@@ -321,32 +321,26 @@ internal static class WarningDialog
             checkbox.Unchecked += (_, _) => UpdateAccept();
         }
         UpdateAccept();
-        decline.Click += (_, _) => window.DialogResult = false;
+        void Finish(bool result)
+        {
+            if (request.Modal || (level != YettaWarningLevel.Information && !dax))
+                window.DialogResult = result;
+            else window.Close();
+        }
+        decline.Click += (_, _) => Finish(false);
         approve.Click += (_, _) =>
         {
             if (!WarningPolicy.CanApprove(checkbox.IsChecked == true, validKey,
                 needsAgreement, needsKey)) return;
             if (fatal) request.OnReset?.Invoke();
-            window.DialogResult = true;
+            Finish(true);
         };
 
         var headerRegion = new StackPanel();
         headerRegion.Children.Add(heading);
         headerRegion.Children.Add(titleLine);
-        // Avoid default white scrollbars: descriptions still scroll via mouse or touch.
-        var middle = new ScrollViewer
-        {
-            Content = description,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-        };
-        var body = new Grid();
-        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        body.Children.Add(middle);
-        Grid.SetRow(inputs, 1);
-        body.Children.Add(inputs);
-        window.Content = GlassDialog.Surface(GlassDialog.Layout(headerRegion, body, actionRow),
+        window.Content = GlassDialog.Surface(
+            GlassDialog.Layout(headerRegion, description, actionRow, inputs),
             new Thickness(24, 20, 24, 20), color);
 
         // ShowDialog returns an explicit decision; non-modal information-only
