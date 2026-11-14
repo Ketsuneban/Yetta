@@ -1,4 +1,7 @@
 using System.Windows;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -37,6 +40,58 @@ internal static class IconLibrary
             Stretch = Stretch.Uniform,
             SnapsToDevicePixels = true
         };
+    }
+
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShellFileInfo
+    {
+        public IntPtr Icon;
+        public int IconIndex;
+        public uint Attributes;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string DisplayName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+        public string TypeName;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr SHGetFileInfo(
+        string path, uint fileAttributes, ref ShellFileInfo info,
+        uint size, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr handle);
+
+    public static Image CreateSubject(int fallbackId, string? path, double size)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) ||
+            !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase))
+            return Create(fallbackId, size);
+        var info = new ShellFileInfo();
+        try
+        {
+            // SHGFI_ICON | SHGFI_LARGEICON, scoped to this user-selected file.
+            var result = SHGetFileInfo(path, 0, ref info,
+                (uint)Marshal.SizeOf<ShellFileInfo>(), 0x100);
+            if (result == IntPtr.Zero || info.Icon == IntPtr.Zero)
+                return Create(fallbackId, size);
+            try
+            {
+                var bitmap = Imaging.CreateBitmapSourceFromHIcon(info.Icon,
+                    Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                bitmap.Freeze();
+                return new Image { Source = bitmap, Width = size, Height = size,
+                    Stretch = Stretch.Uniform, SnapsToDevicePixels = true };
+            }
+            finally { DestroyIcon(info.Icon); }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or
+            EntryPointNotFoundException or System.ComponentModel.Win32Exception)
+        {
+            return Create(fallbackId, size);
+        }
     }
 
     public static int NavigationIcon(string page) => page switch
