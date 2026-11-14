@@ -258,7 +258,13 @@ internal static class StandardWarningDialog
         // checkbox, key and audit semantics remain in force.
         bool needsCheck = request.RequireAcknowledgement;
         bool needsKey = request.RequireTty || profile == "System";
-        var bottom = new StackPanel { Background = Footer, Padding = new Thickness(22, 17, 22, 22) };
+        var bottom = new StackPanel();
+        var bottomSurface = new Border
+        {
+            Background = Footer,
+            Padding = new Thickness(22, 17, 22, 22),
+            Child = bottom
+        };
         CheckBox? checkbox = null;
         if (needsCheck)
         {
@@ -297,8 +303,8 @@ internal static class StandardWarningDialog
         controls.Children.Add(allow);
         controls.Children.Add(deny);
         bottom.Children.Add(controls);
-        Grid.SetRow(bottom, 2);
-        grid.Children.Add(bottom);
+        Grid.SetRow(bottomSurface, 2);
+        grid.Children.Add(bottomSurface);
 
         void RefreshGate()
         {
