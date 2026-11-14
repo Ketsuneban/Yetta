@@ -14,17 +14,23 @@ internal static class DaxProcessTreeMonitor
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(2);
 
-    internal static void Monitor(Process launched, Action<string> onEvent)
+    internal static void Monitor(Process launched, Action<string> onEvent,
+        bool ownsProcess = true)
     {
         int rootPid;
-        try { rootPid = launched.Id; }
+        string rootName;
+        try
+        {
+            rootPid = launched.Id;
+            rootName = launched.StartInfo.FileName;
+        }
         catch (InvalidOperationException) { return; }
 
         _ = Task.Run(async () =>
         {
             var tracked = new HashSet<int> { rootPid };
             int samples = 0;
-            DaxAuditLog.Append(YettaWarningLevel.Dax, launched.StartInfo.FileName,
+            DaxAuditLog.Append(YettaWarningLevel.Dax, rootName,
                 "Yetta запустила процесс PID " + rootPid, "started");
             try
             {
@@ -92,7 +98,7 @@ internal static class DaxProcessTreeMonitor
             {
                 DaxAuditLog.Append(YettaWarningLevel.Dax, "DAX Process",
                     "Мониторинг пользовательского дерева завершён", "stopped");
-                launched.Dispose();
+                if (ownsProcess) launched.Dispose();
             }
         });
     }
