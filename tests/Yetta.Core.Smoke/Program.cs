@@ -5,43 +5,48 @@ static void Assert(bool condition, string description)
     if (!condition) throw new Exception("Smoke test failed: " + description);
     Console.WriteLine("PASS " + description);
 }
+var defaults = new AppSettings();
+Assert(defaults.ActiveProfile == "Guest" && defaults.InstalledProfiles.SequenceEqual(["Guest"]),
+    "Guest is the only initially installed profile");
+Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults), "Guest blocks external terminal");
+Assert(AccessProfiles.Install(defaults,"SafeUser"),"SafeUser installs logical read-only policy");
+Assert(AccessProfiles.Apply(defaults,"SafeUser"),"SafeUser can be selected");
+Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"SafeUser blocks external terminal");
+Assert(AccessProfiles.Install(defaults,"User"),"User installs logical standard policy");
+Assert(AccessProfiles.Apply(defaults,"User"),"User can be applied");
+Assert(AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"User permits non-elevated Terminal");
+Assert(!AccessProfiles.Install(defaults,"Administrator"),"Administrator cannot be falsely installed");
+Assert(!AccessProfiles.Install(defaults,"System"),"System cannot be falsely installed");
+Assert(!AccessProfiles.CanLaunchElevatedShell(defaults),"elevated shell not enabled");
+Assert(!AccessProfiles.Apply(defaults,"System"),"non-installed level cannot be applied");
+defaults.ActiveProfile = "System";
+defaults.InstalledProfiles.Add("System");
+defaults.Normalize();
+Assert(defaults.ActiveProfile=="Guest" && !defaults.InstalledProfiles.Contains("System"),
+    "tampered local settings cannot grant SYSTEM");
+defaults.Theme = "random";
+defaults.Normalize();
+Assert(defaults.Theme=="Fluent","invalid theme normalized");
 
-var initial = new AppSettings();
-Assert(initial.Theme == "Fluent", "default visual mode");
-initial.Theme = "unexpected";
-initial.Normalize();
-Assert(initial.Theme == "Fluent", "invalid theme is rejected");
-
-string location = Path.Combine(Path.GetTempPath(), "yetta-smoke-" +
-    Guid.NewGuid().ToString("N"), "settings.json");
+string dir = Path.Combine(Path.GetTempPath(),"yetta-smoke-"+Guid.NewGuid().ToString("N"));
 try
 {
-    var store = new SettingsStore(location);
-    Assert(store.Load().Theme == "Fluent", "missing file defaults safely");
-    store.Save(new AppSettings { Theme = "Glass" });
-    Assert(store.Load().Theme == "Glass", "theme persists across instances");
-    File.WriteAllText(location, "{corrupted");
-    Assert(store.Load().Theme == "Fluent", "corrupted settings recover");
+    var store = new SettingsStore(Path.Combine(dir,"settings.json"));
+    Assert(store.Load().ActiveProfile=="Guest","safe defaults without config");
+    store.Save(new AppSettings { Theme="Glass", InstalledProfiles=["Guest","User"], ActiveProfile="User"});
+    Assert(store.Load().ActiveProfile=="User" && store.Load().Theme=="Glass","settings persistence");
+    File.WriteAllText(store.FilePath,"{corrupted");
+    Assert(store.Load().ActiveProfile=="Guest","corrupted settings handled safely");
 }
-finally
-{
-    var directory = Path.GetDirectoryName(location);
-    if (directory is not null && Directory.Exists(directory))
-        Directory.Delete(directory, recursive: true);
-}
+finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
-var context = new ConsoleContext("Glass");
-Assert(ConsoleEngine.Execute("  HELP ", context).Message.Contains("theme glass"),
-    "help command is case-insensitive");
-Assert(ConsoleEngine.Execute("theme fluent", context).SwitchThemeTo == "Fluent",
-    "allowlisted theme change");
-Assert(ConsoleEngine.Execute("access", context).NavigateTo == "access",
-    "allowlisted page navigation");
-Assert(ConsoleEngine.Execute("clear", context).ClearOutput,
-    "clear command");
-Assert(ConsoleEngine.Execute("del /s /q c:\\", context).Message.Contains("Неизвестная команда"),
-    "arbitrary shell command is rejected");
-Assert(ConsoleEngine.Execute("powershell -command whoami", context).Message.Contains("Неизвестная команда"),
-    "PowerShell is not exposed");
-
-Console.WriteLine("Yetta Core smoke tests passed.");
+var c=new ConsoleContext("Glass","Guest");
+Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("recovery"),"Mavrine help");
+Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo=="Fluent","theme command");
+Assert(ConsoleEngine.Execute("guard",c).NavigateTo=="guard","guard navigation");
+Assert(ConsoleEngine.Execute("clear",c).ClearOutput,"clear");
+Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("не поддерживается"),
+    "no arbitrary PowerShell");
+Assert(ConsoleEngine.Execute("cmd /c del c:\\",c).Message.Contains("не поддерживается"),
+    "no arbitrary CMD");
+Console.WriteLine("All Yetta Core smoke tests passed.");
