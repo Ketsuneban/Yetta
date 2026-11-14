@@ -239,8 +239,7 @@
       <RowDefinition Height="44"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="{DynamicResource SidebarBackground}"
-            BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,0,1">
+    <Border Grid.Row="0" Background="{DynamicResource SidebarBackground}">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel x:Name="CaptionDragArea" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0" IsHitTestVisible="False">
@@ -265,11 +264,10 @@
       <ColumnDefinition Width="238"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
-    <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}"
-            BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}">
       <DockPanel Margin="18,23,17,22" LastChildFill="True">
         <StackPanel DockPanel.Dock="Bottom">
-          <Border Height="1" Background="{DynamicResource OutlineBrush}" Margin="5,14"/>
+          <Border Height="14" Background="Transparent" Margin="5,7"/>
           <TextBlock Text="●  DESKTOP PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
                      FontWeight="SemiBold" Margin="8,0,0,9"/>
           <TextBlock Text="DAX и привилегированные службы не установлены."
@@ -281,8 +279,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
           <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
             <Border Width="44" Height="44" CornerRadius="13"
-                    Background="{DynamicResource SelectedBrush}"
-                    BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="1">
+                    Background="{DynamicResource SelectedBrush}">
               <Image Source="/Assets/yetta-logo.png" Width="40" Height="40" Stretch="Uniform"/>
             </Border>
             <StackPanel Margin="13,3,0,0">
@@ -315,7 +312,7 @@
         <RowDefinition Height="*"/>
         <RowDefinition Height="46"/>
       </Grid.RowDefinitions>
-      <Border Grid.Row="0" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,0,1">
+      <Border Grid.Row="0">
         <Grid Margin="34,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
@@ -337,7 +334,7 @@
         </ScrollViewer.Resources>
         <StackPanel x:Name="ContentPanel"/>
       </ScrollViewer>
-      <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
+      <Border Grid.Row="2">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
           <TextBlock Text="0.3.6-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
