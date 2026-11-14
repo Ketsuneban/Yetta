@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+using System.Windows.Input;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -19,10 +19,6 @@ internal static class GlassDialog
     internal static Brush SecondaryText { get; } =
         new SolidColorBrush(Color.FromRgb(197, 205, 224));
 
-    [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute,
-        ref int value, int size);
-
     internal static Window Create(Window owner, string title, double width, double height,
         double minWidth = 480, double minHeight = 360)
     {
@@ -36,31 +32,19 @@ internal static class GlassDialog
             MinHeight = Math.Min(minHeight, SystemParameters.WorkArea.Height * 0.65),
             MaxHeight = SystemParameters.WorkArea.Height * 0.94,
             MaxWidth = SystemParameters.WorkArea.Width * 0.94,
-            ResizeMode = ResizeMode.CanResize,
+            // The outer native window must be truly transparent: only the rounded
+            // glass surface is visible, never a rectangular frame behind it.
+            ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            WindowStyle = WindowStyle.SingleBorderWindow,
-            Background = new SolidColorBrush(Color.FromRgb(19, 24, 42)),
+            WindowStyle = WindowStyle.None,
+            AllowsTransparency = true,
+            ShowInTaskbar = false,
+            Background = Brushes.Transparent,
             Foreground = WhiteText
         };
-        // Best-effort native dark caption and Windows 11 backdrop.
-        // Fallback to the always-rendered glass-inspired WPF panel.
-        dialog.SourceInitialized += (_, _) =>
-        {
-            if (!OperatingSystem.IsWindows()) return;
-            try
-            {
-                var hwnd = new System.Windows.Interop.WindowInteropHelper(dialog).Handle;
-                int dark = 1;
-                _ = DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));
-                if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
-                {
-                    int backdrop = 3; // DWMSBT_TRANSIENTWINDOW (acrylic)
-                    _ = DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int));
-                }
-            }
-            catch (DllNotFoundException) { }
-            catch (EntryPointNotFoundException) { }
-        };
+        // AllowsTransparency produces a WPF layered window. This enables true
+        // per-pixel transparency around the rounded surface, but NOT DWM blur;
+        // do not request an incompatible acrylic backdrop here.
         return dialog;
     }
 
@@ -74,6 +58,19 @@ internal static class GlassDialog
             container.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         container.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
+        // Frameless windows remain movable via their header; interactive buttons
+        // and scroll content outside this row retain normal click behaviour.
+        if (header is FrameworkElement dragHeader)
+        {
+            dragHeader.MouseLeftButtonDown += (_, e) =>
+            {
+                if (e.LeftButton != MouseButtonState.Pressed) return;
+                var window = Window.GetWindow(dragHeader);
+                if (window is null) return;
+                try { window.DragMove(); }
+                catch (InvalidOperationException) { }
+            };
+        }
         Grid.SetRow(header, 0);
         container.Children.Add(header);
 
@@ -108,60 +105,51 @@ internal static class GlassDialog
 
     internal static UIElement Surface(UIElement content, Thickness? padding = null)
     {
-        var baseLayer = new Grid
+        // There is no secondary rectangular backplate: the border below *is*
+        // the modal's full visible outline, with truly transparent pixels outside
+        // its rounded corners. Alpha lets the desktop or owner window show through.
+        var panel = new Grid();
+        var rim = new Border
         {
-            ClipToBounds = true,
-            Background = new LinearGradientBrush(
-                Color.FromRgb(15, 22, 43), Color.FromRgb(26, 28, 52), 130)
-        };
-        // Fixed ambient accents and a faint specular rim: visible even on systems
-        // without DWM acrylic; no false claim of blurring arbitrary Windows content.
-        var glow = new Ellipse
-        {
-            Width = 490, Height = 290,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, -160, -180, 0),
-            Fill = new RadialGradientBrush(
-                Color.FromArgb(95, 118, 164, 244),
-                Color.FromArgb(0, 118, 164, 244)),
-            IsHitTestVisible = false
-        };
-        baseLayer.Children.Add(glow);
-        var glow2 = new Ellipse
-        {
-            Width = 320, Height = 320,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(-190, 0, 0, -180),
-            Fill = new RadialGradientBrush(
-                Color.FromArgb(50, 161, 137, 255),
-                Color.FromArgb(0, 161, 137, 255)),
-            IsHitTestVisible = false
-        };
-        baseLayer.Children.Add(glow2);
-
-        var frostedBorder = new Border
-        {
-            Margin = new Thickness(14),
-            CornerRadius = new CornerRadius(22),
-            Padding = padding ?? new Thickness(25, 22, 25, 20),
-            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(23),
+            BorderThickness = new Thickness(1.3),
             BorderBrush = new LinearGradientBrush(
-                Color.FromArgb(155, 205, 224, 255),
-                Color.FromArgb(35, 120, 160, 220), 120),
-            Background = new LinearGradientBrush(
-                Color.FromArgb(139, 80, 98, 132),
-                Color.FromArgb(88, 38, 49, 76), 135),
-            Effect = new DropShadowEffect
+                Color.FromArgb(205, 225, 238, 255),
+                Color.FromArgb(65, 145, 168, 213), 130),
+            Background = new LinearGradientBrush
             {
-                Color = Color.FromRgb(4, 7, 19),
-                BlurRadius = 22, ShadowDepth = 7, Opacity = 0.52
-            },
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1),
+                GradientStops =
+                {
+                    new GradientStop(Color.FromArgb(226, 76, 96, 139), 0),
+                    new GradientStop(Color.FromArgb(222, 37, 48, 79), 0.45),
+                    new GradientStop(Color.FromArgb(232, 30, 39, 70), 1)
+                }
+            }
+        };
+        panel.Children.Add(rim);
+        // Inset highlight follows the same silhouette. No square panels are
+        // drawn behind the round border, and window corners remain transparent.
+        var highlight = new Border
+        {
+            Margin = new Thickness(2),
+            CornerRadius = new CornerRadius(21),
+            BorderThickness = new Thickness(1, 1, 0, 0),
+            BorderBrush = new LinearGradientBrush(
+                Color.FromArgb(100, 236, 247, 255),
+                Color.FromArgb(0, 206, 226, 255), 115),
+            IsHitTestVisible = false
+        };
+        panel.Children.Add(highlight);
+        var contentFrame = new Border
+        {
+            Padding = padding ?? new Thickness(25, 22, 25, 20),
+            CornerRadius = new CornerRadius(23),
             Child = content
         };
-        baseLayer.Children.Add(frostedBorder);
-        return baseLayer;
+        panel.Children.Add(contentFrame);
+        return panel;
     }
 
     internal static Border Chip(string text)
