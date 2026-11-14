@@ -93,7 +93,7 @@ jobs:
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.3.3-preview-win-x64-QA
+          name: Yetta-0.3.4-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -111,7 +111,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.3.3-preview-win-x64-QA
+          name: Yetta-0.3.4-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh

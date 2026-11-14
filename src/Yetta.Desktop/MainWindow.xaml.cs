@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.3-preview";
+    private const string ReleaseVersion = "0.3.4-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -80,16 +80,26 @@ public partial class MainWindow : Window
         bool glass = _settings.Theme == "Glass";
         if (glass)
         {
-            SetColor("WindowBackground", Color.FromRgb(13, 16, 30));
-            SetColor("SidebarBackground", Color.FromRgb(22, 27, 45));
-            SetBrush("CardBackground", new LinearGradientBrush(
-                Color.FromRgb(44, 53, 78), Color.FromRgb(25, 30, 47), 115));
+            // Distinctive glass treatment throughout the application's Glass theme.
+            // Ambient backdrop, layered translucent panels and softer specular borders.
+            var backdrop = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(36, 45, 75), 0));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(17, 23, 43), 0.52));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(41, 28, 69), 1));
+            SetBrush("WindowBackground", backdrop);
+            SetBrush("SidebarBackground", new LinearGradientBrush(
+                Color.FromArgb(230, 32, 44, 71), Color.FromArgb(239, 24, 27, 48), 110));
+            var glassCard = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(182, 95, 119, 155), 0));
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(140, 53, 63, 99), 0.46));
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(120, 37, 46, 77), 1));
+            SetBrush("CardBackground", glassCard);
             SetColor("HoverBackground", Color.FromRgb(57, 62, 91));
             SetColor("AccentBrush", Color.FromRgb(190, 173, 255));
             SetColor("AccentForeground", Color.FromRgb(27, 18, 49));
             SetColor("TextPrimary", Color.FromRgb(242, 243, 255));
             SetColor("TextSecondary", Color.FromRgb(174, 185, 207));
-            SetColor("OutlineBrush", Color.FromRgb(77, 83, 110));
+            SetColor("OutlineBrush", Color.FromArgb(158, 160, 177, 215));
             SetColor("SelectedBrush", Color.FromRgb(57, 48, 88));
         }
         else
@@ -297,30 +307,97 @@ public partial class MainWindow : Window
 
     private void ShowDaxInfo()
     {
-        var window = new Window
+        var dialog = GlassDialog.Create(this, "Yetta · DAX", 690, 565,
+            minWidth: 510, minHeight: 385);
+
+        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
+        var brandRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var logoFrame = new Border
         {
-            Owner = this,
-            Title = "Yetta · DAX",
-            Width = 590, Height = 430, ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = Resource("WindowBackground"),
-            Foreground = Ink
+            Width = 104, Height = 104,
+            CornerRadius = new CornerRadius(22),
+            Background = new LinearGradientBrush(
+                Color.FromArgb(88, 153, 197, 255),
+                Color.FromArgb(36, 89, 116, 178), 120),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(90, 212, 229, 255)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 17, 0),
+            Padding = new Thickness(5),
+            Child = new Image
+            {
+                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")),
+                Width = 90, Height = 90,
+                Stretch = Stretch.Uniform,
+                SnapsToDevicePixels = true
+            }
         };
-        var panel = new StackPanel { Margin = new Thickness(26) };
-        panel.Children.Add(new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")), Width = 62, Height = 62, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0,0,0,8) });
-        panel.Children.Add(Text("DAX · Defense & Access eXecutive", 23, heading: true));
-        panel.Children.Add(Text("Исполнительный модуль защиты и доступа", 13));
-        panel.Children.Add(Text(
-            "Версия: проектная спецификация · DAX runtime ещё не установлен.\n\n" +
-            "Назначение: проверять политики Yetta, помогать пользователю принимать решения и " +
-            "регистрировать результаты операций, инициированных из Yetta.\n\n" +
-            "Планируемая внутренняя структура: DAX Gate / Guard, DAX Process, DAX Threat, " +
-            "DAX System, DAX Audit, DAX Update.\n\n" +
-            "Ограничения: нет контроля процессов Windows, мониторинга потомков, анализа антивируса, " +
-            "службы SYSTEM или восстановительных операций. Никакая защита не заявляется как действующая.", 13));
-        panel.Children.Add(ActionButton("Закрыть", window.Close));
-        window.Content = new ScrollViewer { Content = panel };
-        window.ShowDialog();
+        brandRow.Children.Add(logoFrame);
+        var brandCopy = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        brandCopy.Children.Add(new TextBlock
+        {
+            Text = "DAX", FontSize = 32, FontWeight = FontWeights.Bold,
+            Foreground = Ink
+        });
+        var pill = GlassDialog.Chip("DEFENSE & ACCESS EXECUTIVE");
+        pill.HorizontalAlignment = HorizontalAlignment.Left;
+        pill.Margin = new Thickness(0, 6, 0, 0);
+        brandCopy.Children.Add(pill);
+        brandRow.Children.Add(brandCopy);
+        header.Children.Add(brandRow);
+        var tagline = Text("Исполнительный модуль защиты и доступа", 13, muted: true);
+        tagline.Margin = new Thickness(0, 12, 0, 0);
+        header.Children.Add(tagline);
+
+        var sections = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
+        void AddFact(string title, string body)
+        {
+            var cardBody = new StackPanel();
+            cardBody.Children.Add(new TextBlock
+            {
+                Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14,
+                Foreground = Brushes.White,
+                Margin = new Thickness(0, 0, 0, 6)
+            });
+            cardBody.Children.Add(new TextBlock
+            {
+                Text = body, TextWrapping = TextWrapping.Wrap,
+                Foreground = GlassDialog.SecondaryText,
+                FontSize = 12.5, LineHeight = 19
+            });
+            sections.Children.Add(new Border
+            {
+                Background = new LinearGradientBrush(
+                    Color.FromArgb(67, 134, 165, 215),
+                    Color.FromArgb(35, 87, 106, 153), 100),
+                CornerRadius = new CornerRadius(14),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(65, 192, 215, 255)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(16, 13, 16, 13),
+                Margin = new Thickness(0, 0, 0, 10),
+                Child = cardBody
+            });
+        }
+        AddFact("Текущее состояние",
+            "Проектная спецификация. DAX runtime и привилегированные службы ещё не установлены.");
+        AddFact("Назначение",
+            "Проверять политики Yetta, помогать принимать решения и регистрировать результаты операций, инициированных приложением.");
+        AddFact("Архитектура",
+            "DAX Gate / Guard · DAX Process · DAX Threat · DAX System · DAX Audit · DAX Update");
+        AddFact("Ограничения безопасности",
+            "Нет мониторинга процессов Windows и потомков, антивирусного анализа, службы SYSTEM или средств восстановления. " +
+            "Никакая защита не заявляется как действующая.");
+
+        var footer = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var close = GlassDialog.Button("Закрыть", primary: true);
+        close.IsCancel = true;
+        close.Click += (_, _) => dialog.Close();
+        footer.Children.Add(close);
+        dialog.Content = GlassDialog.Surface(GlassDialog.Layout(header, sections, footer));
+        dialog.ShowDialog();
     }
 
     private static bool IsProcessAdministrator()
@@ -901,7 +978,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 3));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 4));
             if (latest is null)
             {
                 MessageBox.Show(this, "Новой версии с установщиком пока нет.",
