@@ -92,7 +92,7 @@
             </Border>
             <StackPanel Margin="13,3,0,0">
               <TextBlock Text="YETTA." Foreground="{DynamicResource TextPrimary}"
-                         FontSize="19" FontWeight="Bold" CharacterSpacing="1"/>
+                         FontSize="19" FontWeight="Bold"/>
               <TextBlock Text="WINDOWS, REFINED" Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
             </StackPanel>
           </StackPanel>
