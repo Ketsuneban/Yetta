@@ -352,7 +352,8 @@ public partial class MainWindow : Window
             SubjectName: "DAX",
             SubjectIconId: 29),
             activeProfile: _settings.ActiveProfile,
-            safeMode: ConsentDialog.InWindowsSafeMode);
+            safeMode: ConsentDialog.InWindowsSafeMode,
+            modeless: true);
     }
 
     private static bool IsProcessAdministrator()
@@ -1092,6 +1093,47 @@ public partial class MainWindow : Window
             SavePreferences();
             Navigate("settings");
         }, enabled: _settings.EmbeddedShellConsentGranted));
+
+        AddSection("Предпросмотр предупреждений", "Проверка семи типов окон без выполнения системных операций.");
+        var previews = new WrapPanel();
+        foreach (var (level, label) in new[]
+        {
+            (YettaWarningLevel.Standard, "Стандартное"),
+            (YettaWarningLevel.Caution, "Предостережение"),
+            (YettaWarningLevel.Dangerous, "Опасное"),
+            (YettaWarningLevel.Critical, "Критическое"),
+            (YettaWarningLevel.Fatal, "Смертельное"),
+            (YettaWarningLevel.Consent, "Соглашение"),
+            (YettaWarningLevel.Dax, "DAX")
+        })
+        {
+            var kind = level;
+            var name = label;
+            previews.Children.Add(ActionButton(label, () =>
+            {
+                bool fatal = kind == YettaWarningLevel.Fatal;
+                bool consent = kind == YettaWarningLevel.Consent;
+                DaxWarningDialog.Show(this, new DaxWarningRequest(
+                    kind, "Демонстрация · " + name,
+                    "Это только предварительный просмотр дизайна окна Yetta. " +
+                    "Никаких угроз, повреждений Windows и операций восстановления не произошло. " +
+                    "Текст внутри этой зоны прокручивается отдельно; кнопки снизу закреплены.",
+                    SubjectName: "Демонстрация интерфейса",
+                    SubjectIconId: fatal ? 48 : consent ? 2 : 46,
+                    CheckRequired: consent,
+                    KeyRequired: kind == YettaWarningLevel.Critical),
+                    _ttyKeys,
+                    onRecovery: () => Navigate("recovery"),
+                    activeProfile: _settings.ActiveProfile,
+                    safeMode: ConsentDialog.InWindowsSafeMode,
+                    modeless: true);
+            }));
+        }
+        ContentPanel.Children.Add(previews);
+        ContentPanel.Children.Add(Card(Text(
+            "Предпросмотр не свидетельствует о наличии угроз. В реальной операции " +
+            "DAX классифицирует риск по результатам проверок. Для критического " +
+            "подтверждения требуется существующий TTY-ключ из DAX Guard.", 11, muted: true)));
 
         AddSection("Обновления Yetta", "По нажатию проверяется GitHub Releases. Автоматической проверки в фоне нет.");
         ContentPanel.Children.Add(Card(Text(
