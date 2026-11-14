@@ -56,17 +56,13 @@ dotnet run --project tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj -c Release
 dotnet publish src/Yetta.Desktop/Yetta.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/Yetta-win-x64
 ```
 
-GitHub Actions автоматически делает эти шаги и публикует **Yetta.exe** как отдельный Asset в GitHub Releases. Сборка ещё не прошла ручное GUI-тестирование на реальном Windows 11.
-
-## Сайт
-
-Статическая главная страница в `site/` (Cloudflare Pages, проект `yetta`, ветка `main`). Содержит только **Главная** и ссылку **GitHub**. Дизайн и код сайта собственные; он не копирует исходники сайта-референса.
+GitHub Actions автоматически делает эти шаги и публикует **Yetta.exe** как отдельный Asset в GitHub Releases. 
 
 ## Открытый исходный код и лицензии
 
 - Код и документация **Yetta** — [MIT License](LICENSE), © 2026 Yetta contributors.
 - Встроенный шрифт **Inter** — [SIL Open Font License 1.1](src/Yetta.Desktop/Assets/OFL-Inter.txt), © The Inter Project Authors.
-- **Icons8**: https://icons8.ru/ — указанный источник для будущих иконок. Их использование требует соблюдения соответствующих условий лицензии Icons8; нынешние стандартные символы не являются скачанным паком Icons8.
-- .NET/WPF — официальные программные компоненты Microsoft, используемые без копирования чужого исходного кода.
+- **Icons8**: https://icons8.ru/ — указанный источник для иконок. Их использование требует соблюдения соответствующих условий лицензии Icons8.
+- .NET/WPF — официальные программные компоненты Microsoft.
 
-Для сообщения об уязвимости читайте [SECURITY.md](SECURITY.md). Проектная спецификация и инструкция для будущих ассистентов находятся в **зашифрованном** `Project/Yetta_Continuity_AES256.zip`. Пароль передаётся отдельно, не хранится в репозитории.
+Для сообщения об уязвимости читайте [SECURITY.md](SECURITY.md). 
