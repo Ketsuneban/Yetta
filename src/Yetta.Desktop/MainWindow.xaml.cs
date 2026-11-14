@@ -11,7 +11,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.2.0-preview";
+    private const string ReleaseVersion = "0.2.1-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -616,7 +616,7 @@ public partial class MainWindow : Window
             "Ссылки на открытый проект, официальные релизы и ресурсы, используемые или запланированные для оформления Yetta.");
         AddSection("Проект");
         AddSource("GitHub · исходный код", "https://github.com/Ketsuneban/Yetta");
-        AddSource("GitHub Releases · загрузка EXE", "https://github.com/Ketsuneban/Yetta/releases/latest");
+        AddSource("GitHub Releases · загрузка EXE", "https://github.com/Ketsuneban/Yetta/releases");
         AddSource("Сайт Yetta", "https://yetta.pages.dev/");
         AddSection("Визуальные ресурсы");
         AddSource("Icons8 · источник иконок", "https://icons8.ru/");

@@ -1,4 +1,4 @@
-# Yetta Desktop 0.2.0-preview
+# Yetta Desktop 0.2.1-preview
 
 Первый интерфейсный прототип Yetta на C# / .NET 10 / WPF. Страница [README проекта](../../README.md) содержит актуальные инструкции по загрузке и сборке.
 
