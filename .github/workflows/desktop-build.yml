@@ -5,12 +5,20 @@ on:
     paths:
       - "src/**"
       - "tests/**"
+      - "Project/**"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
       - ".github/workflows/desktop-build.yml"
   pull_request:
     branches: [main]
     paths:
       - "src/**"
       - "tests/**"
+      - "Project/**"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
       - ".github/workflows/desktop-build.yml"
   workflow_dispatch:
 
@@ -23,7 +31,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and package Windows x64 preview
+    name: Build Windows x64 preview
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -55,16 +63,19 @@ jobs:
           -p:DebugType=None
           --output artifacts/Yetta-win-x64
 
-      - name: Package preview ZIP
+      - name: Create SHA-256 manifest
         shell: pwsh
         run: |
-          Compress-Archive -Path "artifacts/Yetta-win-x64/*" -DestinationPath "Yetta-0.1.0-preview-win-x64.zip" -Force
-          Get-FileHash "Yetta-0.1.0-preview-win-x64.zip" -Algorithm SHA256 | Format-List
+          $exe = "artifacts/Yetta-win-x64/Yetta.exe"
+          if (!(Test-Path $exe)) { throw "Yetta.exe was not produced." }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "SHA256  Yetta.exe  $hash" | Set-Content "artifacts/Yetta-win-x64/SHA256SUMS.txt" -Encoding ascii
+          Get-Content "artifacts/Yetta-win-x64/SHA256SUMS.txt" | Add-Content $env:GITHUB_STEP_SUMMARY
 
-      - name: Upload Windows preview
+      - name: Upload Windows preview files
         uses: actions/upload-artifact@v4
         with:
           name: Yetta-0.1.0-preview-win-x64
-          path: Yetta-0.1.0-preview-win-x64.zip
+          path: artifacts/Yetta-win-x64/
           if-no-files-found: error
           retention-days: 30

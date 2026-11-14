@@ -1,6 +1,6 @@
 # Yetta
 
-**Yetta** is an evolving Windows 11 customization and system-management project. The repository includes the public website, architecture and security specifications, and an initial **unprivileged Windows desktop preview (0.1.0-preview)**. Advanced system editing, Access Manager and DAX are not implemented.
+**Yetta** is an evolving Windows 11 customization and system-management project. The repository includes the public website, architecture and security documentation, and an initial **unprivileged Windows desktop preview (0.1.0-preview)**. Advanced system editing, Access Manager and DAX are not implemented.
 
 - Website: https://yetta.pages.dev/
 - Repository: https://github.com/Ketsuneban/Yetta
@@ -18,7 +18,9 @@ The project has entered the desktop application foundation phase. A Windows UI p
 - **DAX Guard** — enforces the minimum access profile required by each operation.
 - **Yetta Console** — a user-operated command interface; Yetta should not autonomously make system changes.
 
-See `docs/` for the specifications. The first app prototype is in [`src/Yetta.Desktop`](src/Yetta.Desktop), with build instructions in [`src/Yetta.Desktop/README.md`](src/Yetta.Desktop/README.md). The machine-readable continuity specification is [`Project/Yetta_Project.json`](Project/Yetta_Project.json).
+See `docs/` for the public architecture and security specifications. The first app prototype is in [`src/Yetta.Desktop`](src/Yetta.Desktop), with build instructions in [`src/Yetta.Desktop/README.md`](src/Yetta.Desktop/README.md).
+
+The private, encrypted assistant continuity archive is stored at [`Project/Yetta_Continuity_AES256.zip`](Project/Yetta_Continuity_AES256.zip). It contains project-owner instructions for future development sessions. The archive password is supplied separately by the owner and is not stored in this repository.
 
 ## Website development
 
