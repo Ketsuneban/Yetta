@@ -1,5 +1,16 @@
 # Yetta Changelog
 
+## 0.3.0-preview — 2026-11-14
+
+- Build and publish YettaSetup.exe per-user installer and direct portable Yetta.exe.
+- Add settings-based release check and explicit SHA-256 verified installer download.
+- Add gray consent dialog with checkbox and original warning icons 26, 27, 35.
+- Embed genuine, non-elevated PowerShell text streams inside Yetta; retain current-user permissions and disclose ConPTY limitations.
+- Apply owner-provided Yetta/DAX logos and Windows EXE icon.
+- Add DAX information popup, access level identifiers, updated documentation.
+- Publish encrypted v0.3 assistant instruction supplement.
+- Real ADMIN/SYS broker, signed updates, full notification center and other numbered icons remain future work.
+
 ## 0.2.1-preview — 2026-11-14
 
 - Fix broken GitHub Releases link for prerelease-only projects in Sources.

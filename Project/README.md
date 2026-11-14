@@ -1,11 +1,12 @@
-# Encrypted Yetta continuity archive
+# Encrypted Yetta assistant handoff
 
-This folder contains the encrypted assistant handoff archive:
+Project instructions are encrypted, not published as plaintext.
 
-- `Yetta_Continuity_AES256.zip` — WinZip AES-256 (AE-2), containing the canonical private project instructions for future ChatGPT sessions.
+- `Yetta_Continuity_AES256.zip`: original full continuity handoff (through Yetta 0.2.x).
+- `Yetta_v0.3_Supplement_AES256.zip`: encrypted owner instructions added in November 2026 for one-time consent, warning status icons 26/27/35, SYS/Admin requirements, integrated real PowerShell, installer and updater.
 
-Use **7-Zip** or **WinRAR** to open/extract the archive. Windows File Explorer may not support WinZip AES encryption. The password is provided separately by the project owner and is intentionally not stored in this repository.
+**Future assistant:** read BOTH encrypted archives, in that order, and then inspect the current GitHub repository / release state. The supplement supersedes older statements where requirements changed. Do not infer that a feature has been deployed without inspecting code, Actions and published assets.
 
-The archive is a dated snapshot. Before acting on it, the next assistant must inspect the current GitHub repository and verify which requirements and implementation details have changed.
+ZIPs use WinZip AES-256 (AE-2). Use 7-Zip or WinRAR; Windows File Explorer may not extract AES ZIP. The owner provides the password separately. Never commit the password or an unencrypted copy of private assistant instructions.
 
-No unencrypted copy of the private assistant instructions is stored in this folder.
+An up-to-date consolidated archive `Yetta_Continuity_AES256_v0.3.zip` was also prepared as a conversation artifact; it should eventually replace the original snapshot after a byte-for-byte verified transfer. The two published encrypted archives together preserve the changes in GitHub.
