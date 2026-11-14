@@ -14,7 +14,7 @@ internal sealed record WarningRequest(
     string ObjectName = "Yetta", string? FilePath = null,
     string? Publisher = null, WarningObjectKind ObjectKind = WarningObjectKind.Unknown,
     bool NeedsAgreement = false, bool NeedsTty = false,
-    Action? OnReset = null, bool Modal = true);
+    Action? OnReset = null, bool Modal = true, bool IsNotice = false);
 
 /// <summary>
 /// Consistent seven-level Yetta warning presenter. TTY gates explicit UI
@@ -91,10 +91,10 @@ internal static class WarningDialog
         bool fatal = level == YettaWarningLevel.Fatal;
         bool consent = level == YettaWarningLevel.Consent;
         bool dax = level == YettaWarningLevel.Dax;
-        bool needsKey = request.NeedsTty || WarningPolicy.RequiresTty(level, profile);
+        bool needsKey = !request.IsNotice && (request.NeedsTty || WarningPolicy.RequiresTty(level, profile));
         if (fatal || dax) needsKey = false;
         bool needsAgreement = request.NeedsAgreement;
-        if (fatal || dax) needsAgreement = false;
+        if (fatal || dax || request.IsNotice) needsAgreement = false;
 
         var window = GlassDialog.Create(owner, "Yetta · " + WarningPolicy.Heading(level),
             710, 565, 530, 420);
@@ -296,12 +296,12 @@ internal static class WarningDialog
         actionRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var decline = GlassDialog.Button("Запретить");
         var approve = GlassDialog.Button(fatal ? "Сброс" :
-            consent ? "Согласен" : dax ? "Ок" : "Разрешить", true);
+            consent ? "Согласен" : dax || request.IsNotice ? "Ок" : "Разрешить", true);
         decline.HorizontalAlignment = HorizontalAlignment.Stretch;
         approve.HorizontalAlignment = HorizontalAlignment.Stretch;
         approve.Margin = new Thickness(7, 0, 0, 0);
         decline.Margin = new Thickness(0, 0, 7, 0);
-        if (fatal || consent || dax)
+        if (fatal || consent || dax || request.IsNotice)
         {
             actionRow.ColumnDefinitions.Clear();
             actionRow.Children.Add(approve);
@@ -323,7 +323,7 @@ internal static class WarningDialog
         UpdateAccept();
         void Finish(bool result)
         {
-            if (request.Modal || (level != YettaWarningLevel.Information && !dax))
+            if (request.Modal)
                 window.DialogResult = result;
             else window.Close();
         }
@@ -345,7 +345,7 @@ internal static class WarningDialog
 
         // ShowDialog returns an explicit decision; non-modal information-only
         // notices may overlap, but confirmations must return a decision.
-        if (!request.Modal && (dax || level == YettaWarningLevel.Information))
+        if (!request.Modal && (dax || request.IsNotice || level == YettaWarningLevel.Information))
         {
             window.Show();
             return false;
