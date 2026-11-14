@@ -42,6 +42,7 @@ internal static class IconLibrary
     public static int NavigationIcon(string page) => page switch
     {
         "overview" => 7, "info" => 2, "console" => 1, "guard" => 6,
+        "process" => 41,
         "logs" => 8, "activity" => 31, "recovery" => 9,
         "settings" => 3, "sources" => 30, _ => 30
     };
