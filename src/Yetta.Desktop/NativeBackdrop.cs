@@ -30,6 +30,20 @@ internal static class NativeBackdrop
         OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621) &&
         !SystemParameters.HighContrast;
 
+    public static void Remove(Window window)
+    {
+        if (!Supported || window.AllowsTransparency) return;
+        try
+        {
+            IntPtr hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            int material = 1; // DWMSBT_NONE
+            _ = DwmSetWindowAttribute(hwnd, 38, ref material, sizeof(int));
+        }
+        catch (DllNotFoundException) { }
+        catch (EntryPointNotFoundException) { }
+    }
+
     public static bool TryApply(Window window, bool acrylic)
     {
         if (!Supported || window.AllowsTransparency) return false;
