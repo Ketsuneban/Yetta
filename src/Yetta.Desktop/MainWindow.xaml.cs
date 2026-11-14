@@ -99,7 +99,7 @@ public partial class MainWindow : Window
 
     private void UpdateSystemBackdrop()
     {
-        if (_settings.Theme == "Glass") NativeBackdrop.TryApply(this, acrylic: false);
+        if (_settings.Theme == "Glass") NativeBackdrop.TryApply(this, acrylic: true);
         else NativeBackdrop.Remove(this);
     }
 
