@@ -25,7 +25,8 @@ internal sealed record DaxWarningRequest(
     bool AccessDenied = false,
     bool DaxDenied = false,
     int? SubjectIconId = null,
-    int? HeaderIconId = null);
+    int? HeaderIconId = null,
+    bool AcknowledgmentOnly = false);
 
 /// <summary>
 /// All owner-designed Yetta warnings: native WPF window, owner-scoped icon
@@ -111,7 +112,7 @@ internal static class DaxWarningDialog
     {
         var level = request.Level;
         bool fatal = level == YettaWarningLevel.Fatal;
-        bool informational = WarningPolicy.IsInformational(level);
+        bool informational = WarningPolicy.IsInformational(level) || request.AcknowledgmentOnly;
         bool agreement = level == YettaWarningLevel.Consent;
         bool checkboxRequired = request.CheckRequired;
         bool keyRequired = !fatal && (request.KeyRequired ||
