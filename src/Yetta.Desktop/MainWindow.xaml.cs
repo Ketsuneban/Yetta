@@ -253,8 +253,7 @@ public partial class MainWindow : Window
         return new Border
         {
             Background = Surface,
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
+            BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(16),
             Padding = new Thickness(22),
             Margin = new Thickness(0, 0, 0, 14),
@@ -587,8 +586,7 @@ public partial class MainWindow : Window
         {
             Width = 314,
             Background = Surface,
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
+            BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(13),
             Padding = new Thickness(14),
             Margin = new Thickness(0, 0, 0, 8),
@@ -702,7 +700,7 @@ public partial class MainWindow : Window
         ContentPanel.Children.Add(tabs);
         var terminal = new Border
         {
-            BorderBrush = Line, BorderThickness = new Thickness(1),
+            BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 5 : 14),
             Background = _consoleMode switch
             {
