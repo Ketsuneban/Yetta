@@ -19,6 +19,7 @@
     <Resource Include="Assets/35.png" />
     <Resource Include="Assets/yetta-logo.png" />
     <Resource Include="Assets/dax-logo.png" />
+    <Resource Include="Assets/icons-atlas.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
 </Project>
