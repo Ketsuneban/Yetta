@@ -18,7 +18,7 @@ The project is in the infrastructure and specification phase. No Windows service
 - **DAX Guard** — enforces the minimum access profile required by each operation.
 - **Yetta Console** — a user-operated command interface; Yetta should not autonomously make system changes.
 
-See `docs/` for the current specification and open questions.
+See `docs/` for the current specification and open questions. The machine-readable continuity specification is [`Project/Yetta_Project.json`](Project/Yetta_Project.json).
 
 ## Website development
 
