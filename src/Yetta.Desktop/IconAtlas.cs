@@ -7,12 +7,12 @@ namespace Yetta.Desktop;
 
 /// <summary>
 /// Original owner's 1–50 Icons8 atlas, 10 columns x 5 rows.
-/// Each asset cell is 24x24 pixels; source PNG is bundled with the app.
+/// Each asset cell is 20x20 pixels; source PNG is bundled with the app.
 /// The exact icon IDs are kept stable across the UI.
 /// </summary>
 internal static class IconAtlas
 {
-    private const int Cell = 24;
+    private const int Cell = 20;
     private static readonly Lazy<BitmapSource> Atlas = new(() =>
     {
         var image = new BitmapImage();
