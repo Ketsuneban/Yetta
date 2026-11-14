@@ -646,10 +646,24 @@ public partial class MainWindow : Window
 
     private void BuildLogs()
     {
-        AddIntro("Yetta / DAX Logs", "Журнал событий DAX",
-            "Раздел зарезервирован для аудита решений DAX Guard, проверок угроз и операций, запущенных из Yetta.");
-        AddNotice("Заглушка — нет активного логирования",
-            "DAX Process, Threat, Audit пока не реализованы. Эта страница не заявляет, что выполняется наблюдение за процессами, и не содержит фиктивных записей.");
+        AddIntro("Yetta / DAX Logs", "Журнал решений DAX",
+            "Локальные записи предупреждений и решений, сделанных внутри Yetta. " +
+            "Это не глобальный журнал процессов и не утверждение о полной антивирусной защите.");
+        AddNotice("Файл журнала", DaxAuditLog.FilePath);
+        var events = DaxAuditLog.Recent();
+        if (events.Count == 0)
+        {
+            AddNotice("Записей пока нет", "Реальные подтверждения и предупреждения Yetta будут отображены здесь.");
+            return;
+        }
+        foreach (var e in events)
+        {
+            var panel = new StackPanel();
+            panel.Children.Add(Text(e.Time.ToString("dd.MM.yyyy HH:mm:ss") +
+                "  ·  " + e.Category + "  ·  " + e.Result, 12, heading: true));
+            panel.Children.Add(Text(e.Subject + ": " + e.Detail, 12, muted: true));
+            ContentPanel.Children.Add(Card(panel));
+        }
     }
 
     private void BuildRecovery()
