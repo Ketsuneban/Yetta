@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.9-preview — 2026-11-15
+
+- Rework **only Standard** warnings to a dedicated dark, Windows UAC-inspired presentation: compact caption, prominent action question, icon/publisher row with adjacent DAX status, expandable "Подробнее" description, and fixed bottom action bar.
+- Retain the original Yetta icons, independently configured header icon, operational approval checks, TTY verification, DAX audit and nonmodal informational warnings. This is not Windows UAC or an OS privilege prompt.
+- Remove remaining thin decorative UI hairlines by suppressing legacy OutlineBrush strokes in both themes, simplifying access dropdown and terminal field borders, and asking Windows 11 DWM not to draw the native app window border.
+- Keep the six other warning designs unchanged.
+- Bump app, updater, installer, site and downloadable release metadata to v0.3.9-preview.
+
+
 ## 0.3.8-preview — 2026-11-15
 
 - Integrate accumulated thin-line removal in main window shell, sidebar, cards, toasts and console.

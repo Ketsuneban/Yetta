@@ -158,7 +158,7 @@ internal static class YettaWarningWindow
         _ => "Подтверждение действия"
     };
 
-    private static int ObjectIcon(WarningRequest request)
+    internal static int ObjectIcon(WarningRequest request)
     {
         if (request.Kind == WarningKind.Fatal) return 48;
         if (request.Kind == WarningKind.Agreement) return 2;
@@ -179,7 +179,7 @@ internal static class YettaWarningWindow
         };
     }
 
-    private static int Status(WarningRequest request, string activeProfile)
+    internal static int Status(WarningRequest request, string activeProfile)
     {
         if (request.Kind == WarningKind.Fatal) return 0;
         if (request.Kind is WarningKind.Agreement or WarningKind.Dax) return 35;
@@ -214,6 +214,9 @@ internal static class YettaWarningWindow
     internal static bool Show(Window owner, WarningRequest request,
         string activeProfile = "User", bool nonModal = false)
     {
+        if (request.Kind == WarningKind.Standard)
+            return StandardWarningDialog.Show(owner, request, activeProfile, nonModal);
+
         var window = GlassDialog.Create(owner, "Yetta · " + Title(request.Kind),
             730, 575, minWidth: 570, minHeight: 435);
         if (request.Kind == WarningKind.Fatal)

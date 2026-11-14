@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.8-preview";
+    private const string ReleaseVersion = "0.3.9-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -129,7 +129,7 @@ public partial class MainWindow : Window
             SetColor("AccentForeground", Color.FromRgb(27, 18, 49));
             SetColor("TextPrimary", Color.FromRgb(242, 243, 255));
             SetColor("TextSecondary", Color.FromRgb(174, 185, 207));
-            SetColor("OutlineBrush", Color.FromArgb(158, 160, 177, 215));
+            SetColor("OutlineBrush", Colors.Transparent);
             SetColor("SelectedBrush", Color.FromRgb(57, 48, 88));
         }
         else
@@ -143,7 +143,7 @@ public partial class MainWindow : Window
             SetColor("AccentForeground", Color.FromRgb(6, 34, 30));
             SetColor("TextPrimary", Color.FromRgb(234, 246, 245));
             SetColor("TextSecondary", Color.FromRgb(146, 168, 173));
-            SetColor("OutlineBrush", Color.FromRgb(53, 76, 83));
+            SetColor("OutlineBrush", Colors.Transparent);
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
         GlassDialog.IsGlass = glass;
@@ -855,7 +855,7 @@ public partial class MainWindow : Window
         var field = new TextBox
         {
             Background = Surface, Foreground = Ink,
-            BorderBrush = Line, BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.Transparent, BorderThickness = new Thickness(0),
             FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
             FontSize = 13, Padding = new Thickness(12, 10, 12, 10),
             CaretBrush = Accent, ToolTip = hint
@@ -1046,7 +1046,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 7));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 9));
             if (latest is null)
             {
                 ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
