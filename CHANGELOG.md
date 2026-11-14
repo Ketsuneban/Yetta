@@ -1,5 +1,17 @@
 # Yetta Changelog
 
+## 0.3.7-preview — 2026-11-15
+
+- Removed unwanted 1px separator outlines from the main window sidebar, title bar, content cards, footer, notifications and console (queued fix).
+- Restyled the seven warning windows into a Windows/Fluent-like, opaque, squared-off UI, without Liquid Glass in warnings.
+- Color now changes on the entire warning surface according to severity, preserving legible dark foreground text.
+- Centered buttons in the pinned lower section; moved status to the object's icon row; fixed checkbox visual alignment with a visible Windows-style checked state.
+- Decoupled upper header icon from severity: producers can set HeaderIconId separately.
+- Recreated five small warning/status badges with vector WPF drawing to avoid enlarging 32px icons.
+- DAX Guard sidebar uses the DAX logo; Sources sidebar uses the owner-supplied external-link icon.
+- Kept existing dialog actions, TTY gating, DAX audit behavior and access-control checks unchanged.
+
+
 ## 0.3.6-preview — 2026-11-15
 
 - Add a reusable seven-variant warning UI (standard, caution, dangerous, critical, fatal, agreement, DAX) with owner-provided warning, file-type and status icons.
