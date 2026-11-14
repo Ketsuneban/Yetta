@@ -147,7 +147,7 @@
       <Setter Property="MinHeight" Value="47"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
       <Setter Property="Background" Value="{DynamicResource SidebarBackground}"/>
-      <Setter Property="BorderBrush" Value="{DynamicResource OutlineBrush}"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
       <Setter Property="ItemContainerStyle" Value="{StaticResource AccessComboItem}"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -160,7 +160,7 @@
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="{x:Type ToggleButton}">
                     <Border x:Name="ComboSurface" Background="{DynamicResource SidebarBackground}"
-                            BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="1"
+                            BorderBrush="Transparent" BorderThickness="0"
                             CornerRadius="12" Padding="14,0">
                       <Grid>
                         <Grid.ColumnDefinitions>
@@ -170,7 +170,7 @@
                         <ContentPresenter Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
                                           Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
                                           IsHitTestVisible="False" TextElement.Foreground="{DynamicResource TextPrimary}"/>
-                        <Path Grid.Column="1" Stroke="{DynamicResource TextSecondary}" StrokeThickness="2"
+                        <Path Grid.Column="1" Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.7"
                               Data="M 2,5 L 8,11 L 14,5" Stretch="None"
                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                       </Grid>
@@ -180,7 +180,7 @@
                         <Setter TargetName="ComboSurface" Property="Background" Value="{DynamicResource HoverBackground}"/>
                       </Trigger>
                       <Trigger Property="IsChecked" Value="True">
-                        <Setter TargetName="ComboSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                        <Setter TargetName="ComboSurface" Property="Background" Value="{DynamicResource SelectedBrush}"/>
                       </Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>
@@ -192,7 +192,7 @@
                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                         Margin="0,5,0,10" Padding="5" MaxHeight="300"
                         Background="{DynamicResource SidebarBackground}"
-                        BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="1"
+                        BorderBrush="Transparent" BorderThickness="0"
                         CornerRadius="13">
                   <Border.Effect>
                     <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="6" Opacity="0.3"/>
