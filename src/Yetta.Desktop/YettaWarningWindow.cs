@@ -115,7 +115,7 @@ internal static class YettaWarningWindow
 
     /// <summary>Returns true only after the required acknowledgements are satisfied.</summary>
     internal static bool Show(Window owner, WarningRequest request,
-        string activeProfile = "User")
+        string activeProfile = "User", bool nonModal = false)
     {
         var window = GlassDialog.Create(owner, "Yetta · " + Title(request.Kind),
             730, 575, minWidth: 570, minHeight: 435);
@@ -147,7 +147,12 @@ internal static class YettaWarningWindow
             Cursor = Cursors.Hand,
             ToolTip = "Закрыть"
         };
-        close.Click += (_, _) => window.DialogResult = false;
+        void Finish(bool accepted)
+        {
+            if (nonModal) window.Close();
+            else window.DialogResult = accepted;
+        }
+        close.Click += (_, _) => Finish(false);
         Grid.SetColumn(close, 2);
         top.Children.Add(close);
 
@@ -351,7 +356,7 @@ internal static class YettaWarningWindow
         if (!oneButton)
         {
             deny = GlassDialog.Button("Запретить");
-            deny.Click += (_, _) => window.DialogResult = false;
+            deny.Click += (_, _) => Finish(false);
             actions.Children.Add(deny);
         }
         string actionName = request.Kind switch
@@ -409,7 +414,7 @@ internal static class YettaWarningWindow
             if (!allow.IsEnabled) return;
             if (request.Kind == WarningKind.Fatal)
                 request.RecoveryNavigation?.Invoke();
-            window.DialogResult = true;
+            Finish(true);
         };
 
         var layout = new Grid();
@@ -432,6 +437,14 @@ internal static class YettaWarningWindow
         window.Content = GlassDialog.Surface(layout, new Thickness(24), owner);
         CheckGate();
         DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
+        if (nonModal)
+        {
+            // Informational windows and UI previews may overlap like Explorer
+            // windows. No privileged action is approved through this path.
+            DaxAudit.Write("warning", "opened_nonmodal", request.Kind.ToString());
+            window.Show();
+            return false;
+        }
         bool result = window.ShowDialog() == true;
         DaxAudit.Write("warning", result ? "accepted" : "dismissed", request.Kind + ": " + request.Reason);
         return result;
