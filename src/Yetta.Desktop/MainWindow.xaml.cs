@@ -722,6 +722,33 @@ public partial class MainWindow : Window
         confirmation.Unchecked += (_, _) => { _settings.ConfirmExternalLinks = false; SavePreferences(); };
         ContentPanel.Children.Add(Card(confirmation));
 
+        AddSection("Встроенная PowerShell");
+        ContentPanel.Children.Add(Card(Text(
+            _settings.EmbeddedShellConsentGranted
+                ? "Согласие на пользовательскую PowerShell принято. Его можно отозвать."
+                : "Согласие ещё не предоставлено. При первом входе в консоль появится серое предупреждение.",
+            12, muted: true)));
+        ContentPanel.Children.Add(ActionButton("Отозвать согласие PowerShell", () =>
+        {
+            _settings.EmbeddedShellConsentGranted = false;
+            _embeddedShell?.Dispose();
+            _embeddedShell = null;
+            SavePreferences();
+            Navigate("settings");
+        }, enabled: _settings.EmbeddedShellConsentGranted));
+
+        AddSection("Обновления Yetta", "По нажатию проверяется GitHub Releases. Автоматической проверки в фоне нет.");
+        ContentPanel.Children.Add(Card(Text(
+            "Версия: " + ReleaseVersion +
+            "\nУстановщик для текущего пользователя: YettaSetup.exe. " +
+            "Скачанный файл проверяется по SHA-256 из GitHub Releases. " +
+            "В preview-период цифровая подпись пока отсутствует; SHA-256 не доказывает личность издателя.",
+            12, muted: true)));
+        ContentPanel.Children.Add(ActionButton("Проверить и обновить", async () =>
+        {
+            await CheckAndInstallUpdateAsync();
+        }, true));
+
         AddSection("Локальные данные");
         ContentPanel.Children.Add(Card(Text(
             "Файл настроек: " + _store.FilePath +
@@ -737,6 +764,40 @@ public partial class MainWindow : Window
             SavePreferences();
             Navigate("settings");
         }));
+    }
+
+    private async Task CheckAndInstallUpdateAsync()
+    {
+        try
+        {
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 0));
+            if (latest is null)
+            {
+                MessageBox.Show(this, "Новой версии с установщиком пока нет.",
+                    "Обновления Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!ConsentDialog.Confirm(this,
+                "Установить обновление Yetta " + latest.Version + "?",
+                "Установщик будет загружен с официального GitHub Releases. Yetta проверит SHA-256 файла, " +
+                "но этот ранний релиз пока не подписан цифровой подписью. После загрузки будет запущен " +
+                "стандартный установщик с правами текущего пользователя; он может закрыть Yetta для замены " +
+                "её файлов. Закройте несохранённую работу. Для будущих привилегированных компонентов " +
+                "потребуется отдельная подписанная цепочка обновления.",
+                YettaWarningLevel.Consent))
+                return;
+
+            var path = await YettaUpdater.DownloadInstallerAsync(latest);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Close();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or
+            InvalidDataException or InvalidOperationException or
+            System.ComponentModel.Win32Exception or TaskCanceledException)
+        {
+            MessageBox.Show(this, "Ошибка получения обновления: " + ex.Message,
+                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void BuildSources()
