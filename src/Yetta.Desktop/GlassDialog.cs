@@ -37,14 +37,17 @@ internal static class GlassDialog
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             WindowStyle = WindowStyle.None,
-            AllowsTransparency = true,
+            // DWM Acrylic needs a non-layered HWND; older Windows use
+            // per-pixel WPF transparency as a graceful fallback.
+            AllowsTransparency = !NativeBackdrop.Supported,
             ShowInTaskbar = false,
             Background = Brushes.Transparent,
             Foreground = WhiteText
         };
-        // AllowsTransparency produces a WPF layered window. This enables true
-        // per-pixel transparency around the rounded surface, but NOT DWM blur;
-        // do not request an incompatible acrylic backdrop here.
+        // On Windows 11 22H2+ DWM draws Acrylic beneath the translucent client.
+        // Older Windows retain one rounded WPF surface, without claiming blur.
+        dialog.SourceInitialized += (_, _) =>
+            NativeBackdrop.TryApply(dialog, acrylic: true);
         return dialog;
     }
 
@@ -122,9 +125,9 @@ internal static class GlassDialog
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(226, 76, 96, 139), 0),
-                    new GradientStop(Color.FromArgb(222, 37, 48, 79), 0.45),
-                    new GradientStop(Color.FromArgb(232, 30, 39, 70), 1)
+                    new GradientStop(Color.FromArgb(184, 57, 77, 113), 0),
+                    new GradientStop(Color.FromArgb(199, 24, 36, 63), 0.45),
+                    new GradientStop(Color.FromArgb(215, 20, 29, 56), 1)
                 }
             }
         };
