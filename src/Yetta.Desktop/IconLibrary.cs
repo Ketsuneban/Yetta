@@ -102,12 +102,63 @@ internal static class IconLibrary
         "settings" => 3, "sources" => 30, _ => 30
     };
 
-    /// <summary>The four supplied cursor images are arrow, move, text and scroll.</summary>
+    /// <summary>
+    /// Convert the owner's transparent PNG cursor symbols into a Windows CUR
+    /// stream at runtime. Unsupported formats fall back to system cursors.
+    /// </summary>
+    private static System.Windows.Input.Cursor LoadCursor(int iconId,
+        ushort hotX, ushort hotY, System.Windows.Input.Cursor fallback)
+    {
+        try
+        {
+            var index = iconId - 1;
+            var region = new CroppedBitmap(Atlas.Value,
+                new Int32Rect((index % 10) * 48, (index / 10) * 48, 48, 48));
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(region));
+            using var image = new MemoryStream();
+            encoder.Save(image);
+            byte[] png = image.ToArray();
+            using var buffer = new MemoryStream();
+            using (var writer = new BinaryWriter(buffer, System.Text.Encoding.UTF8, true))
+            {
+                writer.Write((ushort)0);
+                writer.Write((ushort)2); // CUR file
+                writer.Write((ushort)1);
+                writer.Write((byte)48);
+                writer.Write((byte)48);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write(hotX);
+                writer.Write(hotY);
+                writer.Write((uint)png.Length);
+                writer.Write((uint)22);
+                writer.Write(png);
+            }
+            buffer.Position = 0;
+            return new System.Windows.Input.Cursor(buffer);
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException
+            or ArgumentException or NotSupportedException)
+        {
+            return fallback;
+        }
+    }
+
+    private static readonly Lazy<System.Windows.Input.Cursor> Pointer =
+        new(() => LoadCursor(17, 4, 4, System.Windows.Input.Cursors.Arrow));
+    private static readonly Lazy<System.Windows.Input.Cursor> Move =
+        new(() => LoadCursor(18, 24, 24, System.Windows.Input.Cursors.SizeAll));
+    private static readonly Lazy<System.Windows.Input.Cursor> IBeam =
+        new(() => LoadCursor(19, 24, 24, System.Windows.Input.Cursors.IBeam));
+    private static readonly Lazy<System.Windows.Input.Cursor> Scroll =
+        new(() => LoadCursor(20, 24, 24, System.Windows.Input.Cursors.ScrollAll));
+
     public static System.Windows.Input.Cursor CursorForState(int iconId) => iconId switch
     {
-        18 => System.Windows.Input.Cursors.SizeAll,
-        19 => System.Windows.Input.Cursors.IBeam,
-        20 => System.Windows.Input.Cursors.ScrollAll,
-        _ => System.Windows.Input.Cursors.Arrow
+        18 => Move.Value,
+        19 => IBeam.Value,
+        20 => Scroll.Value,
+        _ => Pointer.Value
     };
 }
