@@ -1,5 +1,11 @@
 # Yetta Changelog
 
+## 0.2.1-preview — 2026-11-14
+
+- Fix broken GitHub Releases link for prerelease-only projects in Sources.
+- Link the home page download button directly to this version's EXE.
+- Synchronize preview version across application, site and documentation.
+
 ## 0.2.0-preview — 2026-11-14
 
 - Implement eight application sections specified by the project owner.
