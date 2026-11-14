@@ -50,6 +50,8 @@ jobs:
         run: dotnet restore src/Yetta.Desktop/Yetta.Desktop.csproj
       - name: Core smoke tests
         run: dotnet run --project tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj --configuration Release
+      - name: Windows DPAPI security smoke tests
+        run: dotnet run --project tests/Yetta.Security.Smoke/Yetta.Security.Smoke.csproj --configuration Release
       - name: Compile desktop application
         run: dotnet build src/Yetta.Desktop/Yetta.Desktop.csproj --configuration Release --no-restore -warnaserror
       - name: Publish portable single-file executable
