@@ -52,6 +52,8 @@ public partial class MainWindow : Window
         };
         ApplyTheme();
         InstallNavigationIcons();
+        Cursor = IconLibrary.CursorForState(17);
+        MainScroll.Cursor = IconLibrary.CursorForState(20);
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
         SourceInitialized += (_, _) => UpdateSystemBackdrop();
@@ -1002,7 +1004,8 @@ public partial class MainWindow : Window
             BorderBrush = Line, BorderThickness = new Thickness(1),
             FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
             FontSize = 13, Padding = new Thickness(12, 10, 12, 10),
-            CaretBrush = Accent, ToolTip = hint
+            CaretBrush = Accent, ToolTip = hint,
+            Cursor = IconLibrary.CursorForState(19)
         };
         field.KeyDown += (_, e) =>
         {
