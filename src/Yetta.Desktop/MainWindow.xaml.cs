@@ -145,7 +145,21 @@ public partial class MainWindow : Window
             SetColor("OutlineBrush", Color.FromRgb(53, 76, 83));
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
-        ThemeIndicator.Text = glass ? "Glass Preview" : "Windows 11";
+        GlassDialog.IsGlass = glass;
+        ApplyBackdrop();
+        ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11 Fluent";
+    }
+
+    private void ApplyBackdrop()
+    {
+        bool enabled = WindowsBackdrop.Configure(this, _settings.Theme == "Glass");
+        if (enabled)
+        {
+            // Opaque WPF content otherwise hides the native Acrylic backdrop.
+            SetBrush("WindowBackground", new LinearGradientBrush(
+                Color.FromArgb(125, 24, 32, 58),
+                Color.FromArgb(162, 20, 25, 46), 135));
+        }
     }
 
     private void SetTheme(string theme)
@@ -194,7 +208,7 @@ public partial class MainWindow : Window
             ["info"] = ("Информация", "Приложение, права и устройство"),
             ["console"] = ("Консоль", "Marvine и встроенные консоли Windows"),
             ["guard"] = ("DAX Guard", "Уровни доступа и их установка"),
-            ["logs"] = ("DAX Logs", "Будущий журнал событий безопасности"),
+            ["logs"] = ("DAX Logs", "Локальный журнал действий Yetta"),
             ["activity"] = ("Центр активности", "Локальные уведомления текущей сессии"),
             ["recovery"] = ("DAX Recovery", "Центр будущего восстановления"),
             ["settings"] = ("Настройки", "Предпочтения приложения"),
@@ -335,97 +349,17 @@ public partial class MainWindow : Window
 
     private void ShowDaxInfo()
     {
-        var dialog = GlassDialog.Create(this, "Yetta · DAX", 690, 565,
-            minWidth: 510, minHeight: 385);
-
-        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
-        var brandRow = new StackPanel { Orientation = Orientation.Horizontal };
-        var logoFrame = new Border
-        {
-            Width = 104, Height = 104,
-            CornerRadius = new CornerRadius(22),
-            Background = new LinearGradientBrush(
-                Color.FromArgb(88, 153, 197, 255),
-                Color.FromArgb(36, 89, 116, 178), 120),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(90, 212, 229, 255)),
-            BorderThickness = new Thickness(1),
-            Margin = new Thickness(0, 0, 17, 0),
-            Padding = new Thickness(5),
-            Child = new Image
-            {
-                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")),
-                Width = 90, Height = 90,
-                Stretch = Stretch.Uniform,
-                SnapsToDevicePixels = true
-            }
-        };
-        brandRow.Children.Add(logoFrame);
-        var brandCopy = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        brandCopy.Children.Add(new TextBlock
-        {
-            Text = "DAX", FontSize = 32, FontWeight = FontWeights.Bold,
-            Foreground = Ink
-        });
-        var pill = GlassDialog.Chip("DEFENSE & ACCESS EXECUTIVE");
-        pill.HorizontalAlignment = HorizontalAlignment.Left;
-        pill.Margin = new Thickness(0, 6, 0, 0);
-        brandCopy.Children.Add(pill);
-        brandRow.Children.Add(brandCopy);
-        header.Children.Add(brandRow);
-        var tagline = Text("Исполнительный модуль защиты и доступа", 13, muted: true);
-        tagline.Margin = new Thickness(0, 12, 0, 0);
-        header.Children.Add(tagline);
-
-        var sections = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
-        void AddFact(string title, string body)
-        {
-            var cardBody = new StackPanel();
-            cardBody.Children.Add(new TextBlock
-            {
-                Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14,
-                Foreground = Brushes.White,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-            cardBody.Children.Add(new TextBlock
-            {
-                Text = body, TextWrapping = TextWrapping.Wrap,
-                Foreground = GlassDialog.SecondaryText,
-                FontSize = 12.5, LineHeight = 19
-            });
-            sections.Children.Add(new Border
-            {
-                Background = new LinearGradientBrush(
-                    Color.FromArgb(67, 134, 165, 215),
-                    Color.FromArgb(35, 87, 106, 153), 100),
-                CornerRadius = new CornerRadius(14),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(65, 192, 215, 255)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(16, 13, 16, 13),
-                Margin = new Thickness(0, 0, 0, 10),
-                Child = cardBody
-            });
-        }
-        AddFact("Текущее состояние",
-            "Проектная спецификация. DAX runtime и привилегированные службы ещё не установлены.");
-        AddFact("Назначение",
-            "Проверять политики Yetta, помогать принимать решения и регистрировать результаты операций, инициированных приложением.");
-        AddFact("Архитектура",
-            "DAX Gate / Guard · DAX Process · DAX Threat · DAX System · DAX Audit · DAX Update");
-        AddFact("Ограничения безопасности",
-            "Нет мониторинга процессов Windows и потомков, антивирусного анализа, службы SYSTEM или средств восстановления. " +
-            "Никакая защита не заявляется как действующая.");
-
-        var footer = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        var close = GlassDialog.Button("Закрыть", primary: true);
-        close.IsCancel = true;
-        close.Click += (_, _) => dialog.Close();
-        footer.Children.Add(close);
-        dialog.Content = GlassDialog.Surface(GlassDialog.Layout(header, sections, footer));
-        dialog.ShowDialog();
+        _ = YettaWarningWindow.Show(this,
+            new WarningRequest(WarningKind.Dax, "О модуле защиты и доступа",
+                "DAX · Defense & Access eXecutive\\n\\n" +
+                "Проектная спецификация. Защищённая служба и runtime DAX ещё не установлены.\\n\\n" +
+                "Назначение: проверять политики операций Yetta, помогать принимать решения " +
+                "и регистрировать результаты действий, инициированных самой программой.\\n\\n" +
+                "Планируемая архитектура: DAX Gate / Guard, Process, Threat, System, Audit, Update.\\n\\n" +
+                "Мониторинг вредоносных программ, системная служба и автоматическое восстановление " +
+                "Windows пока не реализованы. Предупреждения Yetta не заменяют Microsoft Defender.",
+                Subject: "DAX", Publisher: "Исполнительный модуль защиты и доступа"),
+            _settings.ActiveProfile);
     }
 
     private static bool IsProcessAdministrator()
@@ -720,10 +654,24 @@ public partial class MainWindow : Window
 
     private void BuildLogs()
     {
-        AddIntro("Yetta / DAX Logs", "Журнал событий DAX",
-            "Раздел зарезервирован для аудита решений DAX Guard, проверок угроз и операций, запущенных из Yetta.");
-        AddNotice("Заглушка — нет активного логирования",
-            "DAX Process, Threat, Audit пока не реализованы. Эта страница не заявляет, что выполняется наблюдение за процессами, и не содержит фиктивных записей.");
+        AddIntro("Yetta / DAX Logs", "Журнал действий Yetta",
+            "Локальная запись предупреждений, решений и запусков из Yetta. Это не журнал Defender и не мониторинг всех процессов Windows.");
+        ContentPanel.Children.Add(Card(Text("Файл: " + DaxAudit.FilePath, 11, muted: true)));
+        if (!File.Exists(DaxAudit.FilePath))
+        {
+            AddNotice("Записей пока нет", "Журнал пополняется только после действий и предупреждений Yetta.");
+            return;
+        }
+        try
+        {
+            var tail = File.ReadLines(DaxAudit.FilePath).TakeLast(150).Reverse().ToList();
+            foreach (string record in tail)
+                ContentPanel.Children.Add(Card(Text(record, 11)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AddNotice("Журнал недоступен", ex.Message);
+        }
     }
 
     private void BuildRecovery()
@@ -924,8 +872,27 @@ public partial class MainWindow : Window
         if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
         var command = _consoleInput.Text;
         if (string.IsNullOrWhiteSpace(command)) return;
+        WarningKind? risk = DaxCommandGuard.Classify(command);
+        if (risk is WarningKind level)
+        {
+            bool allowed = YettaWarningWindow.Show(this,
+                new WarningRequest(level,
+                    "Команда требует дополнительного подтверждения",
+                    "Проверка основана на эвристике команды, а НЕ на обнаружении вирусов. " +
+                    "Команда может изменить пользовательские файлы или настройки. " +
+                    "Внимательно проверьте её содержание перед запуском.\\n\\n" + command,
+                    Subject: "Встроенная PowerShell",
+                    RequireAcknowledgement: true,
+                    RequireTty: level == WarningKind.Critical,
+                    PotentialDamage: true),
+                _settings.ActiveProfile);
+            DaxAudit.Write("powershell_preflight", allowed ? "allowed" : "denied",
+                "Command pattern category: " + level + ". Command content intentionally omitted.");
+            if (!allowed) return;
+        }
         _consoleInput.Clear();
         _consoleOutput?.Children.Add(ConsoleLine("> " + command, true));
+        DaxAudit.Write("powershell", "submitted", "Command sent through user-level shell. Text omitted.");
         try { await _embeddedShell.SendAsync(command); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or
             ObjectDisposedException)
@@ -1087,7 +1054,8 @@ public partial class MainWindow : Window
         AddSection("Визуальные ресурсы");
         AddSource("Icons8 · источник иконок", "https://icons8.ru/");
         ContentPanel.Children.Add(Card(Text(
-            "Указание Icons8 — ссылка на поставщика иконок для будущего использования. Встроенные символы текущего прототипа не являются скачанным паком Icons8. Для добавленных в будущем иконок нужно соблюдать условия Icons8.", 12, muted: true)));
+            "Иконки интерфейса и предупреждений взяты из предоставленного владельцем набора Icons8. " +
+            "Соблюдайте условия использования Icons8; указанная выше ссылка ведёт на поставщика.", 12, muted: true)));
         AddSection("Связь");
         AddSource("invzum@gmail.com", "mailto:invzum@gmail.com");
         ContentPanel.Children.Add(Card(Text(
