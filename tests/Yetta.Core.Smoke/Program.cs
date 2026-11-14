@@ -41,9 +41,11 @@ try
 finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
 var c=new ConsoleContext("Glass","Guest");
-Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("recovery"),"Mavrine help");
+Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("recovery"),"Marvine help");
 Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo=="Fluent","theme command");
 Assert(ConsoleEngine.Execute("guard",c).NavigateTo=="guard","guard navigation");
+Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
+Assert(ConsoleEngine.Execute("/snob",c).Message.Contains("не повышает права"),"reserved command cannot elevate");
 Assert(ConsoleEngine.Execute("clear",c).ClearOutput,"clear");
 Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("не поддерживается"),
     "no arbitrary PowerShell");
