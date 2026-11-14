@@ -6,10 +6,10 @@
         Width="1180" Height="760" MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
-        Background="{DynamicResource WindowBackground}"
+        Background="Transparent"
         FontFamily="./Assets/#Inter" FontSize="14">
   <shell:WindowChrome.WindowChrome>
-    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="0"
+    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="-1"
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
   <Window.Resources>
@@ -234,7 +234,7 @@
       </Setter>
     </Style>
   </Window.Resources>
-  <Grid>
+  <Grid Background="{DynamicResource WindowBackground}">
     <Grid.RowDefinitions>
       <RowDefinition Height="44"/>
       <RowDefinition Height="*"/>
@@ -275,7 +275,7 @@
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.3.5 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.4.0 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
@@ -299,6 +299,7 @@
           <TextBlock Text="БЕЗОПАСНОСТЬ" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
           <Button x:Name="NavGuard" Content="⛨   DAX Guard" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavProcess" Content="▣   DAX Process" Tag="process" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavLogs" Content="▤   DAX Logs" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavActivity" Content="◉   Центр активности" Tag="activity" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavRecovery" Content="↶   DAX Recovery" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
@@ -340,7 +341,7 @@
       <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
-          <TextBlock Text="0.3.5-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="0.4.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>

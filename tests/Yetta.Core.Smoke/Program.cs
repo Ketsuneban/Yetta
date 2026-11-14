@@ -55,4 +55,21 @@ Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false)==27,"safe i
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,false)==26,"danger icon 26");
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,true)==35,"safe-mode icon 35");
 Assert(WarningPolicy.RequiresAdditionalAcknowledgement(YettaWarningLevel.Consent),"consent checkbox required");
+Assert(WarningPolicy.RequiresTty(YettaWarningLevel.Critical,"User"),
+    "critical operation requires additional TTY key");
+Assert(!WarningPolicy.RequiresTty(YettaWarningLevel.Standard,"User"),
+    "standard operation cannot require TTY key unexpectedly");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Standard,false,"Guest")==35,
+    "guest warning status uses restricted mode icon");
+Assert(WarningPolicy.HeaderIcon(YettaWarningLevel.Dax,daxDenied:true)==33,
+    "owner-supplied DAX blocked icon");
+Assert(WarningPolicy.SubjectIcon(WarningSubjectType.PythonFile)==37,
+    "owner-supplied Python object icon");
+Assert(WarningPolicy.SubjectIcon(WarningSubjectType.Archive)==44,
+    "owner-supplied archive object icon");
+Assert(ConsoleEngine.Execute("process",c).NavigateTo=="process",
+    "new DAX Process navigation command");
+Assert(ConsoleEngine.Execute("permissions",c).Message.Contains("не повышает"),
+    "Marvine permission command cannot elevate");
+
 Console.WriteLine("All Yetta Core smoke tests passed.");

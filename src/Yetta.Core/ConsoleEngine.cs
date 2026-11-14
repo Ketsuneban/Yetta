@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.1-preview");
+    string Version = "0.4.0-preview");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false);
 
@@ -29,6 +29,12 @@ public static class ConsoleEngine
                 "overview         Главная\n" +
                 "/snob            Зарезервированная защищённая команда\n" +
                 "recovery         DAX Recovery\n" +
+                "process          DAX Process · проверки EXE\n" +
+                "date             Текущая дата\n" +
+                "time             Локальное время\n" +
+                "sysinfo          Информация об устройстве\n" +
+                "whoami           Пользователь Windows\n" +
+                "permissions      Реальные права и политика Yetta\n" +
                 "settings         Настройки\n" +
                 "sources          Источники\n" +
                 "theme fluent     Оформление Fluent\n" +
@@ -50,6 +56,15 @@ public static class ConsoleEngine
             "overview" or "home" => new ConsoleResult("Открываю главную.", NavigateTo: "overview"),
             "/snob" or "/snob help" => new ConsoleResult("Команда /snob зарезервирована для защищённых операций. Брокер DAX отсутствует; команда не запускает программы, не повышает права Windows и не отключает UAC."),
             "recovery" => new ConsoleResult("Открываю DAX Recovery.", NavigateTo: "recovery"),
+            "process" or "scan" => new ConsoleResult("Открываю DAX Process.", NavigateTo: "process"),
+            "date" => new ConsoleResult(DateTime.Now.ToString("yyyy-MM-dd")),
+            "time" => new ConsoleResult(DateTime.Now.ToString("HH:mm:ss")),
+            "whoami" => new ConsoleResult(SystemSnapshot.User),
+            "sysinfo" => new ConsoleResult(SystemSnapshot.Os + "\n" +
+                SystemSnapshot.Architecture + " · " + SystemSnapshot.Runtime + "\n" +
+                "Логические процессоры: " + SystemSnapshot.LogicalProcessors),
+            "permissions" => new ConsoleResult(AccessProfiles.Description(context.ActiveProfile) +
+                "\nВнутренний профиль Yetta не повышает Windows-права."),
             "settings" => new ConsoleResult("Открываю настройки.", NavigateTo: "settings"),
             "sources" => new ConsoleResult("Открываю источники.", NavigateTo: "sources"),
             "theme fluent" => new ConsoleResult("Включён Fluent.", SwitchThemeTo: "Fluent"),

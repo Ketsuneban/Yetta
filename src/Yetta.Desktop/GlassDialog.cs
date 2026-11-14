@@ -1,6 +1,8 @@
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
@@ -18,6 +20,8 @@ internal static class GlassDialog
     private static readonly Brush WhiteText = new SolidColorBrush(Color.FromRgb(245, 247, 255));
     internal static Brush SecondaryText { get; } =
         new SolidColorBrush(Color.FromRgb(197, 205, 224));
+
+    private static bool GlassEnabled => Application.Current.Resources["WindowBackground"] is LinearGradientBrush;
 
     internal static Window Create(Window owner, string title, double width, double height,
         double minWidth = 480, double minHeight = 360)
@@ -37,15 +41,26 @@ internal static class GlassDialog
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             WindowStyle = WindowStyle.None,
-            AllowsTransparency = true,
+            // DWM Acrylic needs a non-layered HWND; older Windows use
+            // per-pixel WPF transparency as a graceful fallback.
+            AllowsTransparency = !NativeBackdrop.Supported || !GlassEnabled,
             ShowInTaskbar = false,
             Background = Brushes.Transparent,
             Foreground = WhiteText
         };
-        // AllowsTransparency produces a WPF layered window. This enables true
-        // per-pixel transparency around the rounded surface, but NOT DWM blur;
-        // do not request an incompatible acrylic backdrop here.
+        // On Windows 11 22H2+ DWM draws Acrylic beneath the translucent client.
+        // Older Windows retain one rounded WPF surface, without claiming blur.
+        if (GlassEnabled)
+            dialog.SourceInitialized += (_, _) =>
+                NativeBackdrop.TryApply(dialog, acrylic: true);
         return dialog;
+    }
+
+    private static bool IsWithinButton(DependencyObject element)
+    {
+        for (DependencyObject? p = element; p is not null; p = VisualTreeHelper.GetParent(p))
+            if (p is ButtonBase) return true;
+        return false;
     }
 
     internal static Grid Layout(UIElement header, UIElement scrollableBody,
@@ -62,9 +77,11 @@ internal static class GlassDialog
         // and scroll content outside this row retain normal click behaviour.
         if (header is FrameworkElement dragHeader)
         {
+            dragHeader.Cursor = IconLibrary.CursorForState(18);
             dragHeader.MouseLeftButtonDown += (_, e) =>
             {
-                if (e.LeftButton != MouseButtonState.Pressed) return;
+                if (e.LeftButton != MouseButtonState.Pressed ||
+                    e.OriginalSource is DependencyObject origin && IsWithinButton(origin)) return;
                 var window = Window.GetWindow(dragHeader);
                 if (window is null) return;
                 try { window.DragMove(); }
@@ -77,7 +94,7 @@ internal static class GlassDialog
         var content = new ScrollViewer
         {
             Content = scrollableBody,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             PanningMode = PanningMode.VerticalOnly,
             Margin = new Thickness(0, 8, 0, 12)
@@ -103,11 +120,21 @@ internal static class GlassDialog
         return container;
     }
 
-    internal static UIElement Surface(UIElement content, Thickness? padding = null)
+    internal static UIElement Surface(UIElement content, Thickness? padding = null,
+        Color? tint = null, bool fatal = false)
     {
-        // There is no secondary rectangular backplate: the border below *is*
-        // the modal's full visible outline, with truly transparent pixels outside
-        // its rounded corners. Alpha lets the desktop or owner window show through.
+        // One rounded surface. The theme controls opacity and contrast, with
+        // stronger black background for already-critical fatal information.
+        bool glass = GlassEnabled;
+        var accent = tint ?? Color.FromRgb(101, 138, 190);
+        static byte Mix(byte original, byte accent, double factor) =>
+            (byte)Math.Clamp(original * (1 - factor) + accent * factor, 0, 255);
+        Color upper = fatal ? Color.FromRgb(16, 17, 23) : Color.FromRgb(
+            Mix(50, accent.R, .27), Mix(66, accent.G, .27), Mix(92, accent.B, .27));
+        Color middle = fatal ? Color.FromRgb(9, 11, 17) : Color.FromRgb(
+            Mix(25, accent.R, .14), Mix(36, accent.G, .14), Mix(58, accent.B, .14));
+        Color lower = fatal ? Color.FromRgb(4, 6, 11) : Color.FromRgb(
+            Mix(19, accent.R, .08), Mix(28, accent.G, .08), Mix(52, accent.B, .08));
         var panel = new Grid();
         var rim = new Border
         {
@@ -116,17 +143,17 @@ internal static class GlassDialog
             BorderBrush = new LinearGradientBrush(
                 Color.FromArgb(205, 225, 238, 255),
                 Color.FromArgb(65, 145, 168, 213), 130),
-            Background = new LinearGradientBrush
+            Background = glass ? new LinearGradientBrush
             {
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(226, 76, 96, 139), 0),
-                    new GradientStop(Color.FromArgb(222, 37, 48, 79), 0.45),
-                    new GradientStop(Color.FromArgb(232, 30, 39, 70), 1)
+                    new GradientStop(Color.FromArgb(224, upper.R, upper.G, upper.B), 0),
+                    new GradientStop(Color.FromArgb(225, middle.R, middle.G, middle.B), 0.45),
+                    new GradientStop(Color.FromArgb(234, lower.R, lower.G, lower.B), 1)
                 }
-            }
+            } : new SolidColorBrush(middle)
         };
         panel.Children.Add(rim);
         // Inset highlight follows the same silhouette. No square panels are
