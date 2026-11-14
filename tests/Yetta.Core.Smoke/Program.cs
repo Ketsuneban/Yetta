@@ -49,4 +49,8 @@ Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("�
     "no arbitrary PowerShell");
 Assert(ConsoleEngine.Execute("cmd /c del c:\\",c).Message.Contains("не поддерживается"),
     "no arbitrary CMD");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false)==27,"safe icon 27");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,false)==26,"danger icon 26");
+Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,true)==35,"safe-mode icon 35");
+Assert(WarningPolicy.RequiresAdditionalAcknowledgement(YettaWarningLevel.Consent),"consent checkbox required");
 Console.WriteLine("All Yetta Core smoke tests passed.");
