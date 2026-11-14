@@ -1,12 +1,13 @@
 namespace Yetta.Core;
 
-public sealed record ConsoleContext(string Theme, string Version = "0.1.0-preview");
+public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
+    string Version = "0.2.0-preview");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false);
 
 /// <summary>
-/// An intentionally allowlisted Yetta command router. It does NOT invoke
-/// PowerShell, CMD, subprocesses, registry writes, or privileged APIs.
+/// Mavrine is an original, strictly allowlisted UI command router. No shell,
+/// arbitrary process execution, registry modification or privileged actions.
 /// </summary>
 public static class ConsoleEngine
 {
@@ -17,34 +18,40 @@ public static class ConsoleEngine
         {
             "" => new ConsoleResult("Введите help для списка команд."),
             "help" => new ConsoleResult(
-                "help             Список команд\n" +
-                "version          Версия приложения\n" +
-                "status           Статус компонентов\n" +
-                "modules          Раздел модулей\n" +
-                "access           Раздел Access Manager\n" +
-                "dax              Раздел DAX\n" +
-                "settings         Настройки Yetta\n" +
-                "theme fluent     Стиль Windows 11\n" +
-                "theme glass      Стеклянный стиль\n" +
-                "clear            Очистить вывод"),
+                "help             Справка по Mavrine\n" +
+                "version          Версия Yetta\n" +
+                "status           Реальное состояние компонентов\n" +
+                "access           Текущий логический уровень\n" +
+                "info             Системная информация\n" +
+                "guard            DAX Guard\n" +
+                "logs             DAX Logs\n" +
+                "recovery         DAX Recovery\n" +
+                "settings         Настройки\n" +
+                "sources          Источники\n" +
+                "theme fluent     Оформление Fluent\n" +
+                "theme glass      Оформление Glass\n" +
+                "clear            Очистить консоль"),
             "version" or "about" => new ConsoleResult("Yetta " + context.Version +
-                "\nБезопасный интерфейсный прототип. Системные модули не активны."),
+                "\nMavrine — внутренняя консоль. SYSTEM, DAX и UAC-брокер отсутствуют."),
             "status" => new ConsoleResult(
-                "Yetta Core UI: работает\n" +
-                "Access Manager: не установлен\n" +
-                "DAX / DAX Guard: не установлены\n" +
-                "Привилегированные операции: заблокированы\n" +
-                "Текущая тема: " + context.Theme),
-            "modules" => new ConsoleResult("Открываю каталог модулей.", NavigateTo: "modules"),
-            "access" => new ConsoleResult("Открываю Access Manager (демонстрация).", NavigateTo: "access"),
-            "dax" => new ConsoleResult("Открываю DAX (демонстрация).", NavigateTo: "dax"),
-            "settings" => new ConsoleResult("Открываю настройки Yetta.", NavigateTo: "settings"),
-            "theme fluent" => new ConsoleResult("Включён стиль Windows 11.", SwitchThemeTo: "Fluent"),
-            "theme glass" => new ConsoleResult("Включён стиль Glass.", SwitchThemeTo: "Glass"),
-            "clear" => new ConsoleResult(string.Empty, ClearOutput: true),
+                "Yetta UI: работает\n" +
+                "Профиль Yetta: " + AccessProfiles.DisplayName(context.ActiveProfile) + "\n" +
+                "DAX Guard: ограничение команд внутри приложения\n" +
+                "DAX-анализ, восстановление, системный сервис: НЕ РЕАЛИЗОВАНЫ\n" +
+                "Тема: " + context.Theme),
+            "access" => new ConsoleResult(AccessProfiles.Description(context.ActiveProfile)),
+            "info" => new ConsoleResult("Открываю раздел «Информация».", NavigateTo: "info"),
+            "guard" => new ConsoleResult("Открываю DAX Guard.", NavigateTo: "guard"),
+            "logs" => new ConsoleResult("Открываю DAX Logs.", NavigateTo: "logs"),
+            "recovery" => new ConsoleResult("Открываю DAX Recovery.", NavigateTo: "recovery"),
+            "settings" => new ConsoleResult("Открываю настройки.", NavigateTo: "settings"),
+            "sources" => new ConsoleResult("Открываю источники.", NavigateTo: "sources"),
+            "theme fluent" => new ConsoleResult("Включён Fluent.", SwitchThemeTo: "Fluent"),
+            "theme glass" => new ConsoleResult("Включён Glass.", SwitchThemeTo: "Glass"),
             "theme" => new ConsoleResult("Использование: theme fluent | theme glass"),
-            _ => new ConsoleResult("Неизвестная команда: " + command +
-                "\nДоступны только команды Yetta. Введите help.")
+            "clear" => new ConsoleResult("", ClearOutput: true),
+            _ => new ConsoleResult("Команда не поддерживается: " + command +
+                "\nMavrine не выполняет системные команды. Введите help.")
         };
     }
 }
