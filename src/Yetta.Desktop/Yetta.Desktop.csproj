@@ -20,6 +20,10 @@
     <Resource Include="Assets/yetta-logo.png" />
     <Resource Include="Assets/dax-logo.png" />
     <Resource Include="Assets/icons-atlas.png" />
+    <Resource Include="Assets/Cursors/17.cur" />
+    <Resource Include="Assets/Cursors/18.cur" />
+    <Resource Include="Assets/Cursors/19.cur" />
+    <Resource Include="Assets/Cursors/20.cur" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
 </Project>
