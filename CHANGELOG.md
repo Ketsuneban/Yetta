@@ -1,5 +1,15 @@
 # Yetta Changelog
 
+## 0.3.2-preview — 2026-11-14
+
+- Hide the sidebar scrollbar without disabling mouse-wheel navigation.
+- Apply custom rounded, theme-aware scrollbar thumbs to scrolling content.
+- Replace the native DAX Guard ComboBox visuals with a rounded dropdown, themed item states and a custom arrow.
+- Integrate the Windows title bar into Yetta with a dark themed header, the original logo, and minimize/maximize/restore/close controls.
+- Retain native Windows resize borders and dragging through WPF WindowChrome.
+- No changes to OS privileges or DAX policy.
+
+
 ## 0.3.1-preview — 2026-11-14
 
 - Add the Activity Center: up to five timed toast notifications, details, entry animation and optional sound.
