@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.7-preview — 2026-11-15
+
+- Fix warning stacking: informational windows, DAX messages and all seven Settings previews can now remain open together instead of blocking the main app.
+- Fatal UI previews stay topmost, with Reset only navigating to DAX Recovery (no OS reset).
+- Retain blocking modal confirmation for actual operations such as PowerShell preflight, installer updates and TTY/key rotation: no implicit approval.
+- Preserve the owner-provided 50-icon atlas, cursors, encrypted credential storage, Yetta-only audit and Windows 11 backdrop introduced in 0.3.6.
+- Still no audited ADMIN/SYSTEM broker, complete Defender scan or automatic Windows restoration; this remains a preview.
+
+
 ## 0.3.6-preview — 2026-11-15
 
 - Add a reusable seven-variant warning UI (standard, caution, dangerous, critical, fatal, agreement, DAX) with owner-provided warning, file-type and status icons.
