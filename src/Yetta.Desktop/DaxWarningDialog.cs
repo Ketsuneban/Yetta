@@ -432,6 +432,7 @@ internal static class DaxWarningDialog
             dialog.Activate();
         }
         dialog.ShowDialog();
+        DaxAuditLog.Append(level, request.SubjectName, request.Title, decision.ToString());
         return decision;
     }
 }
