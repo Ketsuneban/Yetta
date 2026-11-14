@@ -6,10 +6,10 @@
         Width="1180" Height="760" MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
-        Background="{DynamicResource WindowBackground}"
+        Background="Transparent"
         FontFamily="./Assets/#Inter" FontSize="14">
   <shell:WindowChrome.WindowChrome>
-    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="0"
+    <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="-1"
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
   <Window.Resources>
@@ -234,7 +234,7 @@
       </Setter>
     </Style>
   </Window.Resources>
-  <Grid>
+  <Grid Background="{DynamicResource WindowBackground}">
     <Grid.RowDefinitions>
       <RowDefinition Height="44"/>
       <RowDefinition Height="*"/>
