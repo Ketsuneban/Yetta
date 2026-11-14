@@ -299,6 +299,7 @@
           <TextBlock Text="БЕЗОПАСНОСТЬ" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
           <Button x:Name="NavGuard" Content="⛨   DAX Guard" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavProcess" Content="▣   DAX Process" Tag="process" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavLogs" Content="▤   DAX Logs" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavActivity" Content="◉   Центр активности" Tag="activity" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavRecovery" Content="↶   DAX Recovery" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
