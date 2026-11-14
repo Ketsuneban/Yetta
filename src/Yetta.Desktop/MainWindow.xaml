@@ -79,7 +79,7 @@
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.2.0 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.2.1 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Top">
@@ -142,7 +142,7 @@
         <Grid Margin="34,0">
           <TextBlock Text="●  Локальный режим · системные операции отключены"
                      VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-          <TextBlock Text="0.2.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="0.2.1-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>
