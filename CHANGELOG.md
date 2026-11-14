@@ -1,5 +1,13 @@
 # Yetta Changelog
 
+## 0.3.3-preview — 2026-11-14
+
+- Fix the consent dialog layout: required checkbox is fixed above action buttons and cannot be clipped by longer text.
+- Scroll long descriptions separately without hiding agreement controls; dialog is resizable and respects display work area.
+- Keep the accept button disabled until explicit consent is checked; cancellation still works.
+- Bump version and preserve the existing in-app updater and GitHub Releases workflow.
+
+
 ## 0.3.2-preview — 2026-11-14
 
 - Hide the sidebar scrollbar without disabling mouse-wheel navigation.
