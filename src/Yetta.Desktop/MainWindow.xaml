@@ -71,7 +71,7 @@
     </Grid.ColumnDefinitions>
     <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}"
             BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,1,0">
-      <DockPanel Margin="18,23,17,22" LastChildFill="False">
+      <DockPanel Margin="18,23,17,22" LastChildFill="True">
         <StackPanel DockPanel.Dock="Bottom">
           <Border Height="1" Background="{DynamicResource OutlineBrush}" Margin="5,14"/>
           <TextBlock Text="●  DESKTOP PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
@@ -79,10 +79,10 @@
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.3.0 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.3.1 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
-        <StackPanel DockPanel.Dock="Top">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
           <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
             <Border Width="44" Height="44" CornerRadius="13"
                     Background="{DynamicResource SelectedBrush}"
@@ -104,12 +104,13 @@
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
           <Button x:Name="NavGuard" Content="⛨   DAX Guard" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavLogs" Content="▤   DAX Logs" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavActivity" Content="◉   Центр активности" Tag="activity" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavRecovery" Content="↶   DAX Recovery" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
           <Button x:Name="NavSettings" Content="⚙   Настройки" Tag="settings" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavSources" Content="↗   Источники" Tag="sources" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-        </StackPanel>
+        </StackPanel></ScrollViewer>
       </DockPanel>
     </Border>
     <Grid Grid.Column="1">
@@ -133,18 +134,18 @@
           </Border>
         </Grid>
       </Border>
-      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+      <ScrollViewer x:Name="MainScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled" Padding="34,30,34,30">
         <StackPanel x:Name="ContentPanel"/>
       </ScrollViewer>
       <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
         <Grid Margin="34,0">
-          <TextBlock Text="Иконки предоставлены сервисом Icons8 · icons8.ru"
-                     VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-          <TextBlock Text="0.3.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
+          <TextBlock Text="0.3.1-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>
+      <StackPanel x:Name="ToastHost" Grid.RowSpan="3" Panel.ZIndex="20" Width="324" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12,12,22,56"/>
     </Grid>
   </Grid>
 </Window>
