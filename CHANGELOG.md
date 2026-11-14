@@ -1,5 +1,16 @@
 # Yetta Changelog
 
+## 0.4.0-preview — 2026-11-15
+
+- Seven warning variants with exact image-role mappings and fixed action footer.
+- Added original user-supplied icon atlas (50 IDs) and cursors (17–20).
+- Added Windows CurrentUser DPAPI TTY key generation, rotation, verification and explicit copy consent.
+- Added local Yetta-only audit of profile changes, links, theme and update actions.
+- Centralized Yetta consent/information/error dialogs in glass-inspired notification windows.
+- Added best-effort DWM Mica on supported Windows 11 builds and a readable fallback; layered popups blur a local Yetta visual.
+- SYSTEM / ADMIN broker, complete anti-malware detection, ConPTY and Windows rollback are not falsely claimed to work.
+
+
 ## 0.3.5-preview — 2026-11-14
 
 - Remove the second, rectangular native frame from the glass DAX and consent windows.
