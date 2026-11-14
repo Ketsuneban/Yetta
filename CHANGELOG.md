@@ -1,5 +1,16 @@
 # Yetta Changelog
 
+## 0.3.8-preview — 2026-11-15
+
+- Integrate accumulated thin-line removal in main window shell, sidebar, cards, toasts and console.
+- Rework all seven warning visuals to a non-glass, squared Windows/Fluent-like appearance; each complete warning window is severity-tinted with high-contrast text.
+- Center pinned warning buttons and move status to the same horizontal row as the object's icon.
+- Decouple top event icon from the severity type through the optional HeaderIconId.
+- Use DPI-independent vector equivalents for the tiny original warning/status badges to avoid pixelated enlargement.
+- Replace the DAX Guard sidebar icon with the DAX logo and Sources with the owner-provided external-link PNG.
+- Preserve non-modal overlapping warning behavior, confirmation/TTY gates, audit logging and Windows permission boundaries from 0.3.7.
+
+
 ## 0.3.7-preview — 2026-11-15
 
 - Fix warning stacking: informational windows, DAX messages and all seven Settings previews can now remain open together instead of blocking the main app.
