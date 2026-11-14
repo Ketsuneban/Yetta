@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
     private DaxFileAssessment? _lastDaxAssessment;
+    private bool _acrylicApplied;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -102,8 +103,13 @@ public partial class MainWindow : Window
 
     private void UpdateSystemBackdrop()
     {
-        if (_settings.Theme == "Glass") NativeBackdrop.TryApply(this, acrylic: true);
-        else NativeBackdrop.Remove(this);
+        if (_settings.Theme == "Glass")
+            _acrylicApplied = NativeBackdrop.TryApply(this, acrylic: true);
+        else
+        {
+            NativeBackdrop.Remove(this);
+            _acrylicApplied = false;
+        }
     }
 
     private void ApplyTheme()
@@ -1072,9 +1078,18 @@ public partial class MainWindow : Window
         var modes = new WrapPanel();
         modes.Children.Add(ActionButton("Windows 11 / Fluent",
             () => SetTheme("Fluent"), primary: _settings.Theme == "Fluent"));
-        modes.Children.Add(ActionButton("Glass Preview",
+        modes.Children.Add(ActionButton("Liquid Glass",
             () => SetTheme("Glass"), primary: _settings.Theme == "Glass"));
         ContentPanel.Children.Add(modes);
+        ContentPanel.Children.Add(Card(Text(
+            _settings.Theme == "Glass"
+                ? _acrylicApplied
+                    ? "Windows приняла настройку Desktop Acrylic. Эффект размытия зависит " +
+                      "от системных параметров прозрачности и версии Windows."
+                    : "Применено запасное прозрачное оформление. Настоящий Acrylic " +
+                      "доступен в Windows 11 build 22621+ при включённых эффектах прозрачности."
+                : "Тема Fluent использует непрозрачные элементы, оформление Windows 11 " +
+                  "и не требует системного размытия.", 12, muted: true)));
 
         AddSection("Уведомления");
         var sounds = new CheckBox
