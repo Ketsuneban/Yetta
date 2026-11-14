@@ -9,13 +9,13 @@
     "repository": "https://github.com/Ketsuneban/Yetta",
     "website": "https://yetta.pages.dev/",
     "reference_website": "https://yeta-6ip.pages.dev/",
-    "phase": "Infrastructure and specification only",
-    "application_implementation_started": false,
+    "phase": "Initial Windows desktop application prototype",
+    "application_implementation_started": true,
     "source_visibility": "Public repository; source and project updates are published to GitHub.",
     "license": "Not selected yet. Public visibility alone does not grant reuse rights."
   },
   "owner_requirements": {
-    "scope_now": "Build and maintain repository, website, Cloudflare Pages, documentation, and project continuity archive. Do not start writing the Windows application until the owner explicitly asks.",
+    "scope_now": "User explicitly requested the first Windows desktop program on 2026-11-14. Initial unprivileged prototype is allowed; do not enable system-modifying or privileged capabilities without a dedicated security review.",
     "publishing": "Publish project source and relevant updates to the Yetta GitHub repository. Keep a changelog and verify public releases.",
     "security_priority": "DAX and its privileged service are critical security boundaries. A compromise of DAX could expose the host to serious risk; minimize attack surface and avoid claims of absolute immunity.",
     "user_control": "The user initiates commands and system changes. Yetta should provide tools and permissions, not autonomously modify the host."
@@ -101,7 +101,7 @@
     "github_hardening_document": "docs/security/GITHUB-HARDENING.md"
   },
   "application_concept": {
-    "status": "Not implemented; specification only.",
+    "status": "First unprivileged desktop preview implemented; privileged Access Manager, DAX and system-modification modules remain specification-only.",
     "recommended_stack_not_final": {
       "primary_language": "C#",
       "runtime": ".NET 10",
@@ -125,7 +125,29 @@
         "style": "Custom translucent glass interface with blur, layered transparency, soft reflections, and owner-provided custom icons."
       }
     ],
-    "shared_behavior": "Both visual modes use one core, one settings model, one module system, and one Access Manager. Switching modes must not reset settings."
+    "shared_behavior": "Both visual modes use one core, one settings model, one module system, and one Access Manager. Switching modes must not reset settings.",
+    "prototype": {
+      "version": "0.1.0-preview",
+      "ui_stack": "C# + .NET 10 + WPF, temporary; WinUI 3 remains an option for the future UI",
+      "project": "src/Yetta.Desktop/Yetta.Desktop.csproj",
+      "core": "src/Yetta.Core/Yetta.Core.csproj",
+      "tests": "tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj",
+      "workflow": ".github/workflows/desktop-build.yml",
+      "features": [
+        "Navigation",
+        "Fluent-inspired and Glass-inspired themes",
+        "Local JSON settings",
+        "Read-only system info",
+        "User-confirmed Windows Settings/Explorer/Windows Security launch",
+        "Allowlisted console"
+      ],
+      "limitations": [
+        "No system configuration changes",
+        "No privileged helper, elevation or UAC bypass",
+        "No functioning DAX or Access Manager",
+        "No installer or signed binary"
+      ]
+    }
   },
   "access_manager": {
     "purpose": "Unified subsystem to inspect, install, verify, and revoke Yetta's access profile.",
@@ -327,7 +349,7 @@
   ],
   "instructions_for_future_assistant": [
     "Treat this JSON and the repository documentation as the current project specification.",
-    "Do not start writing the Windows application until the owner explicitly asks.",
+    "The owner explicitly asked for the first Windows application on 2026-11-14; the unprivileged desktop preview exists. Do not treat planned security features as implemented.",
     "Continue work directly through connected GitHub and Cloudflare tools; the owner declined a Work handoff.",
     "Before modifying a repository, inspect its current state and preserve unrelated files.",
     "Keep the website at https://yetta.pages.dev/ and deploy from Ketsuneban/Yetta main, root directory site, with no build command.",

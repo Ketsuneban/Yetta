@@ -15,11 +15,11 @@
 - [ ] Define DAX threat model and process attribution limits.
 - [ ] Define TTY trust and lifecycle model.
 
-## Phase 2 — Application foundation (not started)
+## Phase 2 — Application foundation (first prototype)
 - [ ] Select final Windows UI framework and packaging.
-- [ ] Implement unprivileged app shell.
-- [ ] Implement settings and module contracts.
-- [ ] Implement tests and sandbox workflow.
+- [x] Implement first unprivileged app shell (WPF preview, not final WinUI 3).
+- [x] Implement local settings and a safe module catalogue (read-only prototype).
+- [x] Add Core smoke tests and a Windows build workflow. Interactive Windows 11 testing still pending.
 
 ## Phase 3 — Access and security foundation (not started)
 - [ ] Implement Access Manager.

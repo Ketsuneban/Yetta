@@ -1,0 +1,150 @@
+<Window x:Class="Yetta.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Yetta — Windows, on your terms."
+        Width="1180" Height="760" MinWidth="900" MinHeight="650"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackground}"
+        FontFamily="Segoe UI" FontSize="14">
+  <Window.Resources>
+    <Style x:Key="SideButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Padding" Value="16,13"/>
+      <Setter Property="Margin" Value="0,3"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Shell" Background="{TemplateBinding Background}"
+                    CornerRadius="12" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Shell" Property="Background" Value="{DynamicResource HoverBackground}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AccentForeground}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="17,11"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="ButtonChrome" Background="{TemplateBinding Background}"
+                    CornerRadius="11" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ButtonChrome" Property="Opacity" Value=".83"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="ButtonChrome" Property="Opacity" Value=".40"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+      <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+    </Style>
+  </Window.Resources>
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="238"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+    <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}"
+            BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="18,23,17,22" LastChildFill="False">
+        <StackPanel DockPanel.Dock="Bottom">
+          <Border Height="1" Background="{DynamicResource OutlineBrush}" Margin="5,14"/>
+          <TextBlock Text="●  SAFE PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
+                     FontWeight="SemiBold" Margin="8,0,0,9"/>
+          <TextBlock Text="DAX и привилегированные службы не установлены."
+                     TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
+                     FontSize="12" Margin="8,0,0,10"/>
+          <TextBlock Text="YETTA 0.1.0 · WINDOWS 11" FontSize="10"
+                     Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
+            <Border Width="44" Height="44" CornerRadius="13"
+                    Background="{DynamicResource SelectedBrush}"
+                    BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="1">
+              <TextBlock Text="Y" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="{DynamicResource AccentBrush}" FontSize="27" FontWeight="Bold"/>
+            </Border>
+            <StackPanel Margin="13,3,0,0">
+              <TextBlock Text="YETTA." Foreground="{DynamicResource TextPrimary}"
+                         FontSize="19" FontWeight="Bold"/>
+              <TextBlock Text="WINDOWS, REFINED" Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Text="РАБОЧЕЕ ПРОСТРАНСТВО" FontSize="10" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextSecondary}" Margin="13,0,0,14"/>
+          <Button x:Name="NavOverview" Content="⌂   Главная" Tag="overview" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavModules" Content="▦   Модули" Tag="modules" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavConsole" Content="⌘   Консоль" Tag="console" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <TextBlock Text="БЕЗОПАСНОСТЬ" FontSize="10" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
+          <Button x:Name="NavAccess" Content="⛨   Access Manager" Tag="access" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavDax" Content="⬡   DAX Security" Tag="dax" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="10" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
+          <Button x:Name="NavSettings" Content="⚙   Настройки" Tag="settings" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavAbout" Content="ⓘ   О проекте" Tag="about" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="82"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="46"/>
+      </Grid.RowDefinitions>
+      <Border Grid.Row="0" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="34,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock x:Name="PageTitle" Text="Главная" FontSize="20" FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"/>
+            <TextBlock x:Name="PageSubtitle" Text="Панель управления Yetta" FontSize="11"
+                       Foreground="{DynamicResource TextSecondary}"/>
+          </StackPanel>
+          <Border Grid.Column="1" VerticalAlignment="Center"
+                  Background="{DynamicResource SelectedBrush}" CornerRadius="10" Padding="12,8">
+            <TextBlock x:Name="ThemeIndicator" Text="Windows 11" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
+          </Border>
+        </Grid>
+      </Border>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled" Padding="34,30,34,30">
+        <StackPanel x:Name="ContentPanel"/>
+      </ScrollViewer>
+      <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
+        <Grid Margin="34,0">
+          <TextBlock Text="●  Локальный режим · системные операции отключены"
+                     VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+          <TextBlock Text="0.1.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+                     FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
