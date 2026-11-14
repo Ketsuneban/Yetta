@@ -43,6 +43,8 @@ public sealed class EmbeddedShellSession : IDisposable
         var process = new Process { StartInfo = start, EnableRaisingEvents = true };
         if (!process.Start()) throw new InvalidOperationException("PowerShell did not start.");
         process.StandardInput.AutoFlush = true;
+        DaxProcessTreeMonitor.Monitor(process,
+            line => onOutput("[DAX] " + line), ownsProcess: false);
         return new EmbeddedShellSession(process, onOutput);
     }
 
