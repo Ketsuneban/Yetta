@@ -77,6 +77,7 @@ internal static class GlassDialog
         // and scroll content outside this row retain normal click behaviour.
         if (header is FrameworkElement dragHeader)
         {
+            dragHeader.Cursor = IconLibrary.CursorForState(18);
             dragHeader.MouseLeftButtonDown += (_, e) =>
             {
                 if (e.LeftButton != MouseButtonState.Pressed ||
