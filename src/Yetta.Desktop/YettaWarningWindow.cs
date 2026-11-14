@@ -159,7 +159,21 @@ internal static class YettaWarningWindow
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         int objectIcon = ObjectIcon(request);
-        var subjectIcon = IconAssets.Image(objectIcon, 46);
+        var subjectIcon = request.Kind == WarningKind.Dax
+            ? new Image
+            {
+                Source = new System.Windows.Media.Imaging.BitmapImage(
+                    new Uri("pack://application:,,,/Assets/dax-logo.png")),
+                Width = 46, Height = 46, Stretch = Stretch.Uniform
+            }
+            : request.Kind == WarningKind.Agreement
+                ? new Image
+                {
+                    Source = new System.Windows.Media.Imaging.BitmapImage(
+                        new Uri("pack://application:,,,/Assets/yetta-logo.png")),
+                    Width = 46, Height = 46, Stretch = Stretch.Uniform
+                }
+                : IconAssets.Image(objectIcon, 46);
         var container = new Border
         {
             Width = 63, Height = 63, Padding = new Thickness(7),
@@ -223,8 +237,8 @@ internal static class YettaWarningWindow
 
         bool requiresCheck = request.RequireAcknowledgement ||
             request.Kind == WarningKind.Agreement;
-        bool requiresKey = request.RequireTty ||
-            request.Kind == WarningKind.Critical || activeProfile == "System";
+        bool requiresKey = request.Kind is not (WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
+            (request.RequireTty || request.Kind == WarningKind.Critical || activeProfile == "System");
 
         CheckBox? checkbox = null;
         if (requiresCheck)
@@ -416,8 +430,11 @@ internal static class YettaWarningWindow
         layout.Children.Add(scroller);
         Grid.SetRow(bottom, 2);
         layout.Children.Add(bottom);
-        window.Content = GlassDialog.Surface(layout, new Thickness(24));
+        window.Content = GlassDialog.Surface(layout, new Thickness(24), owner);
         CheckGate();
-        return window.ShowDialog() == true;
+        DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
+        bool result = window.ShowDialog() == true;
+        DaxAudit.Write("warning", result ? "accepted" : "dismissed", request.Kind + ": " + request.Reason);
+        return result;
     }
 }
