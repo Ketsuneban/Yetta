@@ -1,0 +1,324 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-11-14",
+  "project": {
+    "name": "Yetta",
+    "tagline": "Windows, on your terms.",
+    "purpose": "A future Windows 11 platform for deep customization and user-directed system management.",
+    "platform": "Windows 11",
+    "repository": "https://github.com/Ketsuneban/Yetta",
+    "website": "https://yetta.pages.dev/",
+    "reference_website": "https://yeta-6ip.pages.dev/",
+    "phase": "Infrastructure and specification only",
+    "application_implementation_started": false,
+    "source_visibility": "Public repository; source and project updates are published to GitHub.",
+    "license": "Not selected yet. Public visibility alone does not grant reuse rights."
+  },
+  "owner_requirements": {
+    "scope_now": "Build and maintain repository, website, Cloudflare Pages, documentation, and project continuity archive. Do not start writing the Windows application until the owner explicitly asks.",
+    "publishing": "Publish project source and relevant updates to the Yetta GitHub repository. Keep a changelog and verify public releases.",
+    "security_priority": "DAX and its privileged service are critical security boundaries. A compromise of DAX could expose the host to serious risk; minimize attack surface and avoid claims of absolute immunity.",
+    "user_control": "The user initiates commands and system changes. Yetta should provide tools and permissions, not autonomously modify the host."
+  },
+  "brand_and_website": {
+    "logo": "Owner-provided Yetta logo. Optimized transparent WebP is stored at site/assets/yetta-mark.webp.",
+    "visual_reference": "Use the supplied Yeta website as visual direction, not as a content template.",
+    "design_direction": {
+      "background": "Dark navy / graphite, close to #080d15.",
+      "accents": [
+        "mint",
+        "teal",
+        "soft violet",
+        "cool blue"
+      ],
+      "layout": [
+        "left navigation rail",
+        "central content area",
+        "right project/status rail"
+      ],
+      "components": [
+        "translucent glass cards",
+        "subtle ambient gradients",
+        "fine borders",
+        "soft shadows",
+        "minimal typography"
+      ],
+      "responsive": true
+    },
+    "sections": [
+      "Overview",
+      "Architecture",
+      "DAX Security",
+      "Access Manager",
+      "Roadmap",
+      "GitHub links"
+    ],
+    "static_files": [
+      "site/index.html",
+      "site/styles.css",
+      "site/app.js",
+      "site/_headers",
+      "site/404.html",
+      "site/robots.txt",
+      "site/sitemap.xml",
+      "site/assets/yetta-mark.webp"
+    ],
+    "cloudflare_pages": {
+      "project_name": "yetta",
+      "project_id": "7411d704-4297-4e45-ae90-8e151c91e4e9",
+      "canonical_domain": "https://yetta.pages.dev/",
+      "repository": "Ketsuneban/Yetta",
+      "repository_id": "1457763907",
+      "production_branch": "main",
+      "root_directory": "site",
+      "build_command": "",
+      "output_directory": ".",
+      "github_connected": true,
+      "auto_deploy": true,
+      "preview_deployments": "all branches"
+    },
+    "website_status": "Cloudflare Pages production deployment succeeded. The current production deployment ID is d1e92b6f-0614-47b1-9986-678c3c7770c2."
+  },
+  "repository_state": {
+    "repository": "Ketsuneban/Yetta",
+    "visibility": "public",
+    "default_branch": "main",
+    "initial_website_pull_request": "https://github.com/Ketsuneban/Yetta/pull/1",
+    "pull_request_status": "merged",
+    "ci_workflow": ".github/workflows/site-validation.yml",
+    "dependabot": ".github/dependabot.yml",
+    "codeowners": ".github/CODEOWNERS",
+    "security_policy": "SECURITY.md",
+    "contribution_guidelines": "CONTRIBUTING.md",
+    "changelog": "CHANGELOG.md",
+    "branch_protection": "Not configured through the currently available GitHub connector actions. Owner should enable branch protection for main in GitHub Settings.",
+    "automated_checks": [
+      "Node.js syntax check for site/app.js",
+      "Python HTML structure and local asset checks",
+      "JSON parsing"
+    ],
+    "latest_verified_ci": "Site validation passed for commit b9475028efd2870306c250120f4935004804cea3."
+  },
+  "application_concept": {
+    "status": "Not implemented; specification only.",
+    "recommended_stack_not_final": {
+      "primary_language": "C#",
+      "runtime": ".NET 10",
+      "ui": "WinUI 3 / XAML",
+      "system_integration": [
+        "Windows SDK",
+        "Win32",
+        "C++ where required"
+      ],
+      "automation": "PowerShell where suitable",
+      "local_storage": "SQLite",
+      "icon_assets": "SVG"
+    },
+    "ui_modes": [
+      {
+        "name": "Windows 11",
+        "style": "As close as practical to native Windows 11 Fluent Design and system settings."
+      },
+      {
+        "name": "iOS Glass",
+        "style": "Custom translucent glass interface with blur, layered transparency, soft reflections, and owner-provided custom icons."
+      }
+    ],
+    "shared_behavior": "Both visual modes use one core, one settings model, one module system, and one Access Manager. Switching modes must not reset settings."
+  },
+  "access_manager": {
+    "purpose": "Unified subsystem to inspect, install, verify, and revoke Yetta's access profile.",
+    "installation_model": "The user explicitly installs a profile and grants the required Windows permissions once. Granted capabilities may be reused for ordinary operations until revoked or invalidated; the app should not repeatedly prompt for the same already-granted capability.",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Guest",
+        "default": true,
+        "description": "Minimal app capabilities after installation."
+      },
+      {
+        "level": 2,
+        "name": "Safe User",
+        "description": "Read-only inspection of files and system information within the actual Windows permissions available to the process. No write, move, or delete operations."
+      },
+      {
+        "level": 3,
+        "name": "User",
+        "description": "Normal permissions of the current Windows user account."
+      },
+      {
+        "level": 4,
+        "name": "Administrator",
+        "description": "Elevated administrator operations using supported Windows consent/elevation mechanisms."
+      },
+      {
+        "level": 5,
+        "name": "System",
+        "description": "Highest planned profile, backed by a dedicated hardened service and carefully scoped system capabilities. Requires future TTY authorization for critical actions."
+      }
+    ],
+    "status_display": "Show actual token, service, and resource capabilities; do not rely only on the selected profile label.",
+    "revocation": "Stop new privileged requests, invalidate active authorization, disable/remove the helper safely, and record success or partial failure.",
+    "enforcement": "DAX Guard denies an operation before execution when the active profile is below its declared minimum."
+  },
+  "dax": {
+    "full_name": "Defense & Access eXecutive",
+    "russian_name": "Исполнительный модуль защиты и доступа",
+    "purpose": "Unified security and access subsystem. Internally divided into specialized workers; presented to the user as one coherent system.",
+    "monitoring_scope": "Only programs and commands launched through Yetta, plus their descendants. Do not monitor unrelated applications or perform machine-wide surveillance.",
+    "monitored_effects_where_attributable": [
+      "file creation, modification, move, and deletion",
+      "registry changes",
+      "service installation or changes",
+      "scheduled-task and startup changes",
+      "driver installation and changes"
+    ],
+    "components": [
+      {
+        "name": "DAX Gate",
+        "role": "Policy and authorization decision point."
+      },
+      {
+        "name": "DAX Process",
+        "role": "Launch validation and descendant process tracking."
+      },
+      {
+        "name": "DAX File",
+        "role": "File hash, signature, and reputation checks."
+      },
+      {
+        "name": "DAX System",
+        "role": "Attribution of relevant registry, service, task, and driver changes."
+      },
+      {
+        "name": "DAX Threat",
+        "role": "Microsoft Defender integration and optional threat-reputation sources."
+      },
+      {
+        "name": "DAX Audit",
+        "role": "Auditable security and operation records."
+      },
+      {
+        "name": "DAX Update",
+        "role": "Integrity and signature validation for updates."
+      }
+    ],
+    "guard": {
+      "name": "DAX Guard",
+      "rule": "Every Yetta-initiated operation must declare a minimum access profile. DAX Guard checks the active profile and denies execution when the profile is insufficient.",
+      "fail_behavior": "Fail closed if authorization, integrity, policy, or caller identity cannot be verified."
+    },
+    "warning_types": [
+      {
+        "id": "01",
+        "name": "Ordinary access request",
+        "description": "A resource permission request with Allow or Deny."
+      },
+      {
+        "id": "02",
+        "name": "Caution warning",
+        "description": "Unknown publisher, unsigned component, suspicious source, or uncertain reputation; user can inspect more details before proceeding."
+      },
+      {
+        "id": "03",
+        "name": "System-damage warning",
+        "description": "Warns when a user-requested action may damage Windows or disrupt operation; explicit Allow or Deny."
+      },
+      {
+        "id": "04",
+        "name": "Critical warning",
+        "description": "Highest System access requires future TTY (Trusted Token Yield) authorization and explicit user confirmation."
+      }
+    ],
+    "warning_design": "The owner will provide the visual design for each warning later. Yetta must not impersonate genuine Windows UAC, SmartScreen, or Defender dialogs.",
+    "virus_total": {
+      "intent": "Where possible, include VirusTotal reputation results in DAX logs when installing or moving files from removable media.",
+      "preferred_method": "Hash lookup first, especially SHA-256.",
+      "automatic_uploads": false,
+      "upload_rule": "Never upload user files automatically. Any future upload feature needs separate informed consent and an explanation that third parties may receive the file."
+    },
+    "defender_and_override": {
+      "owner_policy": "If the active access profile is Administrator or System, the user may explicitly choose to continue after DAX 02/03 warnings, including a Defender malware detection, accepting responsibility. Guest, Safe User, and User cannot override.",
+      "requirements": [
+        "clear warning and separate confirmation",
+        "audit the user's choice",
+        "never silently disable Defender",
+        "do not bypass quarantine or Windows enforcement",
+        "use supported Windows/Defender restore or allow flows where required"
+      ],
+      "limitation": "An application-level override cannot guarantee execution when Defender or Windows has quarantined or forcibly blocked the file."
+    },
+    "tty": {
+      "full_name": "Trusted Token Yield",
+      "status": "Planned; design later with the owner.",
+      "intended_use": "Critical authorization for the highest System access."
+    }
+  },
+  "security_architecture": {
+    "objectives": [
+      "Protect the host from unintended Yetta operations",
+      "Protect DAX and its privileged service from misuse by other local processes",
+      "Limit blast radius if one component is compromised"
+    ],
+    "controls": [
+      "Signed binaries and signed update manifests/packages",
+      "OS-backed secret storage such as Windows DPAPI/CNG",
+      "Authenticated local IPC and strict caller identity checks",
+      "Strict request schemas, replay protection, and per-operation capabilities",
+      "No unrestricted SYSTEM shell endpoint",
+      "Process and module isolation",
+      "ACL-protected service files, configuration, and logs",
+      "Integrity checks and fail-closed behavior",
+      "Auditable records for privileged actions",
+      "Dependency pinning and automated security checks",
+      "Safe update and recovery procedures"
+    ],
+    "threat_model": "Yetta and DAX are high-value targets. A compromise of the privileged service could expose the host to serious risk, so the service must have a very small, explicit API and never trust the UI blindly.",
+    "limitation": "No user-mode application can promise absolute protection against a compromised Windows kernel or a fully privileged host administrator."
+  },
+  "testing": {
+    "current_phase": "Infrastructure only; no Windows app to test yet.",
+    "planned_environments": [
+      "Windows Sandbox for quick disposable tests",
+      "A full Windows 11 virtual machine with snapshots/checkpoints for deep system modifications"
+    ],
+    "isolation": "Keep test VMs isolated from host files and credentials; do not assume Sandbox is a full clone of the user's machine."
+  },
+  "release_and_maintenance": {
+    "public_source": "All future application source and relevant updates should be published to GitHub.",
+    "changelog": "Update CHANGELOG.md for user-visible changes.",
+    "release_requirements": [
+      "source revision",
+      "build workflow",
+      "artifact hashes",
+      "signature status",
+      "changelog",
+      "security notes when relevant"
+    ],
+    "license_decision": "Open; ask owner before adding a license."
+  },
+  "open_decisions": [
+    "Choose the repository software license.",
+    "Configure main branch protection and required status checks in GitHub Settings.",
+    "Confirm final UI technology and packaging strategy.",
+    "Owner will supply designs for the four warning types.",
+    "Define the exact access capability matrix for all five profiles.",
+    "Design TTY issuance, storage, expiry, revocation, and trust model.",
+    "Choose the code-signing certificate and release provenance process.",
+    "Define how VirusTotal API credentials are stored and rate-limited."
+  ],
+  "instructions_for_future_assistant": [
+    "Treat this JSON and the repository documentation as the current project specification.",
+    "Do not start writing the Windows application until the owner explicitly asks.",
+    "Continue work directly through connected GitHub and Cloudflare tools; the owner declined a Work handoff.",
+    "Before modifying a repository, inspect its current state and preserve unrelated files.",
+    "Keep the website at https://yetta.pages.dev/ and deploy from Ketsuneban/Yetta main, root directory site, with no build command.",
+    "Keep all implemented-versus-planned status labels truthful.",
+    "Use the owner-provided logo at site/assets/yetta-mark.webp.",
+    "Keep DAX scoped to Yetta-launched processes and descendants, not all machine activity.",
+    "DAX Guard must block operations below the required access profile.",
+    "Remember the owner's Administrator/System override policy for warnings 02/03, while never silently disabling Defender or bypassing OS quarantine/enforcement.",
+    "Do not promise absolute security; document residual risks.",
+    "Update docs, changelog, validation workflow, and project continuity JSON when requirements change."
+  ]
+}
