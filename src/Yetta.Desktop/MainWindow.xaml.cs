@@ -261,10 +261,40 @@ public partial class MainWindow : Window
         tiles.Children.Add(SummaryTile("Уровень доступа",
             AccessProfiles.DisplayName(_settings.ActiveProfile),
             AccessProfiles.Description(_settings.ActiveProfile)));
-        tiles.Children.Add(SummaryTile("DAX", "В разработке",
-            "Анализ процессов и защита не установлены."));
+        var daxTile = SummaryTile("DAX", "В разработке",
+            "Нажмите для информации о DAX.");
+        daxTile.Cursor = Cursors.Hand;
+        daxTile.MouseLeftButtonUp += (_, _) => ShowDaxInfo();
+        tiles.Children.Add(daxTile);
         ContentPanel.Children.Add(tiles);
         AddNotice("Заглушка", "Этот блок зарезервирован для будущих сведений Yetta. Новые действия здесь не выполняются.");
+    }
+
+    private void ShowDaxInfo()
+    {
+        var window = new Window
+        {
+            Owner = this,
+            Title = "Yetta · DAX",
+            Width = 590, Height = 430, ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Resource("WindowBackground"),
+            Foreground = Ink
+        };
+        var panel = new StackPanel { Margin = new Thickness(26) };
+        panel.Children.Add(Text("DAX · Defense & Access eXecutive", 23, heading: true));
+        panel.Children.Add(Text("Исполнительный модуль защиты и доступа", 13));
+        panel.Children.Add(Text(
+            "Версия: проектная спецификация · DAX runtime ещё не установлен.\n\n" +
+            "Назначение: проверять политики Yetta, помогать пользователю принимать решения и " +
+            "регистрировать результаты операций, инициированных из Yetta.\n\n" +
+            "Планируемая внутренняя структура: DAX Gate / Guard, DAX Process, DAX Threat, " +
+            "DAX System, DAX Audit, DAX Update.\n\n" +
+            "Ограничения: нет контроля процессов Windows, мониторинга потомков, анализа антивируса, " +
+            "службы SYSTEM или восстановительных операций. Никакая защита не заявляется как действующая.", 13));
+        panel.Children.Add(ActionButton("Закрыть", window.Close));
+        window.Content = new ScrollViewer { Content = panel };
+        window.ShowDialog();
     }
 
     private static bool IsProcessAdministrator()
@@ -379,7 +409,13 @@ public partial class MainWindow : Window
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var description = new StackPanel();
-            description.Children.Add(Text(number.ToString("00") + "  " +
+            string code = profile switch
+            {
+                "Guest" => "GUEST", "SafeUser" => "sUSER",
+                "User" => "USER", "Administrator" => "ADMIN",
+                _ => "SYS"
+            };
+            description.Children.Add(Text(code + "   " +
                 AccessProfiles.DisplayName(profile), 15, heading: true));
             description.Children.Add(Text(AccessProfiles.Description(profile), 12, muted: true));
             Grid.SetColumn(description, 0);
