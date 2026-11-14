@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -202,7 +203,7 @@ internal static class YettaWarningWindow
 
         var paragraph = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(145, 18, 26, 46)),
+            Background = new SolidColorBrush(Color.FromArgb(230, 18, 26, 46)),
             BorderBrush = new SolidColorBrush(Color.FromArgb(90, accent.R, accent.G, accent.B)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),
