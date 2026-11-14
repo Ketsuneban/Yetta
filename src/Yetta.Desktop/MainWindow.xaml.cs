@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.6-preview";
+    private const string ReleaseVersion = "0.3.7-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -62,12 +62,12 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavOverview, 7, "Главная");
         IconAssets.SetNav(NavInfo, 2, "Информация");
         IconAssets.SetNav(NavConsole, 1, "Консоль");
-        IconAssets.SetNav(NavGuard, 28, "DAX Guard");
+        IconAssets.SetNavLogo(NavGuard, "dax-logo.png", "DAX Guard");
         IconAssets.SetNav(NavLogs, 8, "DAX Logs");
         IconAssets.SetNav(NavActivity, 31, "Центр активности");
         IconAssets.SetNav(NavRecovery, 9, "DAX Recovery");
         IconAssets.SetNav(NavSettings, 3, "Настройки");
-        IconAssets.SetNav(NavSources, 30, "Источники");
+        IconAssets.SetNavLogo(NavSources, "external-link.png", "Источники");
         CaptionMinimize.Content = IconAssets.Image(15, 18);
         CaptionMaximize.Content = IconAssets.Image(14, 18);
         CaptionClose.Content = IconAssets.Image(16, 18);
@@ -1046,7 +1046,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 6));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 7));
             if (latest is null)
             {
                 ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
