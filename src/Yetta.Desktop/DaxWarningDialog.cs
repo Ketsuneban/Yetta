@@ -438,7 +438,8 @@ internal static class DaxWarningDialog
 
         closeButton.Click += (_, _) => Finish(DaxWarningResult.Denied);
         dialog.Content = GlassDialog.Surface(
-            GlassDialog.Layout(fixedHeader, details, actions, verification));
+            GlassDialog.Layout(fixedHeader, details, actions, verification),
+            tint: accent, fatal: fatal);
         if (fatal)
         {
             dialog.Topmost = true;
