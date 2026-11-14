@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.6-preview";
+    private const string ReleaseVersion = "0.3.7-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -77,7 +77,7 @@ public partial class MainWindow : Window
     private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
         YettaWarningWindow.Show(this,
             new WarningRequest(kind, title, message, Subject: "Yetta"),
-            _settings.ActiveProfile);
+            _settings.ActiveProfile, nonModal: true);
 
     private bool ConfirmYettaAction(string title, string message) =>
         YettaWarningWindow.Show(this,
@@ -362,7 +362,7 @@ public partial class MainWindow : Window
                 "Мониторинг вредоносных программ, системная служба и автоматическое восстановление " +
                 "Windows пока не реализованы. Предупреждения Yetta не заменяют Microsoft Defender.",
                 Subject: "DAX", Publisher: "Исполнительный модуль защиты и доступа"),
-            _settings.ActiveProfile);
+            _settings.ActiveProfile, nonModal: true);
     }
 
     private static bool IsProcessAdministrator()
@@ -1021,7 +1021,7 @@ public partial class MainWindow : Window
                         PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
                         RecoveryNavigation: choice == WarningKind.Fatal
                             ? () => Navigate("recovery") : null),
-                    _settings.ActiveProfile);
+                    _settings.ActiveProfile, nonModal: true);
             });
             demos.Children.Add(btn);
         }
@@ -1048,7 +1048,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 6));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 7));
             if (latest is null)
             {
                 ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
