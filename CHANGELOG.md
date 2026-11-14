@@ -1,5 +1,19 @@
 # Yetta Changelog
 
+## 0.3.6-preview — 2026-11-15
+
+- Add a reusable seven-variant warning UI (standard, caution, dangerous, critical, fatal, agreement, DAX) with owner-provided warning, file-type and status icons.
+- Keep action buttons and checkbox/TTY input fixed outside the scrollable text body; display multiple independent windows, fatal always topmost.
+- Add encrypted per-user 64-character rotating TTY acknowledgement key via Windows Credential Manager; copy is explicitly warned; token never grants Windows rights.
+- Add DAX local JSONL audit and track only the child-process tree of Yetta's embedded PowerShell (not every system process).
+- Add heuristic preflight of potentially harmful user-entered PowerShell commands before execution. This is not Defender or malware detection.
+- Add 50 numbered 32x32 PNG icons atlas from the owner-provided archive; use icons in navigation and warning UI; test-only cursor 17 selected for arrow.
+- Add best-effort Windows 11 Acrylic backdrop in the Glass theme and a blurred, darkened owner surface behind own alert windows, maintaining text contrast.
+- Convert native WPF MessageBoxes into Yetta warning windows; add interactive warning previews to Settings.
+- Fatal warning "Reset" navigates to DAX Recovery; does not restore Windows until an audited recovery engine exists.
+- ADMIN/SYSTEM broker, full ConPTY and Defender threat integration remain unavailable; never silently bypass OS security.
+
+
 ## 0.3.5-preview — 2026-11-14
 
 - Remove the second, rectangular native frame from the glass DAX and consent windows.
