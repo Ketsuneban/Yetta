@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.5-preview";
+    private const string ReleaseVersion = "0.3.6-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -48,11 +48,40 @@ public partial class MainWindow : Window
             ["sources"] = NavSources
         };
         ApplyTheme();
+        InitializeIconsAndCursors();
+        SourceInitialized += (_, _) => ApplyBackdrop();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
         Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
+
+    private void InitializeIconsAndCursors()
+    {
+        IconAssets.SetNav(NavOverview, 7, "Главная");
+        IconAssets.SetNav(NavInfo, 2, "Информация");
+        IconAssets.SetNav(NavConsole, 1, "Консоль");
+        IconAssets.SetNav(NavGuard, 28, "DAX Guard");
+        IconAssets.SetNav(NavLogs, 8, "DAX Logs");
+        IconAssets.SetNav(NavActivity, 31, "Центр активности");
+        IconAssets.SetNav(NavRecovery, 9, "DAX Recovery");
+        IconAssets.SetNav(NavSettings, 3, "Настройки");
+        IconAssets.SetNav(NavSources, 30, "Источники");
+        CaptionMinimize.Content = IconAssets.Image(15, 18);
+        CaptionMaximize.Content = IconAssets.Image(14, 18);
+        CaptionClose.Content = IconAssets.Image(16, 18);
+        Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
+    }
+
+    private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
+        YettaWarningWindow.Show(this,
+            new WarningRequest(kind, title, message, Subject: "Yetta"),
+            _settings.ActiveProfile);
+
+    private bool ConfirmYettaAction(string title, string message) =>
+        YettaWarningWindow.Show(this,
+            new WarningRequest(WarningKind.Standard, title, message, Subject: "Yetta"),
+            _settings.ActiveProfile);
 
     private void OnWindowMinimize(object sender, RoutedEventArgs e) => WindowState = System.Windows.WindowState.Minimized;
 
@@ -65,7 +94,7 @@ public partial class MainWindow : Window
     {
         if (CaptionMaximize is null) return;
         bool maximized = WindowState == System.Windows.WindowState.Maximized;
-        CaptionMaximize.Content = maximized ? "❐" : "□";
+        CaptionMaximize.Content = IconAssets.Image(maximized ? 15 : 14, 18);
         CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
 
@@ -134,8 +163,7 @@ public partial class MainWindow : Window
         try { _store.Save(_settings); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Не удалось сохранить настройки:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка сохранения настроек", "Не удалось сохранить настройки:\\n" + ex.Message, WarningKind.Caution);
         }
     }
 
@@ -548,10 +576,10 @@ public partial class MainWindow : Window
     {
         if (!AccessProfiles.CanInstallLogicalProfile(profile))
         {
-            MessageBox.Show(this,
+            ShowYettaNotice("Недоступный уровень доступа",
                 "Профиль «" + AccessProfiles.DisplayName(profile) +
-                "» пока недоступен. Нельзя считать его установленным без настоящего механизма повышения прав и проверки безопасности.",
-                "DAX Guard", MessageBoxButton.OK, MessageBoxImage.Information);
+                "» пока недоступен. Для ADMIN/SYS необходим проверенный механизм Windows, а не изменение локальной настройки.",
+                WarningKind.Dax);
             return;
         }
         if (_settings.InstalledProfiles.Contains(profile))
@@ -963,8 +991,8 @@ public partial class MainWindow : Window
             "\nВнутренняя история Marvine удаляется после завершения работы.", 12, muted: true)));
         ContentPanel.Children.Add(ActionButton("Сбросить оформление", () =>
         {
-            if (MessageBox.Show(this, "Сбросить оформление и подтверждения? Уровни доступа сохранятся.",
-                "Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            if (!ConfirmYettaAction("Сброс оформления",
+                "Сбросить оформление и подтверждения? Уровни доступа сохранятся."))
                 return;
             _settings.Theme = "Fluent";
             _settings.ConfirmExternalLinks = true;
@@ -978,11 +1006,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 5));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 6));
             if (latest is null)
             {
-                MessageBox.Show(this, "Новой версии с установщиком пока нет.",
-                    "Обновления Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
                 return;
             }
             if (!ConsentDialog.Confirm(this,
@@ -1003,8 +1030,7 @@ public partial class MainWindow : Window
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException)
         {
-            MessageBox.Show(this, "Ошибка получения обновления: " + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка получения обновления", ex.Message, WarningKind.Caution);
         }
     }
 
@@ -1041,20 +1067,18 @@ public partial class MainWindow : Window
         // by Yetta's own UI. No untrusted command arguments or shell strings.
         if (target == "wt.exe" && !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
         {
-            MessageBox.Show(this, "DAX Guard: сначала примените уровень «Пользователь».",
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowYettaNotice("Недостаточный уровень доступа",
+                "DAX Guard: сначала примените уровень «Пользователь».");
             return;
         }
-        if (_settings.ConfirmExternalLinks && MessageBox.Show(this,
-            "Открыть «" + title + "» с действующими правами Windows?",
-            "Подтверждение Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question)
-            != MessageBoxResult.Yes) return;
+        if (_settings.ConfirmExternalLinks && !ConfirmYettaAction(
+            "Открыть внешний ресурс", "Открыть «" + title + "» с действующими правами Windows?")) return;
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
             InvalidOperationException or FileNotFoundException)
         {
-            MessageBox.Show(this, "Не удалось открыть «" + title + "»:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка открытия", "Не удалось открыть «" + title + "»:\\n" + ex.Message,
+                WarningKind.Caution);
         }
     }
 }
