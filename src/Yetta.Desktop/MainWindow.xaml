@@ -5,7 +5,7 @@
         Width="1180" Height="760" MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackground}"
-        FontFamily="Segoe UI" FontSize="14">
+        FontFamily="Inter" FontSize="14">
   <Window.Resources>
     <Style x:Key="SideButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
@@ -74,12 +74,12 @@
       <DockPanel Margin="18,23,17,22" LastChildFill="False">
         <StackPanel DockPanel.Dock="Bottom">
           <Border Height="1" Background="{DynamicResource OutlineBrush}" Margin="5,14"/>
-          <TextBlock Text="●  SAFE PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
+          <TextBlock Text="●  DESKTOP PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
                      FontWeight="SemiBold" Margin="8,0,0,9"/>
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.1.0 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.2.0 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Top">
@@ -99,16 +99,17 @@
           <TextBlock Text="РАБОЧЕЕ ПРОСТРАНСТВО" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,0,0,14"/>
           <Button x:Name="NavOverview" Content="⌂   Главная" Tag="overview" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavModules" Content="▦   Модули" Tag="modules" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavInfo" Content="ⓘ   Информация" Tag="info" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <Button x:Name="NavConsole" Content="⌘   Консоль" Tag="console" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <TextBlock Text="БЕЗОПАСНОСТЬ" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
-          <Button x:Name="NavAccess" Content="⛨   Access Manager" Tag="access" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavDax" Content="⬡   DAX Security" Tag="dax" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavGuard" Content="⛨   DAX Guard" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavLogs" Content="▤   DAX Logs" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavRecovery" Content="↶   DAX Recovery" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
           <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
           <Button x:Name="NavSettings" Content="⚙   Настройки" Tag="settings" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavAbout" Content="ⓘ   О проекте" Tag="about" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavSources" Content="↗   Источники" Tag="sources" Style="{StaticResource SideButton}" Click="OnNavigate"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -141,7 +142,7 @@
         <Grid Margin="34,0">
           <TextBlock Text="●  Локальный режим · системные операции отключены"
                      VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-          <TextBlock Text="0.1.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="0.2.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>
