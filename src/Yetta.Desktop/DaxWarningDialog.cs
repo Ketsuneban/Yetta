@@ -139,7 +139,8 @@ internal static class DaxWarningDialog
         headingLabel.Foreground = new SolidColorBrush(accent);
         Grid.SetColumn(headingLabel, 1);
         heading.Children.Add(headingLabel);
-        var closeButton = GlassDialog.Button("✕");
+        var closeButton = GlassDialog.Button("");
+        closeButton.Content = IconLibrary.Create(16, 18);
         closeButton.Width = 36;
         closeButton.MinWidth = 36;
         closeButton.MinHeight = 32;
@@ -157,7 +158,7 @@ internal static class DaxWarningDialog
         int subjectIcon = request.SubjectIconId ??
             (fatal ? 48 : agreement ? 2 : level == YettaWarningLevel.Dax
                 ? 29 : WarningPolicy.SubjectIcon(request.SubjectType));
-        var iconBorder = Panel(IconLibrary.Create(subjectIcon, 40),
+        var iconBorder = Panel(IconLibrary.CreateSubject(subjectIcon, request.TargetPath, 40),
             accent, new Thickness(12));
         iconBorder.Width = 68;
         iconBorder.Height = 68;
@@ -272,7 +273,8 @@ internal static class DaxWarningDialog
         Grid.SetColumn(visibleInput, 1);
         field.Children.Add(visibleInput);
         bool revealing = false;
-        var reveal = GlassDialog.Button("Показать");
+        var reveal = GlassDialog.Button("");
+        reveal.Content = IconLibrary.Create(49, 18);
         reveal.MinWidth = 90;
         reveal.MinHeight = 34;
         Grid.SetColumn(reveal, 2);
@@ -316,7 +318,7 @@ internal static class DaxWarningDialog
                 visibleInput.Text = input.Password;
                 visibleInput.Visibility = Visibility.Visible;
                 input.Visibility = Visibility.Collapsed;
-                reveal.Content = "Скрыть";
+                reveal.Content = IconLibrary.Create(50, 18);
                 visibleInput.Focus();
             }
             else
@@ -324,7 +326,7 @@ internal static class DaxWarningDialog
                 input.Password = visibleInput.Text;
                 input.Visibility = Visibility.Visible;
                 visibleInput.Visibility = Visibility.Collapsed;
-                reveal.Content = "Показать";
+                reveal.Content = IconLibrary.Create(49, 18);
                 input.Focus();
             }
         };
