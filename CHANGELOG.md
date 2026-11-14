@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.5-preview — 2026-11-14
+
+- Remove the second, rectangular native frame from the glass DAX and consent windows.
+- Use frameless WPF windows with per-pixel transparent rounded corners and one visible rounded border; retain modal behaviour.
+- Restore dragging from the window heading; retain permanently visible footer actions and consent checkbox.
+- Use transparent (alpha) layered gradient for the glass surface instead of a fully opaque rectangular backplate.
+- Document that layered WPF transparency is not native DWM blur/refraction; avoid falsely claiming it.
+
+
 ## 0.3.4-preview — 2026-11-14
 
 - Restore the owner-provided DAX mark from the original high-resolution source, replacing the blurry 40x40 asset with a clean 160x160 version.
