@@ -101,6 +101,7 @@ public partial class MainWindow : Window
         CaptionMinimize.Content = IconAtlas.Image(15, 21);
         CaptionMaximize.Content = IconAtlas.Image(14, 21);
         CaptionClose.Content = IconAtlas.Image(16, 21);
+        Cursor = CursorAssets.Pointer;
     }
 
     private void ShowNotice(string title, string message, YettaWarningLevel level = YettaWarningLevel.Information)
@@ -163,7 +164,7 @@ public partial class MainWindow : Window
             SetColor("OutlineBrush", Color.FromRgb(53, 76, 83));
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
-        ThemeIndicator.Text = glass ? "Glass Preview" : "Windows 11";
+        ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11 Fluent";
     }
 
     private void SetTheme(string theme)
@@ -174,6 +175,7 @@ public partial class MainWindow : Window
         SavePreferences();
         Navigate(_page);
         Notify("Yetta", "Оформление изменено: " + theme + ".");
+        DaxAuditLog.Write("Settings", "Theme", theme);
     }
 
     private void SavePreferences()
@@ -181,8 +183,8 @@ public partial class MainWindow : Window
         try { _store.Save(_settings); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Не удалось сохранить настройки:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowNotice("Ошибка настроек", "Не удалось сохранить настройки:\n" + ex.Message,
+                YettaWarningLevel.Caution);
         }
     }
 
@@ -988,8 +990,8 @@ public partial class MainWindow : Window
             "\nВнутренняя история Marvine удаляется после завершения работы.", 12, muted: true)));
         ContentPanel.Children.Add(ActionButton("Сбросить оформление", () =>
         {
-            if (MessageBox.Show(this, "Сбросить оформление и подтверждения? Уровни доступа сохранятся.",
-                "Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            if (!AskUser("Сбросить оформление?",
+                "Сбросить оформление и подтверждения? Логические уровни доступа сохранятся."))
                 return;
             _settings.Theme = "Fluent";
             _settings.ConfirmExternalLinks = true;
@@ -1006,8 +1008,7 @@ public partial class MainWindow : Window
             var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 5));
             if (latest is null)
             {
-                MessageBox.Show(this, "Новой версии с установщиком пока нет.",
-                    "Обновления Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
                 return;
             }
             if (!ConsentDialog.Confirm(this,
@@ -1022,14 +1023,16 @@ public partial class MainWindow : Window
 
             var path = await YettaUpdater.DownloadInstallerAsync(latest);
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            DaxAuditLog.Write("Updater", "Install " + latest.Version, "Запущено");
             Close();
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException)
         {
-            MessageBox.Show(this, "Ошибка получения обновления: " + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            DaxAuditLog.Write("Updater", "Download", "Ошибка");
+            ShowNotice("Ошибка обновления", "Ошибка получения обновления: " + ex.Message,
+                YettaWarningLevel.Caution);
         }
     }
 
@@ -1066,20 +1069,23 @@ public partial class MainWindow : Window
         // by Yetta's own UI. No untrusted command arguments or shell strings.
         if (target == "wt.exe" && !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
         {
-            MessageBox.Show(this, "DAX Guard: сначала примените уровень «Пользователь».",
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowNotice("DAX Guard", "Сначала примените логический уровень «Пользователь».",
+                YettaWarningLevel.Dax);
             return;
         }
-        if (_settings.ConfirmExternalLinks && MessageBox.Show(this,
-            "Открыть «" + title + "» с действующими правами Windows?",
-            "Подтверждение Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question)
-            != MessageBoxResult.Yes) return;
-        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+        if (_settings.ConfirmExternalLinks && !AskUser("Внешний переход",
+            "Открыть «" + title + "» с действующими правами Windows?")) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            DaxAuditLog.Write("External", "Launch URL", "Разрешено");
+        }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
             InvalidOperationException or FileNotFoundException)
         {
-            MessageBox.Show(this, "Не удалось открыть «" + title + "»:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            DaxAuditLog.Write("External", "Launch", "Ошибка");
+            ShowNotice("Ошибка открытия", "Не удалось открыть «" + title + "»:\n" + ex.Message,
+                YettaWarningLevel.Caution);
         }
     }
 }
