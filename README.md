@@ -30,7 +30,7 @@ The website is a dependency-free static site in `site/`.
 - Build command: none
 - Output directory: `site/`
 
-Cloudflare Pages is configured to serve the `site/` directory from the `main` branch at `https://yetta.pages.dev/`.
+Cloudflare Pages project `yetta` is connected to this repository and serves the `site/` directory from the `main` branch at https://yetta.pages.dev/. The site has no build step; the Pages output directory is `.` relative to the `site/` root.
 
 ## Security and responsible disclosure
 
