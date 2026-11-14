@@ -36,8 +36,8 @@
         <div class="hero">
           <div class="hero-copy"><div class="eyebrow"><i></i> WINDOWS 11 · CUSTOMIZATION PLATFORM</div>
             <h1>Windows.<br><span>На твоих условиях.</span></h1>
-            <p class="lead">Yetta — будущая платформа глубокой персонализации Windows 11. От внешнего вида до системных компонентов — с прозрачным контролем доступа и безопасностью в основе.</p>
-            <div class="actions"><a class="primary" href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">Смотреть проект <b>↗</b></a><button class="quiet" type="button" data-page="architecture">Изучить архитектуру →</button></div>
+            <p class="lead">Yetta — платформа глубокой персонализации Windows 11. Первый безопасный прототип приложения уже доступен; модули управления системой, Access Manager и DAX пока проектируются.</p>
+            <div class="actions"><a class="primary" href="https://github.com/Ketsuneban/Yetta/actions/workflows/desktop-build.yml" target="_blank" rel="noopener noreferrer">Yetta Desktop 0.1 <b>↗</b></a><button class="quiet" type="button" data-page="architecture">Изучить архитектуру →</button></div>
             <div class="facts"><span>✓ Публичная разработка</span><span>✓ Security-first</span><span>✓ Windows 11</span></div>
           </div>
           <div class="hero-art"><div class="orbit one"></div><div class="orbit two"></div><div class="logo-card"><img src="/assets/yetta-mark.webp" alt="Логотип Yetta"></div><small><i></i> BUILT AROUND USER CONTROL</small></div>
@@ -48,7 +48,7 @@
           <article class="feature"><div class="symbol violet">⛨</div><small>02 · ACCESS CONTROL</small><h3>Доступ под контролем.</h3><p>Пять уровней доступа с установкой, проверкой фактических полномочий и возможностью отзыва.</p><footer>ACCESS MANAGER <b>↗</b></footer></article>
           <article class="feature"><div class="symbol blue">⬡</div><small>03 · SECURITY</small><h3>DAX — единая защита.</h3><p>Проверка операций, контроль процессов Yetta и обязательное применение правил DAX Guard.</p><footer>DEFENSE & ACCESS <b>↗</b></footer></article>
         </div>
-        <div class="status-banner"><span>✦</span><div><b>Сейчас строим фундамент.</b><p>На этом этапе готовятся инфраструктура, сайт и спецификации. Windows-приложение и привилегированные компоненты ещё не реализованы.</p></div><small>PHASE 0</small></div>
+        <div class="status-banner"><span>✦</span><div><b>Первый Desktop Preview собран.</b><p>Работают оболочка Windows, безопасная консоль и настройки интерфейса. ZIP доступен в Artifacts последней успешной сборки GitHub Actions. DAX и системные изменения пока не реализованы.</p></div><small>PHASE 2</small></div>
       </section>
 
       <section class="page" data-view="architecture">
@@ -94,9 +94,9 @@
       <section class="page" data-view="roadmap">
         <div class="intro"><small>05 / ROADMAP</small><h1>Путь к <span>Yetta.</span></h1><p>Разработка будет идти поэтапно. Сначала инфраструктура и спецификация, затем безопасный фундамент, и только после этого — системные редакторы.</p></div>
         <div class="timeline">
-          <article class="current"><i></i><div><small>PHASE 00</small><b>Инфраструктура <em>ТЕКУЩИЙ ЭТАП</em></b><p>Публичный репозиторий, сайт, документация, политика безопасности и процесс обновлений.</p></div></article>
+          <article><i></i><div><small>PHASE 00</small><b>Инфраструктура <em>ВЫПОЛНЕНО</em></b><p>Публичный репозиторий, сайт, документация, политика безопасности и процесс обновлений.</p></div></article>
           <article><i></i><div><small>PHASE 01</small><b>Спецификация</b><p>Дизайн двух интерфейсов, предупреждения, матрица полномочий, модель угроз и TTY.</p></div></article>
-          <article><i></i><div><small>PHASE 02</small><b>Фундамент приложения</b><p>Ядро, настройки, контракт модулей, тестовая инфраструктура и виртуальная Windows.</p></div></article>
+          <article class="current"><i></i><div><small>PHASE 02</small><b>Фундамент приложения <em>ПЕРВЫЙ ПРОТОТИП</em></b><p>Есть работающая оболочка, настройки, консоль и автоматическая сборка Windows x64. Дальше — модульные контракты и интерактивное тестирование.</p></div></article>
           <article><i></i><div><small>PHASE 03</small><b>Access Manager & DAX</b><p>Менеджер доступа, узкий привилегированный брокер, DAX Guard и аудит. До включения SYSTEM — отдельный аудит безопасности.</p></div></article>
           <article><i></i><div><small>PHASE 04</small><b>Системные модули</b><p>Независимые редакторы Windows, тестирование восстановления и подписанные публичные релизы.</p></div></article>
         </div>
@@ -107,9 +107,9 @@
     </main>
 
     <aside class="rightbar">
-      <div class="rail-card"><small>PROJECT STATUS</small><div class="rail-status"><i></i> Infrastructure</div><div class="progress"><span></span></div><div class="progress-label"><span>Phase 0</span><span>Specification</span></div></div>
+      <div class="rail-card"><small>PROJECT STATUS</small><div class="rail-status"><i></i> Desktop preview</div><div class="progress"><span></span></div><div class="progress-label"><span>Phase 2</span><span>Development</span></div></div>
       <div class="rail-links"><small>QUICK LINKS</small><a href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">GitHub repository <b>↗</b></a><a href="https://github.com/Ketsuneban/Yetta/issues" target="_blank" rel="noopener noreferrer">Issues & ideas <b>↗</b></a><a href="https://github.com/Ketsuneban/Yetta/commits/main" target="_blank" rel="noopener noreferrer">Commit history <b>↗</b></a></div>
-      <div class="rail-links stack"><small>CORE SYSTEMS</small><span>● Yetta Core <i>planned</i></span><span>● Access Manager <i>planned</i></span><span>● DAX Guard <i>planned</i></span><span>● Yetta Modules <i>planned</i></span></div>
+      <div class="rail-links stack"><small>CORE SYSTEMS</small><span>● Yetta Core <i>preview</i></span><span>● Access Manager <i>planned</i></span><span>● DAX Guard <i>planned</i></span><span>● Yetta Modules <i>planned</i></span></div>
       <div class="rail-note">✦ <p>Сложность — внутри. Контроль — у пользователя.</p></div>
     </aside>
   </div>
