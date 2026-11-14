@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
@@ -70,7 +69,7 @@ internal static class YettaWarningWindow
         var path = request.SourcePath;
         if (string.IsNullOrWhiteSpace(path)) return 46;
         if (Directory.Exists(path)) return 43;
-        var ext = Path.GetExtension(path).ToLowerInvariant();
+        var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
         return ext switch
         {
             ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".svg" => 47,
