@@ -7,6 +7,8 @@ public sealed class AppSettings
     public bool ConfirmExternalLinks { get; set; } = true;
     public List<string> InstalledProfiles { get; set; } = ["Guest"];
     public string ActiveProfile { get; set; } = "Guest";
+    // Consent to the embedded user-level PowerShell session; never grants OS privileges.
+    public bool EmbeddedShellConsentGranted { get; set; } = false;
 
     public void Normalize()
     {
