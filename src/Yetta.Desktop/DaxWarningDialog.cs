@@ -241,10 +241,18 @@ internal static class DaxWarningDialog
         field.ColumnDefinitions.Add(new ColumnDefinition
             { Width = new GridLength(1, GridUnitType.Star) });
         field.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var keyIcon = IconLibrary.Create(36, 26);
-        keyIcon.Margin = new Thickness(0, 0, 12, 0);
-        keyIcon.VerticalAlignment = VerticalAlignment.Center;
-        field.Children.Add(keyIcon);
+        var keyIcon = IconLibrary.Create(36, 25);
+        var keyIconFrame = new Border
+        {
+            Width = 37, Height = 37,
+            CornerRadius = new CornerRadius(9),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(accent),
+            Background = new SolidColorBrush(Color.FromArgb(80, accent.R, accent.G, accent.B)),
+            Margin = new Thickness(0, 0, 10, 0),
+            Child = keyIcon
+        };
+        field.Children.Add(keyIconFrame);
         var input = new PasswordBox
         {
             MaxLength = 64,
@@ -274,11 +282,18 @@ internal static class DaxWarningDialog
         };
         Grid.SetColumn(visibleInput, 1);
         field.Children.Add(visibleInput);
+        var placeholder = Label("TTY-Ключ", 12);
+        placeholder.IsHitTestVisible = false;
+        placeholder.VerticalAlignment = VerticalAlignment.Center;
+        placeholder.Margin = new Thickness(12, 0, 0, 0);
+        Grid.SetColumn(placeholder, 1);
+        field.Children.Add(placeholder);
         bool revealing = false;
         var reveal = GlassDialog.Button("");
         reveal.Content = IconLibrary.Create(49, 18);
-        reveal.MinWidth = 90;
-        reveal.MinHeight = 34;
+        reveal.MinWidth = 47;
+        reveal.MinHeight = 36;
+        reveal.ToolTip = "Показать TTY-ключ";
         Grid.SetColumn(reveal, 2);
         field.Children.Add(reveal);
         var keyStatus = Label("Введите свой 64-символьный TTY-ключ", 11);
@@ -303,6 +318,11 @@ internal static class DaxWarningDialog
                 verified ? Colors.LightGreen : Colors.Salmon;
             input.BorderBrush = new SolidColorBrush(border);
             visibleInput.BorderBrush = new SolidColorBrush(border);
+            keyIconFrame.BorderBrush = new SolidColorBrush(border);
+            keyIconFrame.Background = new SolidColorBrush(
+                Color.FromArgb(63, border.R, border.G, border.B));
+            placeholder.Visibility = value.Length == 0
+                ? Visibility.Visible : Visibility.Collapsed;
         }
         input.PasswordChanged += (_, _) =>
         {
@@ -321,6 +341,7 @@ internal static class DaxWarningDialog
                 visibleInput.Visibility = Visibility.Visible;
                 input.Visibility = Visibility.Collapsed;
                 reveal.Content = IconLibrary.Create(50, 18);
+                reveal.ToolTip = "Скрыть TTY-ключ";
                 visibleInput.Focus();
             }
             else
@@ -329,6 +350,7 @@ internal static class DaxWarningDialog
                 input.Visibility = Visibility.Visible;
                 visibleInput.Visibility = Visibility.Collapsed;
                 reveal.Content = IconLibrary.Create(49, 18);
+                reveal.ToolTip = "Показать TTY-ключ";
                 input.Focus();
             }
         };
