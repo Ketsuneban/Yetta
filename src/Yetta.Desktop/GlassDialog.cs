@@ -119,12 +119,21 @@ internal static class GlassDialog
         return container;
     }
 
-    internal static UIElement Surface(UIElement content, Thickness? padding = null)
+    internal static UIElement Surface(UIElement content, Thickness? padding = null,
+        Color? tint = null, bool fatal = false)
     {
-        // There is no secondary rectangular backplate: the border below *is*
-        // the modal's full visible outline, with truly transparent pixels outside
-        // its rounded corners. Alpha lets the desktop or owner window show through.
+        // One rounded surface. The theme controls opacity and contrast, with
+        // stronger black background for already-critical fatal information.
         bool glass = GlassEnabled;
+        var accent = tint ?? Color.FromRgb(101, 138, 190);
+        static byte Mix(byte original, byte accent, double factor) =>
+            (byte)Math.Clamp(original * (1 - factor) + accent * factor, 0, 255);
+        Color upper = fatal ? Color.FromRgb(16, 17, 23) : Color.FromRgb(
+            Mix(50, accent.R, .27), Mix(66, accent.G, .27), Mix(92, accent.B, .27));
+        Color middle = fatal ? Color.FromRgb(9, 11, 17) : Color.FromRgb(
+            Mix(25, accent.R, .14), Mix(36, accent.G, .14), Mix(58, accent.B, .14));
+        Color lower = fatal ? Color.FromRgb(4, 6, 11) : Color.FromRgb(
+            Mix(19, accent.R, .08), Mix(28, accent.G, .08), Mix(52, accent.B, .08));
         var panel = new Grid();
         var rim = new Border
         {
@@ -139,11 +148,11 @@ internal static class GlassDialog
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(174, 57, 77, 113), 0),
-                    new GradientStop(Color.FromArgb(196, 24, 36, 63), 0.45),
-                    new GradientStop(Color.FromArgb(211, 20, 29, 56), 1)
+                    new GradientStop(Color.FromArgb(224, upper.R, upper.G, upper.B), 0),
+                    new GradientStop(Color.FromArgb(225, middle.R, middle.G, middle.B), 0.45),
+                    new GradientStop(Color.FromArgb(234, lower.R, lower.G, lower.B), 1)
                 }
-            } : new SolidColorBrush(Color.FromRgb(25, 36, 49))
+            } : new SolidColorBrush(middle)
         };
         panel.Children.Add(rim);
         // Inset highlight follows the same silhouette. No square panels are
