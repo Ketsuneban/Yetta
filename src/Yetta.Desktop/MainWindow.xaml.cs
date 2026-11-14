@@ -48,8 +48,25 @@ public partial class MainWindow : Window
             ["sources"] = NavSources
         };
         ApplyTheme();
+        UpdateCaptionState();
+        StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
         Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
+    }
+
+    private void OnWindowMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void OnWindowMaximize(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void OnWindowClose(object sender, RoutedEventArgs e) => Close();
+
+    private void UpdateCaptionState()
+    {
+        if (CaptionMaximize is null) return;
+        bool maximized = WindowState == WindowState.Maximized;
+        CaptionMaximize.Content = maximized ? "❐" : "□";
+        CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
 
     private static Brush Resource(string key) => (Brush)Application.Current.Resources[key];
@@ -382,10 +399,7 @@ public partial class MainWindow : Window
 
         var choices = new ComboBox
         {
-            Foreground = Ink,
-            Background = Surface,
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
+            Style = (Style)FindResource("AccessCombo"),
             Margin = new Thickness(0, 16, 0, 0),
             MaxWidth = 350,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -399,7 +413,7 @@ public partial class MainWindow : Window
                 Tag = profile,
                 Content = (profile == _settings.ActiveProfile ? "✓  " : "    ") + AccessProfiles.DisplayName(profile),
                 Foreground = Ink,
-                Background = Surface
+                Background = Brushes.Transparent
             };
             choices.Items.Add(item);
             if (profile == _settings.ActiveProfile) choices.SelectedItem = item;
