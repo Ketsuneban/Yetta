@@ -30,6 +30,14 @@ internal static class WindowsBackdrop
         {
             int dark = 1;
             _ = DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));
+            // DWMWA_BORDER_COLOR = 34; DWMWA_COLOR_NONE = 0xFFFFFFFE.
+            // Windows 11 draws a native hairline around otherwise borderless
+            // WindowChrome windows. Turn off that decorative DWM stroke.
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
+                int noBorder = unchecked((int)0xFFFFFFFE);
+                _ = DwmSetWindowAttribute(hwnd, 34, ref noBorder, sizeof(int));
+            }
             int corners = 2;
             _ = DwmSetWindowAttribute(hwnd, 33, ref corners, sizeof(int));
             if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
