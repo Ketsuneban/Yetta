@@ -228,8 +228,7 @@ internal static class YettaWarningWindow
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var titleIcon = IconAssets.Image(HeadingIcon(request), 30);
-        RenderOptions.SetBitmapScalingMode(titleIcon, BitmapScalingMode.HighQuality);
+        var titleIcon = IconAssets.WarningGlyph(HeadingIcon(request), 30);
         titleIcon.Margin = new Thickness(0, 0, 12, 0);
         top.Children.Add(titleIcon);
         var heading = Label(Title(request.Kind) + " · " + request.Reason, 17, Pale, bold: true);
@@ -320,8 +319,7 @@ internal static class YettaWarningWindow
         int state = Status(request, activeProfile);
         if (state != 0)
         {
-            var status = IconAssets.Image(state, 30);
-            RenderOptions.SetBitmapScalingMode(status, BitmapScalingMode.HighQuality);
+            var status = IconAssets.WarningGlyph(state, 30);
             status.Margin = new Thickness(16, 0, 2, 0);
             status.HorizontalAlignment = HorizontalAlignment.Center;
             status.VerticalAlignment = VerticalAlignment.Center;
