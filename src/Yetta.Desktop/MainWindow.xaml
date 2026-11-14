@@ -5,7 +5,7 @@
         Width="1180" Height="760" MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackground}"
-        FontFamily="Inter" FontSize="14">
+        FontFamily="./Assets/#Inter" FontSize="14">
   <Window.Resources>
     <Style x:Key="SideButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
