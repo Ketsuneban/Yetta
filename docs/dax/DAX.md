@@ -41,7 +41,7 @@ The visual design for these warnings will be supplied by the project owner later
 
 ## Malware override policy
 
-The project owner wants an Administrator or System profile to be able to explicitly continue after selected DAX 02/03 warnings, accepting responsibility. Lower profiles must not override DAX Guard. Defender-confirmed malware should remain blocked by default; any future exception requires a separately designed, highly visible, auditable policy and must not silently disable Defender or bypass quarantine.
+The project owner explicitly requires that an active **Administrator** or **System** profile may choose to continue after a DAX 02/03 warning, including a Defender malware detection, after a clear warning and a separate explicit confirmation. Guest, Safe User, and User profiles cannot override these warnings or DAX Guard. The decision and acknowledgement must be recorded in the audit log, and responsibility for the decision belongs to the user. This is a product-policy requirement, not a promise that every blocked file can technically be launched: if Microsoft Defender has quarantined or forcibly blocked a file, Yetta must use supported Windows/Defender restore or allow flows initiated by the user. DAX must not silently disable Defender, tamper with its configuration, or bypass Windows enforcement.
 
 ## Privileged service security
 
