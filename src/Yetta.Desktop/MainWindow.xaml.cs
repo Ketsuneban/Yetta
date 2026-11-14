@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.4-preview";
+    private const string ReleaseVersion = "0.3.5-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -978,7 +978,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 4));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 5));
             if (latest is null)
             {
                 MessageBox.Show(this, "Новой версии с установщиком пока нет.",
