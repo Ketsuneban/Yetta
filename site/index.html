@@ -10,7 +10,6 @@
   <title>Yetta — Windows, on your terms.</title>
   <link rel="icon" href="/assets/yetta-mark.webp" type="image/webp">
   <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
 </head>
 <body>
   <div class="ambient ambient-a" aria-hidden="true"></div><div class="ambient ambient-b" aria-hidden="true"></div>
@@ -19,25 +18,21 @@
       <a class="brand" href="#overview" data-page="overview"><span class="brand-mark"><img src="/assets/yetta-mark.webp" alt=""></span><span>YETTA<span class="dot">.</span></span></a>
       <div class="nav-label">ПРОЕКТ</div>
       <nav class="nav" aria-label="Навигация">
-        <button class="nav-item active" type="button" data-page="overview"><span>⌂</span>Обзор</button>
-        <button class="nav-item" type="button" data-page="architecture"><span>◈</span>Архитектура</button>
-        <button class="nav-item" type="button" data-page="dax"><span>⬡</span>DAX Security</button>
-        <button class="nav-item" type="button" data-page="access"><span>⛨</span>Уровни доступа</button>
-        <button class="nav-item" type="button" data-page="roadmap"><span>⌁</span>Планы</button>
+        <a class="nav-item active" href="#overview" aria-current="page"><span>⌂</span>Главная</a>
         <a class="nav-item" href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer"><span>⌘</span>GitHub <b>↗</b></a>
       </nav>
-      <div class="sidebar-bottom"><div class="status"><i></i>Проект развивается</div><p>Инструменты, которые дают пользователю контроль над собственной системой.</p><small>INFRASTRUCTURE · 0.1.0</small></div>
+      <div class="sidebar-bottom"><div class="status"><i></i>Проект развивается</div><p>Инструменты, которые дают пользователю контроль над собственной системой.</p><small>DESKTOP PREVIEW · 0.2.0</small></div>
     </aside>
 
     <main class="main">
-      <header class="topbar"><div class="crumb">Yetta <i>/</i> <strong id="section-name">Обзор</strong></div><div class="top-actions"><span class="open-pill"><i></i> OPEN DEVELOPMENT</span><a class="github-link" href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">Исходный код ↗</a></div></header>
+      <header class="topbar"><div class="crumb">Yetta <i>/</i> <strong id="section-name">Главная</strong></div><div class="top-actions"><span class="open-pill"><i></i> OPEN DEVELOPMENT</span><a class="github-link" href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">Исходный код ↗</a></div></header>
 
       <section class="page active" data-view="overview">
         <div class="hero">
           <div class="hero-copy"><div class="eyebrow"><i></i> WINDOWS 11 · CUSTOMIZATION PLATFORM</div>
             <h1>Windows.<br><span>На твоих условиях.</span></h1>
-            <p class="lead">Yetta — платформа глубокой персонализации Windows 11. Первый безопасный прототип приложения уже доступен; модули управления системой, Access Manager и DAX пока проектируются.</p>
-            <div class="actions"><a class="primary" href="https://github.com/Ketsuneban/Yetta/actions/workflows/desktop-build.yml" target="_blank" rel="noopener noreferrer">Yetta Desktop 0.1 <b>↗</b></a><button class="quiet" type="button" data-page="architecture">Изучить архитектуру →</button></div>
+            <p class="lead">Yetta — платформа глубокой персонализации Windows 11. Первый прототип приложения доступен на GitHub. DAX и привилегированные модули разрабатываются отдельно с проверками безопасности.</p>
+            <div class="actions"><a class="primary" href="https://github.com/Ketsuneban/Yetta/releases/latest" target="_blank" rel="noopener noreferrer">Скачать Yetta <b>↗</b></a></div>
             <div class="facts"><span>✓ Публичная разработка</span><span>✓ Security-first</span><span>✓ Windows 11</span></div>
           </div>
           <div class="hero-art"><div class="orbit one"></div><div class="orbit two"></div><div class="logo-card"><img src="/assets/yetta-mark.webp" alt="Логотип Yetta"></div><small><i></i> BUILT AROUND USER CONTROL</small></div>
@@ -48,70 +43,12 @@
           <article class="feature"><div class="symbol violet">⛨</div><small>02 · ACCESS CONTROL</small><h3>Доступ под контролем.</h3><p>Пять уровней доступа с установкой, проверкой фактических полномочий и возможностью отзыва.</p><footer>ACCESS MANAGER <b>↗</b></footer></article>
           <article class="feature"><div class="symbol blue">⬡</div><small>03 · SECURITY</small><h3>DAX — единая защита.</h3><p>Проверка операций, контроль процессов Yetta и обязательное применение правил DAX Guard.</p><footer>DEFENSE & ACCESS <b>↗</b></footer></article>
         </div>
-        <div class="status-banner"><span>✦</span><div><b>Первый Desktop Preview собран.</b><p>Работают оболочка Windows, безопасная консоль и настройки интерфейса. ZIP доступен в Artifacts последней успешной сборки GitHub Actions. DAX и системные изменения пока не реализованы.</p></div><small>PHASE 2</small></div>
-      </section>
-
-      <section class="page" data-view="architecture">
-        <div class="intro"><small>02 / ARCHITECTURE</small><h1>Система,<br><span>а не набор кнопок.</span></h1><p>Yetta проектируется как модульная платформа: единое ядро, независимые редакторы и отдельная граница привилегий.</p></div>
-        <div class="architecture">
-          <div class="node main-node"><small>APPLICATION LAYER</small><b>Yetta Core</b><span>Настройки · Модули · Консоль · Обновления</span></div><i class="connector"></i>
-          <div class="node-grid"><div class="node"><b>Access Manager</b><span>Профили и полномочия</span></div><div class="node dax-node"><b>DAX</b><span>Политики · Анализ · Контроль</span></div><div class="node"><b>Module Host</b><span>Независимые редакторы</span></div></div>
-          <i class="connector"></i><div class="node main-node"><small>WINDOWS PLATFORM</small><b>Windows 11</b><span>Win32 · Registry · Services · Components · Files</span></div>
-        </div>
-        <div class="note"><b>ⓘ</b><p>Это целевая архитектура, а не описание уже выпущенного ПО. Привилегированные операции будут проходить через узкий проверяемый интерфейс, а не через произвольное выполнение команд от SYSTEM.</p></div>
-        <div class="section-head compact"><div><small>DESIGN PRINCIPLES</small><h2>Основные принципы</h2></div></div>
-        <div class="principles"><article><b>Изоляция</b><p>UI, модули и привилегированные операции не должны делить один уровень доверия.</p></article><article><b>Проверяемость</b><p>Каждое действие имеет требования, результат и запись в журнале.</p></article><article><b>Расширяемость</b><p>Новые редакторы подключаются через документированные контракты.</p></article><article><b>Восстановление</b><p>Резервные копии и откат проектируются вместе с операциями.</p></article></div>
-      </section>
-
-      <section class="page" data-view="dax">
-        <div class="intro"><small>03 / DEFENSE & ACCESS EXECUTIVE</small><h1><span>DAX.</span><br>Контроль каждого действия.</h1><p>Единая система защиты и доступа, технически разделённая на специализированные компоненты.</p></div>
-        <div class="dax-card"><div class="dax-mark">⬡</div><div><small>DAX · SECURITY SUBSYSTEM</small><h2>Defense & Access eXecutive</h2><p>Исполнительный модуль защиты и доступа</p></div><b>PLANNED</b></div>
-        <div class="section-head compact"><div><small>INTERNAL WORKERS</small><h2>Одна система. Разные задачи.</h2></div></div>
-        <div class="workers">
-          <article><i>01</i><div><b>DAX Gate</b><p>Проверка уровня допуска, политик и авторизации до выполнения операции.</p></div><small>PLANNED</small></article>
-          <article><i>02</i><div><b>DAX Process</b><p>Отслеживание процессов, запущенных через Yetta, и их дочерних процессов.</p></div><small>PLANNED</small></article>
-          <article><i>03</i><div><b>DAX Threat</b><p>Интеграция с Microsoft Defender и опциональная проверка репутации файлов.</p></div><small>PLANNED</small></article>
-          <article><i>04</i><div><b>DAX System</b><p>Атрибуция связанных изменений файлов, реестра, служб, задач и драйверов — где это технически возможно.</p></div><small>PLANNED</small></article>
-          <article><i>05</i><div><b>DAX Audit</b><p>Журнал решений, запросов, предупреждений и результатов операций.</p></div><small>PLANNED</small></article>
-          <article><i>06</i><div><b>DAX Update</b><p>Проверка подписи и целостности обновлений приложения и компонентов.</p></div><small>PLANNED</small></article>
-        </div>
-        <div class="warning"><b>Безопасность прежде всего</b><p>DAX не будет обещать абсолютную неуязвимость. Его задача — уменьшать поверхность атаки, изолировать привилегии, проверять каждую команду и безопасно отказывать при нарушении целостности или политики.</p></div>
-        <div class="note"><b>ⓘ</b><p>VirusTotal рассматривается как дополнительный источник репутации: сначала поиск по хешу. Автоматическая отправка пользовательских файлов не планируется.</p></div>
-      </section>
-
-      <section class="page" data-view="access">
-        <div class="intro"><small>04 / ACCESS MANAGER</small><h1>Пять уровней.<br><span>Ясные границы.</span></h1><p>Пользователь устанавливает нужный уровень доступа и может отозвать его. Интерфейс показывает реальные полномочия, а не только выбранное название.</p></div>
-        <div class="access-list">
-          <article><i>01</i><div><b>Гость <em>ПО УМОЛЧАНИЮ</em></b><p>Минимальные возможности приложения сразу после установки.</p></div><small>BASE</small></article>
-          <article><i>02</i><div><b>Безопасный пользователь</b><p>Режим чтения и анализа в пределах реально доступных Windows разрешений.</p></div><small>READ</small></article>
-          <article><i>03</i><div><b>Пользователь</b><p>Стандартные возможности текущей учётной записи Windows.</p></div><small>USER</small></article>
-          <article><i>04</i><div><b>Администратор</b><p>Повышенные операции через штатный механизм согласия Windows.</p></div><small>ADMIN</small></article>
-          <article class="system"><i>05</i><div><b>Система <em>КРИТИЧЕСКИЙ</em></b><p>Отдельная привилегированная служба и строго ограниченный набор авторизуемых операций. Требуется будущая система TTY.</p></div><small>SYSTEM</small></article>
-        </div>
-        <div class="note"><b>ⓘ</b><p>Установка профиля не означает безграничных прав. DAX Guard должен проверять фактический токен, доступность ресурса и минимальный уровень, требуемый конкретной операцией.</p></div>
-      </section>
-
-      <section class="page" data-view="roadmap">
-        <div class="intro"><small>05 / ROADMAP</small><h1>Путь к <span>Yetta.</span></h1><p>Разработка будет идти поэтапно. Сначала инфраструктура и спецификация, затем безопасный фундамент, и только после этого — системные редакторы.</p></div>
-        <div class="timeline">
-          <article><i></i><div><small>PHASE 00</small><b>Инфраструктура <em>ВЫПОЛНЕНО</em></b><p>Публичный репозиторий, сайт, документация, политика безопасности и процесс обновлений.</p></div></article>
-          <article><i></i><div><small>PHASE 01</small><b>Спецификация</b><p>Дизайн двух интерфейсов, предупреждения, матрица полномочий, модель угроз и TTY.</p></div></article>
-          <article class="current"><i></i><div><small>PHASE 02</small><b>Фундамент приложения <em>ПЕРВЫЙ ПРОТОТИП</em></b><p>Есть работающая оболочка, настройки, консоль и автоматическая сборка Windows x64. Дальше — модульные контракты и интерактивное тестирование.</p></div></article>
-          <article><i></i><div><small>PHASE 03</small><b>Access Manager & DAX</b><p>Менеджер доступа, узкий привилегированный брокер, DAX Guard и аудит. До включения SYSTEM — отдельный аудит безопасности.</p></div></article>
-          <article><i></i><div><small>PHASE 04</small><b>Системные модули</b><p>Независимые редакторы Windows, тестирование восстановления и подписанные публичные релизы.</p></div></article>
-        </div>
-        <div class="roadmap-card"><b>Прозрачная разработка.</b><p>Изменения проекта будут отражаться в GitHub и журнале изменений. Незапущенные функции всегда помечаются как запланированные.</p><a href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">Следить за разработкой на GitHub ↗</a></div>
+        <div class="status-banner"><span>✦</span><div><b>Yetta Desktop 0.2.0-preview — первый открытый релиз.</b><p>Работают оболочка Windows, безопасная консоль и настройки интерфейса. EXE публикуется напрямую в GitHub Releases. DAX и системные изменения пока не реализованы.</p></div><small>PHASE 2</small></div>
       </section>
 
       <footer class="footer"><div><img src="/assets/yetta-mark.webp" alt=""><b>YETTA<span class="dot">.</span></b></div><span>Windows, on your terms.</span><small>OPEN DEVELOPMENT · 2026</small></footer>
     </main>
 
-    <aside class="rightbar">
-      <div class="rail-card"><small>PROJECT STATUS</small><div class="rail-status"><i></i> Desktop preview</div><div class="progress"><span></span></div><div class="progress-label"><span>Phase 2</span><span>Development</span></div></div>
-      <div class="rail-links"><small>QUICK LINKS</small><a href="https://github.com/Ketsuneban/Yetta" target="_blank" rel="noopener noreferrer">GitHub repository <b>↗</b></a><a href="https://github.com/Ketsuneban/Yetta/issues" target="_blank" rel="noopener noreferrer">Issues & ideas <b>↗</b></a><a href="https://github.com/Ketsuneban/Yetta/commits/main" target="_blank" rel="noopener noreferrer">Commit history <b>↗</b></a></div>
-      <div class="rail-links stack"><small>CORE SYSTEMS</small><span>● Yetta Core <i>preview</i></span><span>● Access Manager <i>planned</i></span><span>● DAX Guard <i>planned</i></span><span>● Yetta Modules <i>planned</i></span></div>
-      <div class="rail-note">✦ <p>Сложность — внутри. Контроль — у пользователя.</p></div>
-    </aside>
-  </div>
+    </div>
 </body>
 </html>

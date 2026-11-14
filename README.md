@@ -1,45 +1,72 @@
 # Yetta
 
-**Yetta** is an evolving Windows 11 customization and system-management project. The repository includes the public website, architecture and security documentation, and an initial **unprivileged Windows desktop preview (0.1.0-preview)**. Advanced system editing, Access Manager and DAX are not implemented.
+**Yetta** — открытый инструмент персонализации Windows 11, который разрабатывается поэтапно. Сейчас доступна **Yetta Desktop 0.2.0-preview**: графическая оболочка и ограниченные функции. Это **не** готовый системный твикер, антивирус или средство получения прав SYSTEM.
 
-- Website: https://yetta.pages.dev/
-- Repository: https://github.com/Ketsuneban/Yetta
-- Reference design: https://yeta-6ip.pages.dev/
+**Сайт:** https://yetta.pages.dev/ · **Исходный код:** https://github.com/Ketsuneban/Yetta · **Связь:** invzum@gmail.com
 
-## Project status
+## Скачать EXE
 
-The project has entered the desktop application foundation phase. A Windows UI prototype is included, but **no Windows service, privileged helper, working Access Manager, DAX executable, or system-modification features** are shipped.
+**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.2.0-preview)**
 
-## Planned systems
+На странице релиза откройте **Assets → Yetta.exe**. Это отдельный исполняемый файл **для Windows 11 x64**, не ZIP. Он публикуется только после успешной автоматической сборки и проверок ядра. Для запуска отдельный .NET Runtime не нужен.
 
-- **Yetta Core** — the future Windows application shell and module host.
-- **Access Manager** — five user-selected access profiles: Guest, Safe User, User, Administrator, and System.
-- **DAX (Defense & Access eXecutive)** — a unified security and access subsystem. DAX is intended to govern only processes and operations initiated through Yetta, including relevant descendants and their system effects.
-- **DAX Guard** — enforces the minimum access profile required by each operation.
-- **Yetta Console** — a user-operated command interface; Yetta should not autonomously make system changes.
+Проверьте хеш файла по `SHA256SUMS.txt`, опубликованному рядом с EXE. Это **не цифровая подпись**. В этой версии подписанного установщика нет. **Если антивирус блокирует файл, не отключайте защиту и не добавляйте его в исключения**: сообщите о проблеме в [Issues](https://github.com/Ketsuneban/Yetta/issues).
 
-See `docs/` for the public architecture and security specifications. The first app prototype is in [`src/Yetta.Desktop`](src/Yetta.Desktop), with build instructions in [`src/Yetta.Desktop/README.md`](src/Yetta.Desktop/README.md).
+## Что работает в 0.2.0-preview
 
-The private, encrypted assistant continuity archive is stored at [`Project/Yetta_Continuity_AES256.zip`](Project/Yetta_Continuity_AES256.zip). It contains project-owner instructions for future development sessions. The archive password is supplied separately by the owner and is not stored in this repository.
+| Раздел | Возможности |
+|---|---|
+| **Главная** | Версия, активный профиль Yetta, реальное состояние DAX |
+| **Информация** | Версия программы, разрешения текущего процесса, профиль доступа, ОС, пользователь, архитектура, CPU, .NET, время работы, путь настроек |
+| **Консоль** | **Mavrine:** безопасные команды Yetta; **Windows Terminal:** запуск установленного настоящего Terminal в отдельном окне без повышения прав, если активен логический профиль User; **Windows PowerShell:** интерфейс и предупреждение, административный запуск пока недоступен |
+| **DAX Guard** | Установка/применение логических Guest, Safe User и User. Уровни Administrator и System показаны, но заблокированы |
+| **DAX Logs** | Заглушка |
+| **DAX Recovery** | Заглушка |
+| **Настройки** | Темы Fluent/Glass, подтверждение внешних действий, локальные предпочтения |
+| **Источники** | GitHub, релизы, сайт, Icons8 и контактный адрес |
 
-## Website development
+**ВАЖНО О ДОСТУПЕ:** Guest, Safe User и User пока являются **внутренними политиками Yetta**, а не новыми правами Windows. Windows всегда применяет реальный токен пользователя и ACL. Приложение не может заявить «SYSTEM», если такую возможность не создала и не проверила отдельная защищённая служба. Нет UAC-обхода, системного драйвера и универсальной административной консоли.
 
-The website is a dependency-free static site in `site/`.
+Режим Windows Terminal открывает **настоящий Windows Terminal** — требуется, чтобы он был установлен в системе. Приложение не копирует исходники Microsoft Terminal и не встраивает его окно. Windows PowerShell с админ-правами будет доступна только после отдельной реализации безопасного уровня Administrator через штатные средства Windows.
 
-- Entry point: `site/index.html`
-- Styles: `site/styles.css`
-- Behavior: `site/app.js`
-- Build command: none
-- Output directory: `site/`
+## Данные и конфиденциальность
 
-Cloudflare Pages project `yetta` is connected to this repository and serves the `site/` directory from the `main` branch at https://yetta.pages.dev/. The site has no build step; the Pages output directory is `.` relative to the `site/` root.
+Настройки находятся в `%LOCALAPPDATA%\Yetta\settings.json`. Предпочтения и логические уровни доступа сохраняются там, история Mavrine — только в оперативной памяти. В версии 0.2 данные об устройстве не отправляются на сервер. DAX не установлен, не следит за процессами и не обеспечивает антивирусную защиту.
 
-## Security and responsible disclosure
+## Исходники и сборка из кода
 
-Security is a first-class project requirement. Read `SECURITY.md` before reporting a vulnerability. Do not publish exploit details for an unpatched issue in a public issue.
+Нужны **Windows 11 x64**, Git, PowerShell и **.NET 10 SDK**.
 
-No software can guarantee absolute protection against a fully compromised operating system or kernel. The future DAX design must minimize privileged attack surface, use a narrow authenticated IPC contract, verify signed components and updates, isolate untrusted modules, and fail closed when integrity checks fail.
+```powershell
+git clone https://github.com/Ketsuneban/Yetta.git
+cd Yetta
+.\scripts\prepare-fonts.ps1
+dotnet run --project src/Yetta.Desktop/Yetta.Desktop.csproj
+```
 
-## License
+Скрипт скачивает только **официальный шрифт Inter** и проверяет точный Git blob SHA-1. Бинарные версии Inter не хранятся в репозитории; текст его открытой лицензии хранится в `src/Yetta.Desktop/Assets/OFL-Inter.txt`. Для проверки логики:
 
-The project owner has not selected a software license yet. Until a license is added, public visibility does not grant permission to reuse, modify, or redistribute the code.
+```powershell
+dotnet run --project tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj -c Release
+```
+
+Для выпуска самодостаточного EXE:
+
+```powershell
+dotnet publish src/Yetta.Desktop/Yetta.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/Yetta-win-x64
+```
+
+GitHub Actions автоматически делает эти шаги и публикует **Yetta.exe** как отдельный Asset в GitHub Releases. Сборка ещё не прошла ручное GUI-тестирование на реальном Windows 11.
+
+## Сайт
+
+Статическая главная страница в `site/` (Cloudflare Pages, проект `yetta`, ветка `main`). Содержит только **Главная** и ссылку **GitHub**. Дизайн и код сайта собственные; он не копирует исходники сайта-референса.
+
+## Открытый исходный код и лицензии
+
+- Код и документация **Yetta** — [MIT License](LICENSE), © 2026 Yetta contributors.
+- Встроенный шрифт **Inter** — [SIL Open Font License 1.1](src/Yetta.Desktop/Assets/OFL-Inter.txt), © The Inter Project Authors.
+- **Icons8**: https://icons8.ru/ — указанный источник для будущих иконок. Их использование требует соблюдения соответствующих условий лицензии Icons8; нынешние стандартные символы не являются скачанным паком Icons8.
+- .NET/WPF — официальные программные компоненты Microsoft, используемые без копирования чужого исходного кода.
+
+Для сообщения об уязвимости читайте [SECURITY.md](SECURITY.md). Проектная спецификация и инструкция для будущих ассистентов находятся в **зашифрованном** `Project/Yetta_Continuity_AES256.zip`. Пароль передаётся отдельно, не хранится в репозитории.

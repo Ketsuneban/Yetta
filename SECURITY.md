@@ -1,26 +1,25 @@
-# Security Policy
+# Yetta Security Policy
 
-## Scope
+## Current implementation
 
-This repository currently contains the Yetta project website and design/specification documents. The Windows application and DAX implementation have not been started.
+Yetta 0.2.0-preview is an **unprivileged UI prototype**, not an antivirus, endpoint protection agent or full Windows administration tool. It implements local UI preference storage, logical profile policy checks, a fixed set of internal Mavrine commands, and launching genuine Windows Terminal without elevation only when its logical User profile is active.
 
-## Reporting a vulnerability
+**Not implemented:** a privileged DAX service, verified Administrator or SYSTEM profile, process monitoring, Windows registry/service changes, Defender integration, system restore points, anti-tamper protection, and trusted updating. Do not use it to protect critical devices or as a replacement for Microsoft Defender.
 
-Please do not publish exploit code, credentials, private keys, or unpatched vulnerability details in public issues. Use GitHub's private vulnerability reporting for this repository if it is enabled. If private reporting is unavailable, contact the repository owner through a private channel before disclosing details publicly.
+## Reporting vulnerabilities
 
-Include the affected component and revision, impact, reproduction conditions, and a suggested mitigation where possible. Do not include real user data.
+Do not publish proof-of-concept exploits, private credentials or sensitive user data in public GitHub issues. Use GitHub private vulnerability reporting if enabled or contact the maintainer privately at invzum@gmail.com.
 
-## Security principles
+Please include the affected release/tag, reproduction steps and relevant environment information without exposing private data. Antivirus detections must be investigated rather than treated as automatic false positives.
 
-Future privileged components must:
+## Design principles for future privileged components
 
-- use least privilege and narrowly scoped operations;
-- authenticate and authorize every privileged IPC request;
-- reject unknown, malformed, stale, or unsigned requests;
-- verify code-signing and update signatures before installation;
-- protect secrets with OS-backed key storage rather than hard-coded keys;
-- keep auditable records of privileged actions;
-- isolate user-supplied modules and track process descendants;
-- fail closed when policy, integrity, or authorization checks fail.
+- Least privilege; strict authentication and per-operation authorization.
+- Never expose arbitrary SYSTEM shell execution to untrusted local clients.
+- Validate signed releases and updates; verify file hashes for integrity.
+- Separate UI, policy engine and privileged service.
+- Make permission decisions fail closed on unknown or invalid authorization.
+- Protect logs and secrets using supported Windows facilities.
+- Preserve normal Windows uninstallation and user control.
 
-A SYSTEM-level service is a high-value attack target. It must never expose a general-purpose unauthenticated command shell to local processes. No design can promise absolute immunity against a compromised kernel or fully privileged host.
+No user-mode software can guarantee protection from a compromised kernel or full local administrator.
