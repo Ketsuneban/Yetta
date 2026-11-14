@@ -48,6 +48,7 @@ public partial class MainWindow : Window
             ["settings"] = NavSettings,
             ["sources"] = NavSources
         };
+        SourceInitialized += (_, _) => RefreshBackdrop();
         ApplyTheme();
         ApplyIconography();
         UpdateCaptionState();
@@ -123,6 +124,17 @@ public partial class MainWindow : Window
     private static void SetBrush(string key, Brush brush) =>
         Application.Current.Resources[key] = brush;
 
+    private void RefreshBackdrop()
+    {
+        if (_settings.Theme == "Glass" && WindowsBackdrop.Apply(this, true))
+            Background = Brushes.Transparent;
+        else
+        {
+            _ = WindowsBackdrop.Apply(this, false);
+            Background = Resource("WindowBackground");
+        }
+    }
+
     private void ApplyTheme()
     {
         bool glass = _settings.Theme == "Glass";
@@ -165,6 +177,7 @@ public partial class MainWindow : Window
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
         ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11 Fluent";
+        if (IsSourceInitialized) RefreshBackdrop();
     }
 
     private void SetTheme(string theme)
