@@ -275,7 +275,7 @@
           <TextBlock Text="DAX и привилегированные службы не установлены."
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.3.5 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="YETTA 0.4.0 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
@@ -340,7 +340,7 @@
       <Border Grid.Row="2" BorderBrush="{DynamicResource OutlineBrush}" BorderThickness="0,1,0,0">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
-          <TextBlock Text="0.3.5-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="0.4.0-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>
