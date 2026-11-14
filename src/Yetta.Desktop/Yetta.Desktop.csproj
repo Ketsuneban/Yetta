@@ -7,10 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta</AssemblyName>
     <RootNamespace>Yetta.Desktop</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Yetta.Core/Yetta.Core.csproj" />
+    <Resource Include="Assets/Inter.ttf" />
+    <Content Include="Assets/OFL-Inter.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
