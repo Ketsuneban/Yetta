@@ -134,7 +134,7 @@ internal static class DaxWarningDialog
         var smallIcon = IconLibrary.Create(headerIcon, 28);
         smallIcon.Margin = new Thickness(0, 0, 11, 0);
         heading.Children.Add(smallIcon);
-        var headingLabel = Label(WarningPolicy.Heading(level), 14, true);
+        var headingLabel = Label(request.Title, 14, true);
         headingLabel.VerticalAlignment = VerticalAlignment.Center;
         headingLabel.Foreground = new SolidColorBrush(accent);
         Grid.SetColumn(headingLabel, 1);
@@ -150,6 +150,8 @@ internal static class DaxWarningDialog
         heading.Children.Add(closeButton);
 
         var details = new StackPanel { Margin = new Thickness(0, 0, 5, 0) };
+        var fixedHeader = new StackPanel();
+        fixedHeader.Children.Add(heading);
         var objectRow = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -200,7 +202,7 @@ internal static class DaxWarningDialog
             sourceButton.IsEnabled = false;
         objectText.Children.Add(sourceButton);
         objectRow.Children.Add(objectText);
-        details.Children.Add(objectRow);
+        fixedHeader.Children.Add(objectRow);
 
         var content = new StackPanel { Margin = new Thickness(0, 0, 2, 4) };
         var description = Label(request.Description, 13);
@@ -366,7 +368,8 @@ internal static class DaxWarningDialog
         actions.ColumnDefinitions.Add(new ColumnDefinition
             { Width = new GridLength(1, GridUnitType.Star) });
         actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+        var buttons = new Grid();
+        buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         void Finish(DaxWarningResult result)
         {
             decision = result;
@@ -374,16 +377,20 @@ internal static class DaxWarningDialog
                 DaxWarningResult.Acknowledged or DaxWarningResult.RecoveryOpened;
         }
 
-        if (!fatal && !agreement && !informational)
+        bool dualButtons = !fatal && !agreement && !informational;
+        if (dualButtons)
         {
+            buttons.ColumnDefinitions.Add(new ColumnDefinition
+                { Width = new GridLength(1, GridUnitType.Star) });
             var decline = GlassDialog.Button("Запретить");
+            decline.HorizontalAlignment = HorizontalAlignment.Stretch;
             decline.Click += (_, _) => Finish(DaxWarningResult.Denied);
             buttons.Children.Add(decline);
         }
         var proceed = GlassDialog.Button(fatal ? "Сброс" :
             agreement ? "Согласен" : informational ? "ОК" : "Разрешить", primary: true);
-        if (fatal || agreement || informational)
-            proceed.MinWidth = 228;
+        proceed.HorizontalAlignment = HorizontalAlignment.Stretch;
+        if (dualButtons) Grid.SetColumn(proceed, 1);
         proceed.Click += (_, _) =>
         {
             if (!acknowledged || !verified) return;
@@ -416,18 +423,21 @@ internal static class DaxWarningDialog
         if (!fatal)
         {
             int statusId = WarningPolicy.StatusIcon(level, safeMode, activeProfile);
-            var safety = IconLibrary.Create(statusId, 32);
-            safety.HorizontalAlignment = HorizontalAlignment.Right;
+            var safety = IconLibrary.Create(statusId, 30);
+            safety.HorizontalAlignment = HorizontalAlignment.Center;
             safety.VerticalAlignment = VerticalAlignment.Center;
             safety.ToolTip = statusId == 35 ? "Ограниченный режим" :
                 statusId == 26 ? "Потенциально опасное действие" : "Безопасное действие";
-            Grid.SetColumn(safety, 1);
-            actions.Children.Add(safety);
+            var statusFrame = Panel(safety, accent, new Thickness(5));
+            statusFrame.Margin = new Thickness(12, 0, 0, 0);
+            statusFrame.Width = 44; statusFrame.Height = 44;
+            Grid.SetColumn(statusFrame, 1);
+            actions.Children.Add(statusFrame);
         }
 
         closeButton.Click += (_, _) => Finish(DaxWarningResult.Denied);
         dialog.Content = GlassDialog.Surface(
-            GlassDialog.Layout(heading, details, actions, verification));
+            GlassDialog.Layout(fixedHeader, details, actions, verification));
         if (fatal)
         {
             dialog.Topmost = true;
