@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.5-preview";
+    private const string ReleaseVersion = "0.3.6-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private StackPanel? _consoleOutput;
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
+    private DaxProcessMonitor? _processMonitor;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -48,11 +49,40 @@ public partial class MainWindow : Window
             ["sources"] = NavSources
         };
         ApplyTheme();
+        InitializeIconsAndCursors();
+        SourceInitialized += (_, _) => ApplyBackdrop();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
-        Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
+        Closed += (_, _) => { _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
+
+    private void InitializeIconsAndCursors()
+    {
+        IconAssets.SetNav(NavOverview, 7, "Главная");
+        IconAssets.SetNav(NavInfo, 2, "Информация");
+        IconAssets.SetNav(NavConsole, 1, "Консоль");
+        IconAssets.SetNav(NavGuard, 28, "DAX Guard");
+        IconAssets.SetNav(NavLogs, 8, "DAX Logs");
+        IconAssets.SetNav(NavActivity, 31, "Центр активности");
+        IconAssets.SetNav(NavRecovery, 9, "DAX Recovery");
+        IconAssets.SetNav(NavSettings, 3, "Настройки");
+        IconAssets.SetNav(NavSources, 30, "Источники");
+        CaptionMinimize.Content = IconAssets.Image(15, 18);
+        CaptionMaximize.Content = IconAssets.Image(14, 18);
+        CaptionClose.Content = IconAssets.Image(16, 18);
+        Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
+    }
+
+    private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
+        YettaWarningWindow.Show(this,
+            new WarningRequest(kind, title, message, Subject: "Yetta"),
+            _settings.ActiveProfile);
+
+    private bool ConfirmYettaAction(string title, string message) =>
+        YettaWarningWindow.Show(this,
+            new WarningRequest(WarningKind.Standard, title, message, Subject: "Yetta"),
+            _settings.ActiveProfile);
 
     private void OnWindowMinimize(object sender, RoutedEventArgs e) => WindowState = System.Windows.WindowState.Minimized;
 
@@ -65,7 +95,7 @@ public partial class MainWindow : Window
     {
         if (CaptionMaximize is null) return;
         bool maximized = WindowState == System.Windows.WindowState.Maximized;
-        CaptionMaximize.Content = maximized ? "❐" : "□";
+        CaptionMaximize.Content = IconAssets.Image(maximized ? 15 : 14, 18);
         CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
 
@@ -116,7 +146,21 @@ public partial class MainWindow : Window
             SetColor("OutlineBrush", Color.FromRgb(53, 76, 83));
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
-        ThemeIndicator.Text = glass ? "Glass Preview" : "Windows 11";
+        GlassDialog.IsGlass = glass;
+        ApplyBackdrop();
+        ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11 Fluent";
+    }
+
+    private void ApplyBackdrop()
+    {
+        bool enabled = WindowsBackdrop.Configure(this, _settings.Theme == "Glass");
+        if (enabled)
+        {
+            // Opaque WPF content otherwise hides the native Acrylic backdrop.
+            SetBrush("WindowBackground", new LinearGradientBrush(
+                Color.FromArgb(125, 24, 32, 58),
+                Color.FromArgb(162, 20, 25, 46), 135));
+        }
     }
 
     private void SetTheme(string theme)
@@ -134,8 +178,7 @@ public partial class MainWindow : Window
         try { _store.Save(_settings); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Не удалось сохранить настройки:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка сохранения настроек", "Не удалось сохранить настройки:\\n" + ex.Message, WarningKind.Caution);
         }
     }
 
@@ -147,6 +190,8 @@ public partial class MainWindow : Window
     private void Navigate(string page)
     {
         if (!_navigation.ContainsKey(page)) return;
+        _processMonitor?.Dispose();
+        _processMonitor = null;
         _embeddedShell?.Dispose();
         _embeddedShell = null;
         _page = page;
@@ -166,7 +211,7 @@ public partial class MainWindow : Window
             ["info"] = ("Информация", "Приложение, права и устройство"),
             ["console"] = ("Консоль", "Marvine и встроенные консоли Windows"),
             ["guard"] = ("DAX Guard", "Уровни доступа и их установка"),
-            ["logs"] = ("DAX Logs", "Будущий журнал событий безопасности"),
+            ["logs"] = ("DAX Logs", "Локальный журнал действий Yetta"),
             ["activity"] = ("Центр активности", "Локальные уведомления текущей сессии"),
             ["recovery"] = ("DAX Recovery", "Центр будущего восстановления"),
             ["settings"] = ("Настройки", "Предпочтения приложения"),
@@ -307,97 +352,17 @@ public partial class MainWindow : Window
 
     private void ShowDaxInfo()
     {
-        var dialog = GlassDialog.Create(this, "Yetta · DAX", 690, 565,
-            minWidth: 510, minHeight: 385);
-
-        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
-        var brandRow = new StackPanel { Orientation = Orientation.Horizontal };
-        var logoFrame = new Border
-        {
-            Width = 104, Height = 104,
-            CornerRadius = new CornerRadius(22),
-            Background = new LinearGradientBrush(
-                Color.FromArgb(88, 153, 197, 255),
-                Color.FromArgb(36, 89, 116, 178), 120),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(90, 212, 229, 255)),
-            BorderThickness = new Thickness(1),
-            Margin = new Thickness(0, 0, 17, 0),
-            Padding = new Thickness(5),
-            Child = new Image
-            {
-                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/dax-logo.png")),
-                Width = 90, Height = 90,
-                Stretch = Stretch.Uniform,
-                SnapsToDevicePixels = true
-            }
-        };
-        brandRow.Children.Add(logoFrame);
-        var brandCopy = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        brandCopy.Children.Add(new TextBlock
-        {
-            Text = "DAX", FontSize = 32, FontWeight = FontWeights.Bold,
-            Foreground = Ink
-        });
-        var pill = GlassDialog.Chip("DEFENSE & ACCESS EXECUTIVE");
-        pill.HorizontalAlignment = HorizontalAlignment.Left;
-        pill.Margin = new Thickness(0, 6, 0, 0);
-        brandCopy.Children.Add(pill);
-        brandRow.Children.Add(brandCopy);
-        header.Children.Add(brandRow);
-        var tagline = Text("Исполнительный модуль защиты и доступа", 13, muted: true);
-        tagline.Margin = new Thickness(0, 12, 0, 0);
-        header.Children.Add(tagline);
-
-        var sections = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
-        void AddFact(string title, string body)
-        {
-            var cardBody = new StackPanel();
-            cardBody.Children.Add(new TextBlock
-            {
-                Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14,
-                Foreground = Brushes.White,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-            cardBody.Children.Add(new TextBlock
-            {
-                Text = body, TextWrapping = TextWrapping.Wrap,
-                Foreground = GlassDialog.SecondaryText,
-                FontSize = 12.5, LineHeight = 19
-            });
-            sections.Children.Add(new Border
-            {
-                Background = new LinearGradientBrush(
-                    Color.FromArgb(67, 134, 165, 215),
-                    Color.FromArgb(35, 87, 106, 153), 100),
-                CornerRadius = new CornerRadius(14),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(65, 192, 215, 255)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(16, 13, 16, 13),
-                Margin = new Thickness(0, 0, 0, 10),
-                Child = cardBody
-            });
-        }
-        AddFact("Текущее состояние",
-            "Проектная спецификация. DAX runtime и привилегированные службы ещё не установлены.");
-        AddFact("Назначение",
-            "Проверять политики Yetta, помогать принимать решения и регистрировать результаты операций, инициированных приложением.");
-        AddFact("Архитектура",
-            "DAX Gate / Guard · DAX Process · DAX Threat · DAX System · DAX Audit · DAX Update");
-        AddFact("Ограничения безопасности",
-            "Нет мониторинга процессов Windows и потомков, антивирусного анализа, службы SYSTEM или средств восстановления. " +
-            "Никакая защита не заявляется как действующая.");
-
-        var footer = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        var close = GlassDialog.Button("Закрыть", primary: true);
-        close.IsCancel = true;
-        close.Click += (_, _) => dialog.Close();
-        footer.Children.Add(close);
-        dialog.Content = GlassDialog.Surface(GlassDialog.Layout(header, sections, footer));
-        dialog.ShowDialog();
+        _ = YettaWarningWindow.Show(this,
+            new WarningRequest(WarningKind.Dax, "О модуле защиты и доступа",
+                "DAX · Defense & Access eXecutive\\n\\n" +
+                "Проектная спецификация. Защищённая служба и runtime DAX ещё не установлены.\\n\\n" +
+                "Назначение: проверять политики операций Yetta, помогать принимать решения " +
+                "и регистрировать результаты действий, инициированных самой программой.\\n\\n" +
+                "Планируемая архитектура: DAX Gate / Guard, Process, Threat, System, Audit, Update.\\n\\n" +
+                "Мониторинг вредоносных программ, системная служба и автоматическое восстановление " +
+                "Windows пока не реализованы. Предупреждения Yetta не заменяют Microsoft Defender.",
+                Subject: "DAX", Publisher: "Исполнительный модуль защиты и доступа"),
+            _settings.ActiveProfile);
     }
 
     private static bool IsProcessAdministrator()
@@ -540,6 +505,48 @@ public partial class MainWindow : Window
             row.Children.Add(button);
             ContentPanel.Children.Add(Card(row));
         }
+        AddSection("Ключ TTY", "Дополнительное подтверждение критических операций. Ключ не повышает права Windows.");
+        var ttyPanel = new StackPanel();
+        ttyPanel.Children.Add(Text("•••• •••• •••• •••• •••• •••• •••• ••••", 17, heading: true));
+        ttyPanel.Children.Add(Text(
+            "64-символьный ключ хранится для текущей учётной записи в Windows Credential Manager. " +
+            "Его содержимое здесь не отображается. Не сохраняйте ключ в текстовых файлах. " +
+            "При копировании Windows может сохранить его в истории буфера обмена — отключите историю при необходимости.",
+            12, muted: true));
+        var ttyActions = new WrapPanel { Margin = new Thickness(0, 15, 0, 0) };
+        ttyActions.Children.Add(ActionButton("Копировать TTY-ключ", () =>
+        {
+            if (!ConfirmYettaAction("Доступ к TTY-ключу",
+                "Скопировать секретный ключ в буфер обмена Windows? Другое ПО и история буфера обмена " +
+                "могут получить к нему доступ. Не вставляйте ключ в документы и чаты.")) return;
+            try
+            {
+                Clipboard.SetText(TtyKeyStore.Current());
+                Notify("DAX Guard", "TTY-ключ скопирован. Буфер обмена может хранить историю.");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
+                System.Runtime.InteropServices.ExternalException or IOException or InvalidDataException)
+            {
+                ShowYettaNotice("TTY-ключ недоступен", ex.Message, WarningKind.Caution);
+            }
+        }));
+        ttyActions.Children.Add(ActionButton("Перевыпустить ключ", () =>
+        {
+            if (!ConfirmYettaAction("Перевыпуск TTY-ключа",
+                "Старый ключ станет недействительным. Новый будет сохранён в Windows Credential Manager. Продолжить?"))
+                return;
+            try
+            {
+                _ = TtyKeyStore.Rotate();
+                Notify("DAX Guard", "Создан новый TTY-ключ; старый больше не принимается.");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
+            {
+                ShowYettaNotice("TTY-ключ недоступен", ex.Message, WarningKind.Caution);
+            }
+        }, true));
+        ttyPanel.Children.Add(ttyActions);
+        ContentPanel.Children.Add(Card(ttyPanel));
         AddNotice("Ограничение уровня SYSTEM",
             "Выбор в приложении не способен предоставить SYSTEM-права. Для уровней Администратор и Система потребуются отдельная служба, UAC/TTY, независимый аудит и проверка доступа.");
     }
@@ -548,10 +555,10 @@ public partial class MainWindow : Window
     {
         if (!AccessProfiles.CanInstallLogicalProfile(profile))
         {
-            MessageBox.Show(this,
+            ShowYettaNotice("Недоступный уровень доступа",
                 "Профиль «" + AccessProfiles.DisplayName(profile) +
-                "» пока недоступен. Нельзя считать его установленным без настоящего механизма повышения прав и проверки безопасности.",
-                "DAX Guard", MessageBoxButton.OK, MessageBoxImage.Information);
+                "» пока недоступен. Для ADMIN/SYS необходим проверенный механизм Windows, а не изменение локальной настройки.",
+                WarningKind.Dax);
             return;
         }
         if (_settings.InstalledProfiles.Contains(profile))
@@ -650,10 +657,24 @@ public partial class MainWindow : Window
 
     private void BuildLogs()
     {
-        AddIntro("Yetta / DAX Logs", "Журнал событий DAX",
-            "Раздел зарезервирован для аудита решений DAX Guard, проверок угроз и операций, запущенных из Yetta.");
-        AddNotice("Заглушка — нет активного логирования",
-            "DAX Process, Threat, Audit пока не реализованы. Эта страница не заявляет, что выполняется наблюдение за процессами, и не содержит фиктивных записей.");
+        AddIntro("Yetta / DAX Logs", "Журнал действий Yetta",
+            "Локальная запись предупреждений, решений и запусков из Yetta. Это не журнал Defender и не мониторинг всех процессов Windows.");
+        ContentPanel.Children.Add(Card(Text("Файл: " + DaxAudit.FilePath, 11, muted: true)));
+        if (!File.Exists(DaxAudit.FilePath))
+        {
+            AddNotice("Записей пока нет", "Журнал пополняется только после действий и предупреждений Yetta.");
+            return;
+        }
+        try
+        {
+            var tail = File.ReadLines(DaxAudit.FilePath).TakeLast(150).Reverse().ToList();
+            foreach (string record in tail)
+                ContentPanel.Children.Add(Card(Text(record, 11)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AddNotice("Журнал недоступен", ex.Message);
+        }
     }
 
     private void BuildRecovery()
@@ -791,6 +812,8 @@ public partial class MainWindow : Window
             controls.Children.Add(ActionButton("Выполнить ↵", RunPowerShell, true));
             controls.Children.Add(ActionButton("Остановить сессию", () =>
             {
+                _processMonitor?.Dispose();
+                _processMonitor = null;
                 _embeddedShell?.Dispose();
                 _embeddedShell = null;
                 display.Children.Add(ConsoleLine("Сессия завершена. Переключите вкладку, чтобы начать новую.", false));
@@ -810,6 +833,8 @@ public partial class MainWindow : Window
                         }
                     }));
                 });
+                _processMonitor = new DaxProcessMonitor(_embeddedShell.ProcessId,
+                    message => Notify("DAX Process", message));
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 System.ComponentModel.Win32Exception or IOException)
@@ -854,8 +879,27 @@ public partial class MainWindow : Window
         if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
         var command = _consoleInput.Text;
         if (string.IsNullOrWhiteSpace(command)) return;
+        WarningKind? risk = DaxCommandGuard.Classify(command);
+        if (risk is WarningKind level)
+        {
+            bool allowed = YettaWarningWindow.Show(this,
+                new WarningRequest(level,
+                    "Команда требует дополнительного подтверждения",
+                    "Проверка основана на эвристике команды, а НЕ на обнаружении вирусов. " +
+                    "Команда может изменить пользовательские файлы или настройки. " +
+                    "Внимательно проверьте её содержание перед запуском.\\n\\n" + command,
+                    Subject: "Встроенная PowerShell",
+                    RequireAcknowledgement: true,
+                    RequireTty: level == WarningKind.Critical,
+                    PotentialDamage: true),
+                _settings.ActiveProfile);
+            DaxAudit.Write("powershell_preflight", allowed ? "allowed" : "denied",
+                "Command pattern category: " + level + ". Command content intentionally omitted.");
+            if (!allowed) return;
+        }
         _consoleInput.Clear();
         _consoleOutput?.Children.Add(ConsoleLine("> " + command, true));
+        DaxAudit.Write("powershell", "submitted", "Command sent through user-level shell. Text omitted.");
         try { await _embeddedShell.SendAsync(command); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or
             ObjectDisposedException)
@@ -939,6 +983,8 @@ public partial class MainWindow : Window
         ContentPanel.Children.Add(ActionButton("Отозвать согласие PowerShell", () =>
         {
             _settings.EmbeddedShellConsentGranted = false;
+            _processMonitor?.Dispose();
+            _processMonitor = null;
             _embeddedShell?.Dispose();
             _embeddedShell = null;
             SavePreferences();
@@ -957,14 +1003,38 @@ public partial class MainWindow : Window
             await CheckAndInstallUpdateAsync();
         }, true));
 
+        AddSection("Проверка окон предупреждений", "Демонстрация всех семи типов и их оформления; это не обнаружение угроз.");
+        var demos = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
+        foreach (WarningKind kind in Enum.GetValues<WarningKind>())
+        {
+            WarningKind choice = kind;
+            var btn = ActionButton("Показать · " + kind, () =>
+            {
+                _ = YettaWarningWindow.Show(this,
+                    new WarningRequest(choice, "Демонстрационный пример",
+                        "Это пример оформления и проверки элементов Yetta.\\n\\n" +
+                        "Никакая угроза не обнаружена, системные файлы не повреждены. " +
+                        "Длинный текст будет прокручиваться отдельно от кнопок. " +
+                        "TTY-проверка действует только как дополнительное подтверждение. ",
+                        Subject: "Yetta · UI Test",
+                        RequireAcknowledgement: choice is WarningKind.Caution or WarningKind.Dangerous,
+                        PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
+                        RecoveryNavigation: choice == WarningKind.Fatal
+                            ? () => Navigate("recovery") : null),
+                    _settings.ActiveProfile);
+            });
+            demos.Children.Add(btn);
+        }
+        ContentPanel.Children.Add(demos);
+
         AddSection("Локальные данные");
         ContentPanel.Children.Add(Card(Text(
             "Файл настроек: " + _store.FilePath +
             "\nВнутренняя история Marvine удаляется после завершения работы.", 12, muted: true)));
         ContentPanel.Children.Add(ActionButton("Сбросить оформление", () =>
         {
-            if (MessageBox.Show(this, "Сбросить оформление и подтверждения? Уровни доступа сохранятся.",
-                "Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            if (!ConfirmYettaAction("Сброс оформления",
+                "Сбросить оформление и подтверждения? Уровни доступа сохранятся."))
                 return;
             _settings.Theme = "Fluent";
             _settings.ConfirmExternalLinks = true;
@@ -978,11 +1048,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 5));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 6));
             if (latest is null)
             {
-                MessageBox.Show(this, "Новой версии с установщиком пока нет.",
-                    "Обновления Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
                 return;
             }
             if (!ConsentDialog.Confirm(this,
@@ -1003,8 +1072,7 @@ public partial class MainWindow : Window
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException)
         {
-            MessageBox.Show(this, "Ошибка получения обновления: " + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка получения обновления", ex.Message, WarningKind.Caution);
         }
     }
 
@@ -1019,7 +1087,8 @@ public partial class MainWindow : Window
         AddSection("Визуальные ресурсы");
         AddSource("Icons8 · источник иконок", "https://icons8.ru/");
         ContentPanel.Children.Add(Card(Text(
-            "Указание Icons8 — ссылка на поставщика иконок для будущего использования. Встроенные символы текущего прототипа не являются скачанным паком Icons8. Для добавленных в будущем иконок нужно соблюдать условия Icons8.", 12, muted: true)));
+            "Иконки интерфейса и предупреждений взяты из предоставленного владельцем набора Icons8. " +
+            "Соблюдайте условия использования Icons8; указанная выше ссылка ведёт на поставщика.", 12, muted: true)));
         AddSection("Связь");
         AddSource("invzum@gmail.com", "mailto:invzum@gmail.com");
         ContentPanel.Children.Add(Card(Text(
@@ -1041,20 +1110,18 @@ public partial class MainWindow : Window
         // by Yetta's own UI. No untrusted command arguments or shell strings.
         if (target == "wt.exe" && !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
         {
-            MessageBox.Show(this, "DAX Guard: сначала примените уровень «Пользователь».",
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowYettaNotice("Недостаточный уровень доступа",
+                "DAX Guard: сначала примените уровень «Пользователь».");
             return;
         }
-        if (_settings.ConfirmExternalLinks && MessageBox.Show(this,
-            "Открыть «" + title + "» с действующими правами Windows?",
-            "Подтверждение Yetta", MessageBoxButton.YesNo, MessageBoxImage.Question)
-            != MessageBoxResult.Yes) return;
+        if (_settings.ConfirmExternalLinks && !ConfirmYettaAction(
+            "Открыть внешний ресурс", "Открыть «" + title + "» с действующими правами Windows?")) return;
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
             InvalidOperationException or FileNotFoundException)
         {
-            MessageBox.Show(this, "Не удалось открыть «" + title + "»:\n" + ex.Message,
-                "Yetta", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowYettaNotice("Ошибка открытия", "Не удалось открыть «" + title + "»:\\n" + ex.Message,
+                WarningKind.Caution);
         }
     }
 }

@@ -14,6 +14,7 @@ namespace Yetta.Desktop;
 /// </summary>
 internal static class GlassDialog
 {
+    internal static bool IsGlass { get; set; } = false;
     private static readonly Color Frost = Color.FromRgb(190, 211, 255);
     private static readonly Brush WhiteText = new SolidColorBrush(Color.FromRgb(245, 247, 255));
     internal static Brush SecondaryText { get; } =
@@ -103,12 +104,34 @@ internal static class GlassDialog
         return container;
     }
 
-    internal static UIElement Surface(UIElement content, Thickness? padding = null)
+    internal static UIElement Surface(UIElement content, Thickness? padding = null, Window? owner = null)
     {
         // There is no secondary rectangular backplate: the border below *is*
         // the modal's full visible outline, with truly transparent pixels outside
         // its rounded corners. Alpha lets the desktop or owner window show through.
         var panel = new Grid();
+        var clip = new RectangleGeometry { RadiusX = 23, RadiusY = 23 };
+        panel.Clip = clip;
+        panel.SizeChanged += (_, e) => clip.Rect = new Rect(0, 0,
+            e.NewSize.Width, e.NewSize.Height);
+        if (IsGlass && owner is not null)
+        {
+            // Blur *only the owner's WPF pixels* behind the warning. This
+            // supports Windows versions where native backdrop is unavailable
+            // without blurring the dialog's own text or interactive controls.
+            var blurredOwner = new Border
+            {
+                Background = new VisualBrush(owner)
+                {
+                    ViewboxUnits = BrushMappingMode.RelativeToBoundingBox,
+                    Stretch = Stretch.UniformToFill
+                },
+                Effect = new BlurEffect { Radius = 26, RenderingBias = RenderingBias.Quality },
+                Opacity = 0.90,
+                IsHitTestVisible = false
+            };
+            panel.Children.Add(blurredOwner);
+        }
         var rim = new Border
         {
             CornerRadius = new CornerRadius(23),
@@ -122,9 +145,9 @@ internal static class GlassDialog
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(226, 76, 96, 139), 0),
-                    new GradientStop(Color.FromArgb(222, 37, 48, 79), 0.45),
-                    new GradientStop(Color.FromArgb(232, 30, 39, 70), 1)
+                    new GradientStop(Color.FromArgb(208, 76, 96, 139), 0),
+                    new GradientStop(Color.FromArgb(198, 37, 48, 79), 0.45),
+                    new GradientStop(Color.FromArgb(216, 30, 39, 70), 1)
                 }
             }
         };

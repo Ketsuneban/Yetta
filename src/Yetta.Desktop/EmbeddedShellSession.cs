@@ -16,6 +16,8 @@ public sealed class EmbeddedShellSession : IDisposable
     private readonly Action<string> _onOutput;
     private bool _disposed;
 
+    internal int ProcessId => _process.Id;
+
     private EmbeddedShellSession(Process process, Action<string> onOutput)
     {
         _process = process;
