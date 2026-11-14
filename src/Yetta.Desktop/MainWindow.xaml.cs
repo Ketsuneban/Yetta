@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         InstallNavigationIcons();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
+        SourceInitialized += (_, _) => UpdateSystemBackdrop();
         Navigate("overview");
         Closed += (_, _) => { _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
@@ -95,6 +96,12 @@ public partial class MainWindow : Window
     private static void SetBrush(string key, Brush brush) =>
         Application.Current.Resources[key] = brush;
 
+    private void UpdateSystemBackdrop()
+    {
+        if (_settings.Theme == "Glass") NativeBackdrop.TryApply(this, acrylic: false);
+        else NativeBackdrop.Remove(this);
+    }
+
     private void ApplyTheme()
     {
         bool glass = _settings.Theme == "Glass";
@@ -103,9 +110,9 @@ public partial class MainWindow : Window
             // Distinctive glass treatment throughout the application's Glass theme.
             // Ambient backdrop, layered translucent panels and softer specular borders.
             var backdrop = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(36, 45, 75), 0));
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(17, 23, 43), 0.52));
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(41, 28, 69), 1));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromArgb(208, 36, 45, 75), 0));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromArgb(215, 17, 23, 43), 0.52));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromArgb(220, 41, 28, 69), 1));
             SetBrush("WindowBackground", backdrop);
             SetBrush("SidebarBackground", new LinearGradientBrush(
                 Color.FromArgb(230, 32, 44, 71), Color.FromArgb(239, 24, 27, 48), 110));
@@ -136,7 +143,8 @@ public partial class MainWindow : Window
             SetColor("OutlineBrush", Color.FromRgb(53, 76, 83));
             SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
         }
-        ThemeIndicator.Text = glass ? "Glass Preview" : "Windows 11";
+        ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11";
+        if (IsLoaded) UpdateSystemBackdrop();
     }
 
     private void SetTheme(string theme)
