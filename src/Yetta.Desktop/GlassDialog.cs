@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,6 +19,8 @@ internal static class GlassDialog
     private static readonly Brush WhiteText = new SolidColorBrush(Color.FromRgb(245, 247, 255));
     internal static Brush SecondaryText { get; } =
         new SolidColorBrush(Color.FromRgb(197, 205, 224));
+
+    private static bool GlassEnabled => Application.Current.Resources["WindowBackground"] is LinearGradientBrush;
 
     internal static Window Create(Window owner, string title, double width, double height,
         double minWidth = 480, double minHeight = 360)
@@ -39,16 +42,24 @@ internal static class GlassDialog
             WindowStyle = WindowStyle.None,
             // DWM Acrylic needs a non-layered HWND; older Windows use
             // per-pixel WPF transparency as a graceful fallback.
-            AllowsTransparency = !NativeBackdrop.Supported,
+            AllowsTransparency = !NativeBackdrop.Supported || !GlassEnabled,
             ShowInTaskbar = false,
             Background = Brushes.Transparent,
             Foreground = WhiteText
         };
         // On Windows 11 22H2+ DWM draws Acrylic beneath the translucent client.
         // Older Windows retain one rounded WPF surface, without claiming blur.
-        dialog.SourceInitialized += (_, _) =>
-            NativeBackdrop.TryApply(dialog, acrylic: true);
+        if (GlassEnabled)
+            dialog.SourceInitialized += (_, _) =>
+                NativeBackdrop.TryApply(dialog, acrylic: true);
         return dialog;
+    }
+
+    private static bool IsWithinButton(DependencyObject element)
+    {
+        for (DependencyObject? p = element; p is not null; p = VisualTreeHelper.GetParent(p))
+            if (p is ButtonBase) return true;
+        return false;
     }
 
     internal static Grid Layout(UIElement header, UIElement scrollableBody,
@@ -67,7 +78,8 @@ internal static class GlassDialog
         {
             dragHeader.MouseLeftButtonDown += (_, e) =>
             {
-                if (e.LeftButton != MouseButtonState.Pressed) return;
+                if (e.LeftButton != MouseButtonState.Pressed ||
+                    e.OriginalSource is DependencyObject origin && IsWithinButton(origin)) return;
                 var window = Window.GetWindow(dragHeader);
                 if (window is null) return;
                 try { window.DragMove(); }
@@ -80,7 +92,7 @@ internal static class GlassDialog
         var content = new ScrollViewer
         {
             Content = scrollableBody,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             PanningMode = PanningMode.VerticalOnly,
             Margin = new Thickness(0, 8, 0, 12)
@@ -111,6 +123,7 @@ internal static class GlassDialog
         // There is no secondary rectangular backplate: the border below *is*
         // the modal's full visible outline, with truly transparent pixels outside
         // its rounded corners. Alpha lets the desktop or owner window show through.
+        bool glass = GlassEnabled;
         var panel = new Grid();
         var rim = new Border
         {
@@ -119,17 +132,17 @@ internal static class GlassDialog
             BorderBrush = new LinearGradientBrush(
                 Color.FromArgb(205, 225, 238, 255),
                 Color.FromArgb(65, 145, 168, 213), 130),
-            Background = new LinearGradientBrush
+            Background = glass ? new LinearGradientBrush
             {
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(1, 1),
                 GradientStops =
                 {
-                    new GradientStop(Color.FromArgb(184, 57, 77, 113), 0),
-                    new GradientStop(Color.FromArgb(199, 24, 36, 63), 0.45),
-                    new GradientStop(Color.FromArgb(215, 20, 29, 56), 1)
+                    new GradientStop(Color.FromArgb(174, 57, 77, 113), 0),
+                    new GradientStop(Color.FromArgb(196, 24, 36, 63), 0.45),
+                    new GradientStop(Color.FromArgb(211, 20, 29, 56), 1)
                 }
-            }
+            } : new SolidColorBrush(Color.FromRgb(25, 36, 49))
         };
         panel.Children.Add(rim);
         // Inset highlight follows the same silhouette. No square panels are
