@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.4-preview — 2026-11-14
+
+- Restore the owner-provided DAX mark from the original high-resolution source, replacing the blurry 40x40 asset with a clean 160x160 version.
+- Replace the DAX popup with glass-inspired panels, specular highlights and a fixed footer; longer descriptions scroll inside their own region.
+- Add a shared WPF glass modal layout for DAX and consent dialogs, keeping confirmation buttons and the consent checkbox outside scrollable text.
+- Enable best-effort Windows 11 DWM dark titlebar and translucent system backdrop where supported, with a WPF gradient/glass fallback.
+- Preserve existing permissions; no real DAX runtime, SYSTEM broker or malicious-code detection is claimed.
+
+
 ## 0.3.3-preview — 2026-11-14
 
 - Fix the consent dialog layout: required checkbox is fixed above action buttons and cannot be clipped by longer text.
