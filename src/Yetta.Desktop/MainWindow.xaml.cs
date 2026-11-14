@@ -80,16 +80,26 @@ public partial class MainWindow : Window
         bool glass = _settings.Theme == "Glass";
         if (glass)
         {
-            SetColor("WindowBackground", Color.FromRgb(13, 16, 30));
-            SetColor("SidebarBackground", Color.FromRgb(22, 27, 45));
-            SetBrush("CardBackground", new LinearGradientBrush(
-                Color.FromRgb(44, 53, 78), Color.FromRgb(25, 30, 47), 115));
+            // Distinctive glass treatment throughout the application's Glass theme.
+            // Ambient backdrop, layered translucent panels and softer specular borders.
+            var backdrop = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(36, 45, 75), 0));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(17, 23, 43), 0.52));
+            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(41, 28, 69), 1));
+            SetBrush("WindowBackground", backdrop);
+            SetBrush("SidebarBackground", new LinearGradientBrush(
+                Color.FromArgb(230, 32, 44, 71), Color.FromArgb(239, 24, 27, 48), 110));
+            var glassCard = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(182, 95, 119, 155), 0));
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(140, 53, 63, 99), 0.46));
+            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(120, 37, 46, 77), 1));
+            SetBrush("CardBackground", glassCard);
             SetColor("HoverBackground", Color.FromRgb(57, 62, 91));
             SetColor("AccentBrush", Color.FromRgb(190, 173, 255));
             SetColor("AccentForeground", Color.FromRgb(27, 18, 49));
             SetColor("TextPrimary", Color.FromRgb(242, 243, 255));
             SetColor("TextSecondary", Color.FromRgb(174, 185, 207));
-            SetColor("OutlineBrush", Color.FromRgb(77, 83, 110));
+            SetColor("OutlineBrush", Color.FromArgb(158, 160, 177, 215));
             SetColor("SelectedBrush", Color.FromRgb(57, 48, 88));
         }
         else
