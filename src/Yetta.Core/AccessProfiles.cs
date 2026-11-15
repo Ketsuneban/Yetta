@@ -32,20 +32,20 @@ public static class AccessProfiles
 
     public static string DisplayName(string profile) => profile switch
     {
-        "SafeUser" => "Безопасный пользователь",
-        "User" => "Пользователь",
-        "Administrator" => "Администратор",
-        "System" => "Система",
-        _ => "Гость"
+        "SafeUser" => TallowText.Get("core.access.0001"),
+        "User" => TallowText.Get("ui.main.0058"),
+        "Administrator" => TallowText.Get("core.access.0002"),
+        "System" => TallowText.Get("core.access.0003"),
+        _ => TallowText.Get("core.access.0004")
     };
 
     public static string Description(string profile) => profile switch
     {
-        "SafeUser" => "Чтение разрешённых Windows данных без изменения файлов или настроек; не предоставляет доступ к защищённым ресурсам.",
-        "User" => "Просмотр данных и запуск обычных программ с правами текущей учётной записи Windows. Никакого повышения прав.",
-        "Administrator" => "Запланированное выполнение отдельных операций после настоящего UAC и проверки прав. Не реализовано.",
-        "System" => "Запланированный отдельный защищённый системный брокер с TTY. Не реализовано.",
-        _ => "Только интерфейс Yetta, локальные настройки и ограниченная Mavrine. Системные изменения и запуск оболочек недоступны."
+        "SafeUser" => TallowText.Get("core.access.0005"),
+        "User" => TallowText.Get("core.access.0006"),
+        "Administrator" => TallowText.Get("core.access.0007"),
+        "System" => TallowText.Get("core.access.0008"),
+        _ => TallowText.Get("core.access.0009")
     };
 
     public static bool CanLaunchUnprivilegedTerminal(AppSettings settings)

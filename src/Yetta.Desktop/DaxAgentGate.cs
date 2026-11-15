@@ -1,3 +1,4 @@
+using Yetta.Core;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -47,12 +48,12 @@ internal sealed class DaxAgentGate : IDisposable
         };
         content.Children.Add(new TextBlock
         {
-            Text = "DAX НЕ ДОСТУПЕН", FontSize = 24, FontWeight = FontWeights.Bold,
+            Text = TallowText.Get("ui.daxGate.0001"), FontSize = 24, FontWeight = FontWeights.Bold,
             Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 14)
         });
         _status = new TextBlock
         {
-            Text = "Проверка связи с DAX...",
+            Text = TallowText.Get("ui.daxGate.0002"),
             FontSize = 15, TextWrapping = TextWrapping.Wrap,
             Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 20)
         };
@@ -60,13 +61,13 @@ internal sealed class DaxAgentGate : IDisposable
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         var retry = new Button
         {
-            Content = "Включить DAX", MinWidth = 160,
+            Content = TallowText.Get("ui.daxGate.0003"), MinWidth = 160,
             Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 10, 0)
         };
         retry.Click += async (_, _) => { TryLaunch(); await CheckAsync(); };
         var reinstall = new Button
         {
-            Content = "Переустановить Yetta", MinWidth = 190,
+            Content = TallowText.Get("ui.daxGate.0004"), MinWidth = 190,
             Padding = new Thickness(12, 9, 12, 9)
         };
         reinstall.Click += (_, _) =>
@@ -101,7 +102,7 @@ internal sealed class DaxAgentGate : IDisposable
     {
         if (!File.Exists(AgentFile))
         {
-            _status.Text = "Не найден отдельный компонент DAX. Переустановите Yetta из официального релиза.";
+            _status.Text = TallowText.Get("ui.daxGate.0005");
             return;
         }
         try
@@ -111,7 +112,7 @@ internal sealed class DaxAgentGate : IDisposable
         }
         catch (Exception ex) when (ex is Win32Exception or UnauthorizedAccessException or IOException)
         {
-            _status.Text = "Не удалось включить DAX: " + ex.GetType().Name;
+            _status.Text = TallowText.Get("ui.daxGate.0006") + ex.GetType().Name;
         }
     }
 
@@ -136,18 +137,18 @@ internal sealed class DaxAgentGate : IDisposable
             _overlay.Visibility = healthy ? Visibility.Collapsed : Visibility.Visible;
             _status.Text = response switch
             {
-                "DISABLED" => "DAX отключён. Для работы Yetta снова включите DAX.",
-                "WORKING" => "DAX выполняет проверку или перезапускается. Управление Yetta временно приостановлено.",
+                "DISABLED" => TallowText.Get("ui.daxGate.0007"),
+                "WORKING" => TallowText.Get("ui.daxGate.0008"),
                 "READY" => "",
-                _ => "DAX не подтвердил готовность. Использование Yetta приостановлено."
+                _ => TallowText.Get("ui.daxGate.0009")
             };
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or InvalidOperationException)
         {
             _overlay.Visibility = Visibility.Visible;
             _status.Text = File.Exists(AgentFile)
-                ? "Нет связи с DAX. Включите его или повторно установите Yetta."
-                : "Компонент DAX не установлен рядом с Yetta. Требуется официальная переустановка.";
+                ? TallowText.Get("ui.daxGate.0010")
+                : TallowText.Get("ui.daxGate.0011");
         }
         finally { _checking = false; }
     }

@@ -1,3 +1,4 @@
+using Yetta.Core;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -75,11 +76,11 @@ internal static class TtyKeyStore
                 }
             }
             finally { CredFree(ptr); }
-            throw new InvalidDataException("Неверный формат существующего TTY-ключа.");
+            throw new InvalidDataException(TallowText.Get("dax.tty.0001"));
         }
 
         int error = Marshal.GetLastWin32Error();
-        if (error != 1168) throw new Win32Exception(error, "Не удалось прочитать Windows Credential Manager.");
+        if (error != 1168) throw new Win32Exception(error, TallowText.Get("dax.tty.0002"));
         return Rotate();
     }
 
@@ -100,7 +101,7 @@ internal static class TtyKeyStore
             };
             if (!CredWrite(ref record, 0))
                 throw new Win32Exception(Marshal.GetLastWin32Error(),
-                    "Не удалось сохранить TTY-ключ в Windows Credential Manager.");
+                    TallowText.Get("dax.tty.0003"));
         }
         finally
         {

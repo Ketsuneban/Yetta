@@ -16,48 +16,48 @@ public static class ConsoleEngine
         string command = (input ?? string.Empty).Trim().ToLowerInvariant();
         return command switch
         {
-            "" => new ConsoleResult("Введите help для списка команд."),
+            "" => new ConsoleResult(TallowText.Get("marvine.console.0001")),
             "help" => new ConsoleResult(
-                "help             Справка по Marvine\n" +
-                "version          Версия Yetta\n" +
-                "status           Реальное состояние компонентов\n" +
-                "access           Текущий логический уровень\n" +
-                "info             Системная информация\n" +
+                TallowText.Get("marvine.console.0002") +
+                TallowText.Get("marvine.console.0003") +
+                TallowText.Get("marvine.console.0004") +
+                TallowText.Get("marvine.console.0005") +
+                TallowText.Get("marvine.console.0006") +
                 "guard            DAX Guard\n" +
                 "logs             DAX Logs\n" +
-                "activity         Центр активности\n" +
-                "overview         Главная\n" +
-                "/snob            Зарезервированная защищённая команда\n" +
+                TallowText.Get("marvine.console.0007") +
+                TallowText.Get("marvine.console.0008") +
+                TallowText.Get("marvine.console.0009") +
                 "recovery         DAX Recovery\n" +
-                "settings         Настройки\n" +
-                "sources          Источники\n" +
-                "theme fluent     Оформление Fluent\n" +
-                "theme glass      Оформление Glass\n" +
-                "clear            Очистить консоль"),
+                TallowText.Get("marvine.console.0010") +
+                TallowText.Get("marvine.console.0011") +
+                TallowText.Get("marvine.console.0012") +
+                TallowText.Get("marvine.console.0013") +
+                TallowText.Get("marvine.console.0014")),
             "version" or "about" => new ConsoleResult("Yetta " + context.Version +
-                "\nMarvine — внутренняя консоль. SYSTEM, DAX и UAC-брокер отсутствуют."),
+                TallowText.Get("marvine.console.0015")),
             "status" => new ConsoleResult(
-                "Yetta UI: работает\n" +
-                "Профиль Yetta: " + AccessProfiles.DisplayName(context.ActiveProfile) + "\n" +
-                "DAX Guard: ограничение команд внутри приложения\n" +
-                "DAX-анализ, восстановление, системный сервис: НЕ РЕАЛИЗОВАНЫ\n" +
-                "Тема: " + context.Theme),
+                TallowText.Get("marvine.console.0016") +
+                TallowText.Get("marvine.console.0017") + AccessProfiles.DisplayName(context.ActiveProfile) + "\n" +
+                TallowText.Get("marvine.console.0018") +
+                TallowText.Get("marvine.console.0019") +
+                TallowText.Get("marvine.console.0020") + context.Theme),
             "access" => new ConsoleResult(AccessProfiles.Description(context.ActiveProfile)),
-            "info" => new ConsoleResult("Открываю раздел «Информация».", NavigateTo: "info"),
-            "guard" => new ConsoleResult("Открываю DAX Guard.", NavigateTo: "guard"),
-            "logs" => new ConsoleResult("Открываю DAX Logs.", NavigateTo: "logs"),
-            "activity" or "notifications" => new ConsoleResult("Открываю Центр активности.", NavigateTo: "activity"),
-            "overview" or "home" => new ConsoleResult("Открываю главную.", NavigateTo: "overview"),
-            "/snob" or "/snob help" => new ConsoleResult("Tallow (/snob): защищённые операции пока недоступны. DAX-брокер отсутствует; команда не запускает программы, не повышает права Windows и не отключает UAC."),
-            "recovery" => new ConsoleResult("Открываю DAX Recovery.", NavigateTo: "recovery"),
-            "settings" => new ConsoleResult("Открываю настройки.", NavigateTo: "settings"),
-            "sources" => new ConsoleResult("Открываю источники.", NavigateTo: "sources"),
-            "theme fluent" => new ConsoleResult("Включён Fluent.", SwitchThemeTo: "Fluent"),
-            "theme glass" => new ConsoleResult("Включён Glass.", SwitchThemeTo: "Glass"),
-            "theme" => new ConsoleResult("Использование: theme fluent | theme glass"),
+            "info" => new ConsoleResult(TallowText.Get("marvine.console.0021"), NavigateTo: "info"),
+            "guard" => new ConsoleResult(TallowText.Get("marvine.console.0022"), NavigateTo: "guard"),
+            "logs" => new ConsoleResult(TallowText.Get("marvine.console.0023"), NavigateTo: "logs"),
+            "activity" or "notifications" => new ConsoleResult(TallowText.Get("marvine.console.0024"), NavigateTo: "activity"),
+            "overview" or "home" => new ConsoleResult(TallowText.Get("marvine.console.0025"), NavigateTo: "overview"),
+            "/snob" or "/snob help" => new ConsoleResult(TallowText.Get("marvine.console.0026")),
+            "recovery" => new ConsoleResult(TallowText.Get("marvine.console.0027"), NavigateTo: "recovery"),
+            "settings" => new ConsoleResult(TallowText.Get("marvine.console.0028"), NavigateTo: "settings"),
+            "sources" => new ConsoleResult(TallowText.Get("marvine.console.0029"), NavigateTo: "sources"),
+            "theme fluent" => new ConsoleResult(TallowText.Get("marvine.console.0030"), SwitchThemeTo: "Fluent"),
+            "theme glass" => new ConsoleResult(TallowText.Get("marvine.console.0031"), SwitchThemeTo: "Glass"),
+            "theme" => new ConsoleResult(TallowText.Get("marvine.console.0032")),
             "clear" => new ConsoleResult("", ClearOutput: true),
-            _ => new ConsoleResult("Команда не поддерживается: " + command +
-                "\nMarvine не выполняет системные команды. Введите help.")
+            _ => new ConsoleResult(TallowText.Get("marvine.console.0033") + command +
+                TallowText.Get("marvine.console.0034"))
         };
     }
 }

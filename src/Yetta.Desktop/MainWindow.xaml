@@ -259,18 +259,18 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel x:Name="CaptionDragArea" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0" IsHitTestVisible="False">
           <Image Source="/Assets/yetta-logo.png" Width="23" Height="23" Margin="0,0,9,0"/>
-          <TextBlock Text="Yetta" FontSize="13" FontWeight="SemiBold"
+          <TextBlock Text="{DynamicResource Local.ui.main.0012}" FontSize="13" FontWeight="SemiBold"
                      VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-          <TextBlock Text="  —  Windows, on your terms." FontSize="12"
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0001}" FontSize="12"
                      VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
           <Button x:Name="CaptionMinimize" Style="{StaticResource CaptionButton}" Click="OnWindowMinimize"
-                  ToolTip="Свернуть" Content="─"/>
+                  ToolTip="{DynamicResource Local.ui.xaml.0002}" Content="─"/>
           <Button x:Name="CaptionMaximize" Style="{StaticResource CaptionButton}" Click="OnWindowMaximize"
-                  ToolTip="Развернуть" Content="□"/>
+                  ToolTip="{DynamicResource Local.ui.main.0011}" Content="□"/>
           <Button x:Name="CaptionClose" Style="{StaticResource CaptionButton}" Click="OnWindowClose"
-                  ToolTip="Закрыть" Content="✕"/>
+                  ToolTip="{DynamicResource Local.ui.warning.0008}" Content="✕"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -283,12 +283,12 @@
       <DockPanel Margin="18,23,17,22" LastChildFill="True">
         <StackPanel DockPanel.Dock="Bottom">
           <Border Height="14" Background="Transparent" Margin="5,7"/>
-          <TextBlock Text="●  DESKTOP PREVIEW" FontSize="11" Foreground="{DynamicResource AccentBrush}"
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0003}" FontSize="11" Foreground="{DynamicResource AccentBrush}"
                      FontWeight="SemiBold" Margin="8,0,0,9"/>
-          <TextBlock Text="DAX и привилегированные службы не установлены."
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0004}"
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="YETTA 0.3.11 · WINDOWS 11" FontSize="10"
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0005}" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <ScrollViewer Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
@@ -298,26 +298,26 @@
               <Image Source="/Assets/yetta-logo.png" Width="40" Height="40" Stretch="Uniform"/>
             </Border>
             <StackPanel Margin="13,3,0,0">
-              <TextBlock Text="YETTA" Foreground="{DynamicResource TextPrimary}"
+              <TextBlock Text="{DynamicResource Local.ui.xaml.0006}" Foreground="{DynamicResource TextPrimary}"
                          FontSize="19" FontWeight="Bold"/>
-              <TextBlock Text="Windows, on your terms." Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
+              <TextBlock Text="{DynamicResource Local.ui.xaml.0007}" Foreground="{DynamicResource TextSecondary}" FontSize="9"/>
             </StackPanel>
           </StackPanel>
-          <TextBlock Text="РАБОЧЕЕ ПРОСТРАНСТВО" FontSize="10" FontWeight="SemiBold"
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0008}" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,0,0,14"/>
-          <Button x:Name="NavOverview" Content="⌂   Главная" Tag="overview" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavInfo" Content="ⓘ   Информация" Tag="info" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavConsole" Content="⌘   Консоль" Tag="console" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <TextBlock Text="БЕЗОПАСНОСТЬ" FontSize="10" FontWeight="SemiBold"
+          <Button x:Name="NavOverview" Content="{DynamicResource Local.ui.xaml.0009}" Tag="overview" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavInfo" Content="{DynamicResource Local.ui.xaml.0010}" Tag="info" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavConsole" Content="{DynamicResource Local.ui.xaml.0011}" Tag="console" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0012}" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
-          <Button x:Name="NavGuard" Content="⛨   DAX Guard" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavLogs" Content="▤   DAX Logs" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavActivity" Content="◉   Центр активности" Tag="activity" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavRecovery" Content="↶   DAX Recovery" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="10" FontWeight="SemiBold"
+          <Button x:Name="NavGuard" Content="{DynamicResource Local.ui.xaml.0013}" Tag="guard" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavLogs" Content="{DynamicResource Local.ui.xaml.0014}" Tag="logs" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavActivity" Content="{DynamicResource Local.ui.xaml.0015}" Tag="activity" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavRecovery" Content="{DynamicResource Local.ui.xaml.0016}" Tag="recovery" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0017}" FontSize="10" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextSecondary}" Margin="13,27,0,12"/>
-          <Button x:Name="NavSettings" Content="⚙   Настройки" Tag="settings" Style="{StaticResource SideButton}" Click="OnNavigate"/>
-          <Button x:Name="NavSources" Content="↗   Источники" Tag="sources" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavSettings" Content="{DynamicResource Local.ui.xaml.0018}" Tag="settings" Style="{StaticResource SideButton}" Click="OnNavigate"/>
+          <Button x:Name="NavSources" Content="{DynamicResource Local.ui.xaml.0019}" Tag="sources" Style="{StaticResource SideButton}" Click="OnNavigate"/>
         </StackPanel></ScrollViewer>
       </DockPanel>
     </Border>
@@ -331,14 +331,14 @@
         <Grid Margin="34,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock x:Name="PageTitle" Text="Главная" FontSize="20" FontWeight="Bold"
+            <TextBlock x:Name="PageTitle" Text="{DynamicResource Local.ui.main.0001}" FontSize="20" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimary}"/>
-            <TextBlock x:Name="PageSubtitle" Text="Панель управления Yetta" FontSize="11"
+            <TextBlock x:Name="PageSubtitle" Text="{DynamicResource Local.ui.xaml.0020}" FontSize="11"
                        Foreground="{DynamicResource TextSecondary}"/>
           </StackPanel>
           <Border Grid.Column="1" VerticalAlignment="Center"
                   Background="{DynamicResource SelectedBrush}" CornerRadius="10" Padding="12,8">
-            <TextBlock x:Name="ThemeIndicator" Text="Windows 11" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
+            <TextBlock x:Name="ThemeIndicator" Text="{DynamicResource Local.ui.xaml.0021}" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
           </Border>
         </Grid>
       </Border>
@@ -352,7 +352,7 @@
       <Border Grid.Row="2">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
-          <TextBlock Text="0.3.11-preview" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock Text="{DynamicResource Local.ui.xaml.0022}" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>

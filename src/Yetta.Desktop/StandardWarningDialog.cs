@@ -38,14 +38,14 @@ internal static class StandardWarningDialog
     private static Brush BrushFor(Color color) => new SolidColorBrush(color);
     private static string KindName(WarningKind kind) => kind switch
     {
-        WarningKind.Caution => "Осторожно",
-        WarningKind.Dangerous => "Опасное действие",
-        WarningKind.Critical => "Критическое предупреждение",
-        WarningKind.Information => "Информация",
-        WarningKind.Fatal => "Смертельное предупреждение",
-        WarningKind.Agreement => "Соглашение",
+        WarningKind.Caution => TallowText.Get("ui.warning.0001"),
+        WarningKind.Dangerous => TallowText.Get("ui.warning.0002"),
+        WarningKind.Critical => TallowText.Get("ui.warning.0003"),
+        WarningKind.Information => TallowText.Get("ui.main.0002"),
+        WarningKind.Fatal => TallowText.Get("ui.warning.0004"),
+        WarningKind.Agreement => TallowText.Get("ui.warning.0005"),
         WarningKind.Dax => "DAX",
-        _ => "Стандартное"
+        _ => TallowText.Get("ui.warning.0006")
     };
 
     private static TextBlock Text(string text, double size, Brush foreground, bool bold = false) =>
@@ -109,7 +109,7 @@ internal static class StandardWarningDialog
         var window = new Window
         {
             Owner = owner,
-            Title = "Yetta · " + request.Reason,
+            Title = TallowText.Get("ui.warning.0007") + request.Reason,
             Width = 610,
             Height = 475,
             MinWidth = 530,
@@ -169,14 +169,14 @@ internal static class StandardWarningDialog
             YettaWarningWindow.HeaderIcon(request), 20);
         eventIcon.Margin = new Thickness(0, 0, 8, 0);
         caption.Children.Add(eventIcon);
-        var captionText = Text("Yetta · " + KindName(request.Kind), 12, White);
+        var captionText = Text(TallowText.Get("ui.warning.0007") + KindName(request.Kind), 12, White);
         Grid.SetColumn(captionText, 1);
         caption.Children.Add(captionText);
         var close = new Button
         {
             Content = IconAssets.Image(16, 18), Width = 28, Height = 25, FontSize = 23,
             BorderThickness = new Thickness(0), Background = Brushes.Transparent,
-            Foreground = White, Cursor = Cursors.Hand, ToolTip = "Закрыть"
+            Foreground = White, Cursor = Cursors.Hand, ToolTip = TallowText.Get("ui.warning.0008")
         };
         close.Click += (_, _) => Finish(false);
         Grid.SetColumn(close, 2);
@@ -210,7 +210,7 @@ internal static class StandardWarningDialog
         subject.Children.Add(causeIcon);
         var name = Text(request.Subject, 20, White, bold: true);
         name.Cursor = Cursors.Hand;
-        name.ToolTip = "Искать сведения об объекте";
+        name.ToolTip = TallowText.Get("ui.warning.0009");
         name.MouseLeftButtonUp += (_, _) =>
         {
             try
@@ -237,11 +237,11 @@ internal static class StandardWarningDialog
         body.Children.Add(subject);
 
         var publisher = Text(string.IsNullOrWhiteSpace(request.Publisher)
-            ? "Неизвестный издатель" : request.Publisher,
+            ? TallowText.Get("ui.warning.0010") : request.Publisher,
             13, Muted);
         publisher.Margin = new Thickness(0, 17, 0, 0);
         publisher.Cursor = Cursors.Hand;
-        publisher.ToolTip = "Открыть расположение файла (если указано)";
+        publisher.ToolTip = TallowText.Get("ui.warning.0011");
         publisher.MouseLeftButtonUp += (_, _) =>
         {
             try
@@ -291,7 +291,7 @@ internal static class StandardWarningDialog
         {
             checkbox = new CheckBox
             {
-                Content = "Я ознакомился с предупреждением и подтверждаю действие",
+                Content = TallowText.Get("ui.warning.0012"),
                 Foreground = White, FontSize = 12, IsChecked = false,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 0, 0, 12)
@@ -318,7 +318,7 @@ internal static class StandardWarningDialog
                 Background = new SolidColorBrush(Color.FromRgb(50, 50, 50)),
                 Foreground = White, CaretBrush = White,
                 BorderThickness = new Thickness(1), BorderBrush = Muted,
-                ToolTip = "TTY-Ключ · 64 символа",
+                ToolTip = TallowText.Get("ui.warning.0013"),
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
             visibleKey = new TextBox
@@ -334,14 +334,14 @@ internal static class StandardWarningDialog
             keyRow.Children.Add(inputLayer);
             var reveal = new Button
             {
-                Content = "Показать", MinWidth = 86, Height = 34, Margin = new Thickness(8, 0, 0, 0),
+                Content = TallowText.Get("ui.warning.0014"), MinWidth = 86, Height = 34, Margin = new Thickness(8, 0, 0, 0),
                 Background = Brushes.Transparent, BorderThickness = new Thickness(0),
                 Foreground = Muted, Cursor = Cursors.Hand, FocusVisualStyle = null
             };
             Grid.SetColumn(reveal, 2);
             keyRow.Children.Add(reveal);
             keyPanel.Children.Add(keyRow);
-            keyFeedback = Text("TTY-Ключ", 12, Muted);
+            keyFeedback = Text(TallowText.Get("ui.warning.0015"), 12, Muted);
             keyFeedback.Margin = new Thickness(29, 4, 0, 0);
             keyPanel.Children.Add(keyFeedback);
             bottom.Children.Add(keyPanel);
@@ -353,14 +353,14 @@ internal static class StandardWarningDialog
                     visibleKey.Text = tty.Password;
                     tty.Visibility = Visibility.Collapsed;
                     visibleKey.Visibility = Visibility.Visible;
-                    reveal.Content = "Скрыть";
+                    reveal.Content = TallowText.Get("ui.warning.0016");
                 }
                 else
                 {
                     tty.Password = visibleKey.Text;
                     visibleKey.Visibility = Visibility.Collapsed;
                     tty.Visibility = Visibility.Visible;
-                    reveal.Content = "Показать";
+                    reveal.Content = TallowText.Get("ui.warning.0014");
                 }
             };
             visibleKey.TextChanged += (_, _) =>
@@ -373,11 +373,11 @@ internal static class StandardWarningDialog
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         string action = request.Kind switch
         {
-            WarningKind.Information => "Ок",
-            WarningKind.Fatal => "Сброс",
-            WarningKind.Dax => "Ок",
-            WarningKind.Agreement => "Согласен",
-            _ => "Разрешить"
+            WarningKind.Information => TallowText.Get("ui.warning.0017"),
+            WarningKind.Fatal => TallowText.Get("ui.warning.0018"),
+            WarningKind.Dax => TallowText.Get("ui.warning.0017"),
+            WarningKind.Agreement => TallowText.Get("ui.warning.0019"),
+            _ => TallowText.Get("ui.warning.0020")
         };
         bool oneAction = request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
         var allow = Command(action, oneAction, BrushFor(palette.Accent));
@@ -386,7 +386,7 @@ internal static class StandardWarningDialog
         {
             // A safe decline is highlighted by default; highlight follows
             // warning severity just like the window background.
-            deny = Command("Запретить", true, BrushFor(palette.Accent));
+            deny = Command(TallowText.Get("ui.warning.0021"), true, BrushFor(palette.Accent));
             deny.IsCancel = false; // Escape must never dismiss warnings.
             controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             deny.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -416,7 +416,7 @@ internal static class StandardWarningDialog
             if (keyFeedback is not null && tty is not null)
             {
                 int count = tty.Password.Length;
-                keyFeedback.Text = count < 64 ? "TTY-Ключ · " + count + "/64" : keyValid ? "Ключ совпадает ✔" : "Ключ неверный ✘";
+                keyFeedback.Text = count < 64 ? TallowText.Get("ui.warning.0022") + count + "/64" : keyValid ? TallowText.Get("ui.warning.0023") : TallowText.Get("ui.warning.0024");
                 keyFeedback.Foreground = count < 64 ? Muted : keyValid ? Brushes.LightGreen : Brushes.Salmon;
                 tty.BorderBrush = count < 64 ? Muted : keyValid ? Brushes.LightGreen : Brushes.Salmon;
                 if (visibleKey is not null) visibleKey.BorderBrush = tty.BorderBrush;

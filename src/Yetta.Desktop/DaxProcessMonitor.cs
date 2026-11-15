@@ -1,3 +1,4 @@
+using Yetta.Core;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -96,7 +97,7 @@ internal sealed class DaxProcessMonitor : IDisposable
                 var p = snapshots.FirstOrDefault(x => x.Id == pid);
                 string name = p?.ProcessName ?? "process";
                 DaxAudit.Write("process", "started", "Yetta child PID " + pid + ": " + name);
-                _report("Запущен дочерний процесс " + name + " (PID " + pid + ")");
+                _report(TallowText.Get("dax.monitor.0001") + name + " (PID " + pid + ")");
             }
 
             foreach (int pid in _known.ToList())

@@ -86,7 +86,7 @@ internal static class TallowWarningDispatcher
         if (_queueWindow is not null) return;
         var window = new Window
         {
-            Title = "Tallow · очередь предупреждений",
+            Title = TallowText.Get("tallow.queue.0001"),
             Owner = owner, Width = 480, Height = 290,
             MinWidth = 420, MinHeight = 250,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -98,7 +98,7 @@ internal static class TallowWarningDispatcher
         var root = new StackPanel { Margin = new Thickness(20) };
         root.Children.Add(new TextBlock
         {
-            Text = "Очередь предупреждений", FontSize = 21, FontWeight = FontWeights.SemiBold,
+            Text = TallowText.Get("tallow.queue.0002"), FontSize = 21, FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 12)
         });
         _queueLabel = new TextBlock
@@ -108,9 +108,9 @@ internal static class TallowWarningDispatcher
         };
         root.Children.Add(_queueLabel);
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        _previous = MakeButton("Назад", () => { _selection--; RefreshQueue(); });
-        _next = MakeButton("Далее", () => { _selection++; RefreshQueue(); });
-        _reject = MakeButton("Запретить / убрать", () =>
+        _previous = MakeButton(TallowText.Get("tallow.queue.0003"), () => { _selection--; RefreshQueue(); });
+        _next = MakeButton(TallowText.Get("tallow.queue.0004"), () => { _selection++; RefreshQueue(); });
+        _reject = MakeButton(TallowText.Get("tallow.queue.0005"), () =>
         {
             var items = Policy.Pending;
             if (items.Count == 0) return;
@@ -125,7 +125,7 @@ internal static class TallowWarningDispatcher
         root.Children.Add(row);
         root.Children.Add(new TextBlock
         {
-            Text = "Разрешение недоступно в очереди: запрос откроется с полной проверкой, когда освободится окно.",
+            Text = TallowText.Get("tallow.queue.0006"),
             Foreground = Brushes.LightGray, FontSize = 11, TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 16, 0, 0)
         });
@@ -163,7 +163,7 @@ internal static class TallowWarningDispatcher
         _selection = Math.Clamp(_selection, 0, queued.Count - 1);
         var item = queued[_selection].Payload.Request;
         if (_queueLabel is not null)
-            _queueLabel.Text = $"Запрос {_selection + 1} из {queued.Count} · открыто {Policy.VisibleCount} из 5 окон\n\n{item.Reason}\n{item.Subject}\n{item.Description}";
+            _queueLabel.Text = TallowText.Format("tallow.queue.0007", _selection + 1, queued.Count, Policy.VisibleCount, item.Reason, item.Subject, item.Description);
         if (_previous is not null) _previous.IsEnabled = _selection > 0;
         if (_next is not null) _next.IsEnabled = _selection < queued.Count - 1;
         if (_reject is not null) _reject.IsEnabled = queued.Count > 0;

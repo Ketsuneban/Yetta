@@ -1,3 +1,4 @@
+using Yetta.Core;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO.Pipes;
@@ -35,7 +36,7 @@ internal sealed class TrayAgent : ApplicationContext
     private readonly Dictionary<AgentState, Icon> _icons = new();
     private AgentState _state = AgentState.Healthy;
     private bool _shuttingDown;
-    private string _lastReport = "DAX работает. Глубокий анализ угроз ещё не реализован.";
+    private string _lastReport = TallowText.Get("dax.tray.0001");
 
     internal TrayAgent()
     {
@@ -43,16 +44,16 @@ internal sealed class TrayAgent : ApplicationContext
         foreach (AgentState state in Enum.GetValues<AgentState>())
             _icons[state] = LoadIcon((int)state);
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Проверить", null, async (_, _) => await RunCheckAsync());
-        menu.Items.Add("Перезапустить", null, async (_, _) => await RestartAsync());
+        menu.Items.Add(TallowText.Get("dax.tray.0002"), null, async (_, _) => await RunCheckAsync());
+        menu.Items.Add(TallowText.Get("dax.tray.0003"), null, async (_, _) => await RestartAsync());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Отключить", null, (_, _) => Disable());
-        menu.Items.Add("Включить", null, (_, _) => Enable());
+        menu.Items.Add(TallowText.Get("dax.tray.0004"), null, (_, _) => Disable());
+        menu.Items.Add(TallowText.Get("dax.tray.0005"), null, (_, _) => Enable());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Закрыть", null, (_, _) => ExitAgent());
+        menu.Items.Add(TallowText.Get("ui.warning.0008"), null, (_, _) => ExitAgent());
         _tray = new NotifyIcon
         {
-            Text = "DAX · Yetta — запуск",
+            Text = TallowText.Get("dax.tray.0006"),
             Icon = _icons[_state],
             Visible = true,
             ContextMenuStrip = menu
@@ -89,15 +90,15 @@ internal sealed class TrayAgent : ApplicationContext
     private void UpdateTray()
     {
         _tray.Icon = _icons[_state];
-        _tray.Text = "DAX · Yetta — " + (_state switch
+        _tray.Text = TallowText.Get("dax.tray.0007") + (_state switch
         {
-            AgentState.Working => "Проверка",
-            AgentState.Healthy => "Работает",
-            AgentState.Notice => "Сообщение",
-            AgentState.Threat => "Угроза",
-            AgentState.Disabled => "Отключён",
-            AgentState.Fatal => "Критический сбой",
-            _ => "Неизвестно"
+            AgentState.Working => TallowText.Get("dax.tray.0008"),
+            AgentState.Healthy => TallowText.Get("dax.tray.0009"),
+            AgentState.Notice => TallowText.Get("dax.tray.0010"),
+            AgentState.Threat => TallowText.Get("dax.tray.0011"),
+            AgentState.Disabled => TallowText.Get("dax.tray.0012"),
+            AgentState.Fatal => TallowText.Get("dax.tray.0013"),
+            _ => TallowText.Get("dax.tray.0014")
         });
     }
 
@@ -138,12 +139,12 @@ internal sealed class TrayAgent : ApplicationContext
                 IntPtr handle = active.MainWindowHandle;
                 _ = ShowWindowAsync(handle, 9); // SW_RESTORE; Windows may deny focus-stealing.
                 if (!SetForegroundWindow(handle))
-                    ShowBalloon("Yetta", "Интерфейс уже запущен. Переключитесь на Yetta.");
+                    ShowBalloon(TallowText.Get("ui.main.0012"), TallowText.Get("dax.tray.0015"));
                 return;
             }
             if (!File.Exists(AppPath))
             {
-                _lastReport = "Не найден Yetta.exe рядом с DAX.";
+                _lastReport = TallowText.Get("dax.tray.0016");
                 SetState(AgentState.Notice);
                 ShowReport();
                 return;
@@ -152,7 +153,7 @@ internal sealed class TrayAgent : ApplicationContext
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
         {
-            _lastReport = "Yetta: запуск не удался (" + ex.GetType().Name + ").";
+            _lastReport = TallowText.Get("dax.tray.0017") + ex.GetType().Name + ").";
             SetState(AgentState.Notice);
             ShowReport();
         }
@@ -166,12 +167,12 @@ internal sealed class TrayAgent : ApplicationContext
         {
             bool interfaceRunning = processes.Any(p => !p.HasExited);
             bool installed = File.Exists(AppPath);
-            string report = "DAX tray: работает.\\n" +
-                "Yetta интерфейс: " + (interfaceRunning ? "запущен" : installed ? "не запущен" : "файл отсутствует") + ".\\n" +
-                "Tallow: встроен в Yetta; отдельный сервис не создан.\\n" +
-                "Marvine: компонент Yetta; независимый контроль недоступен.\\n" +
-                "Процессы Yetta: " + processes.Length + ".\\n" +
-                "DAX анализ угроз / Defender: пока не подключён.";
+            string report = TallowText.Get("dax.tray.0018") +
+                TallowText.Get("dax.tray.0019") + (interfaceRunning ? TallowText.Get("dax.tray.0020") : installed ? TallowText.Get("dax.tray.0021") : TallowText.Get("dax.tray.0022")) + ".\\n" +
+                TallowText.Get("dax.tray.0023") +
+                TallowText.Get("dax.tray.0024") +
+                TallowText.Get("dax.tray.0025") + processes.Length + ".\\n" +
+                TallowText.Get("dax.tray.0026");
             return report;
         }
         finally { foreach (var p in processes) p.Dispose(); }
@@ -185,14 +186,14 @@ internal sealed class TrayAgent : ApplicationContext
         try
         {
             _lastReport = CheckComponents();
-            SetState(_lastReport.Contains("файл отсутствует", StringComparison.Ordinal) ? AgentState.Notice : AgentState.Healthy);
-            ShowBalloon("DAX · проверка завершена", _lastReport.Replace("\\n", " "));
+            SetState(_lastReport.Contains(TallowText.Get("dax.tray.0022"), StringComparison.Ordinal) ? AgentState.Notice : AgentState.Healthy);
+            ShowBalloon(TallowText.Get("dax.tray.0027"), _lastReport.Replace(TallowText.Get("dax.tray.0028"), " "));
         }
         catch (Exception ex)
         {
-            _lastReport = "Проверка прервана: " + ex.GetType().Name;
+            _lastReport = TallowText.Get("dax.tray.0029") + ex.GetType().Name;
             SetState(AgentState.Notice);
-            ShowBalloon("DAX · ошибка проверки", _lastReport, ToolTipIcon.Warning);
+            ShowBalloon(TallowText.Get("dax.tray.0030"), _lastReport, ToolTipIcon.Warning);
         }
     }
 
@@ -201,24 +202,24 @@ internal sealed class TrayAgent : ApplicationContext
         SetState(AgentState.Working);
         await Task.Delay(350);
         // No privileged DAX services are installed yet; restart tray coordinator only.
-        _lastReport = "Компонент DAX tray перезапущен. Системные службы DAX пока отсутствуют.";
+        _lastReport = TallowText.Get("dax.tray.0031");
         SetState(AgentState.Healthy);
-        ShowBalloon("DAX", _lastReport);
+        ShowBalloon(TallowText.Get("ui.main.0030"), _lastReport);
     }
 
     private void Disable()
     {
-        _lastReport = "DAX отключён пользователем. Операции Yetta должны быть заблокированы.";
+        _lastReport = TallowText.Get("dax.tray.0032");
         SetState(AgentState.Disabled);
-        ShowBalloon("DAX отключён", "Значок остаётся в трее; включите DAX для работы с Yetta.", ToolTipIcon.Warning);
+        ShowBalloon(TallowText.Get("dax.tray.0033"), TallowText.Get("dax.tray.0034"), ToolTipIcon.Warning);
     }
     private void Enable()
     {
         SetState(AgentState.Healthy);
-        _lastReport = "DAX tray снова работает; анализ угроз ещё не реализован.";
-        ShowBalloon("DAX включён", _lastReport);
+        _lastReport = TallowText.Get("dax.tray.0035");
+        ShowBalloon(TallowText.Get("dax.tray.0036"), _lastReport);
     }
-    private void ShowReport() => MessageBox.Show(_lastReport, "DAX · состояние", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    private void ShowReport() => MessageBox.Show(_lastReport, TallowText.Get("dax.tray.0037"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     private void ExitAgent()
     {
         if (_shuttingDown) return;
