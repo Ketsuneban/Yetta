@@ -55,4 +55,39 @@ Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false)==27,"safe i
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,false)==26,"danger icon 26");
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,true)==35,"safe-mode icon 35");
 Assert(WarningPolicy.RequiresAdditionalAcknowledgement(YettaWarningLevel.Consent),"consent checkbox required");
+
+var clock = DateTimeOffset.Parse("2026-11-15T00:00:00Z");
+var warnings = new TallowWarningQueue<string>(() => clock);
+var admitted = new List<Guid>();
+for (int i = 0; i < 5; i++)
+{
+    var admission = warnings.Submit("warning-" + i, "subject " + i);
+    Assert(admission.Result == TallowWarningQueue<string>.Outcome.Show && admission.Item is not null,
+        "first five warnings open separately");
+    admitted.Add(admission.Item!.Id);
+}
+var queued = warnings.Submit("queued-1", "sixth warning");
+Assert(queued.Result == TallowWarningQueue<string>.Outcome.Queued && warnings.PendingCount == 1,
+    "sixth warning goes to bounded queue");
+Assert(warnings.Submit("queued-1", "duplicate").Result == TallowWarningQueue<string>.Outcome.Suppressed,
+    "duplicate queued warning suppressed");
+var promoted = warnings.Close(admitted[0]);
+Assert(promoted?.Id == queued.Item!.Id && warnings.VisibleCount == 5 && warnings.PendingCount == 0,
+    "closing a warning promotes oldest queued item");
+var later = warnings.Submit("queued-2", "new warning");
+Assert(later.Result == TallowWarningQueue<string>.Outcome.Queued, "overflow remains queued");
+Assert(warnings.RejectQueued(later.Item!.Id) && warnings.PendingCount == 0,
+    "queue denial discards only selected pending request");
+var fatal = warnings.Submit("fatal", "fatal warning", fatal: true);
+Assert(fatal.Result == TallowWarningQueue<string>.Outcome.Fatal &&
+    warnings.VisibleCount == 1 && warnings.PendingCount == 0 && warnings.FatalVisible,
+    "fatal warning preempts all windows and queue");
+Assert(warnings.Submit("blocked", "must not open").Result ==
+    TallowWarningQueue<string>.Outcome.BlockedByFatal, "fatal window has exclusive priority");
+warnings.Close(fatal.Item!.Id);
+Assert(!warnings.FatalVisible && warnings.VisibleCount == 0, "closing fatal does not perform recovery");
+clock = clock.AddSeconds(6);
+Assert(warnings.Submit("warning-0", "retry").Result == TallowWarningQueue<string>.Outcome.Show,
+    "explicit request may be repeated after cooling off");
+
 Console.WriteLine("All Yetta Core smoke tests passed.");
