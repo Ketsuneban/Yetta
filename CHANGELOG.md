@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.12-preview — 2026-11-15
+
+- Fix warning blue statuses for Agreement, DAX, Guest, SafeUser and Windows Safe Mode.
+- Correct generic application fallback icon mapping and distinguish DAX informational warnings from DAX-rejected actions.
+- Keep warning explanations visible with hidden scrollbars and fixed action footer.
+- Make single warning action buttons stretch to the available width and square their corners.
+- Use the supplied image icon for the close control, and display muted unknown publisher text.
+- This release does not introduce real Windows rollback, DAX restoration or malware scanning; fatal recovery remains a non-destructive placeholder.
+
 ## 0.3.10-preview — 2026-11-15
 
 - Apply the dark UAC-inspired warning layout to all seven Yetta warning kinds. Each has its own restrained header, body, and footer palette and a matching highlighted button; source icon remains independent of warning severity.
