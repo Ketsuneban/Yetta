@@ -36,8 +36,8 @@ internal static class StandardWarningDialog
             Color.FromRgb(81, 44, 57), Color.FromRgb(53, 31, 43),
             Color.FromRgb(33, 24, 30), Color.FromRgb(223, 99, 145)),
         WarningKind.Fatal => new(
-            Color.FromRgb(61, 58, 72), Color.FromRgb(42, 42, 53),
-            Color.FromRgb(25, 25, 34), Color.FromRgb(177, 171, 215)),
+            Color.FromRgb(27, 26, 34), Color.FromRgb(17, 17, 24),
+            Color.FromRgb(9, 9, 15), Color.FromRgb(174, 170, 194)),
         WarningKind.Agreement => new(
             Color.FromRgb(58, 62, 76), Color.FromRgb(43, 47, 60),
             Color.FromRgb(26, 29, 38), Color.FromRgb(148, 179, 227)),
@@ -80,14 +80,17 @@ internal static class StandardWarningDialog
             FontSize = 15,
             Padding = new Thickness(10, 7, 10, 7),
             Margin = new Thickness(4, 0, 4, 0),
-            Background = primary ? selectedAccent : new SolidColorBrush(Color.FromRgb(46, 46, 46)),
-            Foreground = primary ? Brushes.Black : White,
-            BorderThickness = new Thickness(primary ? 2 : 1),
-            BorderBrush = primary ? Brushes.White : new SolidColorBrush(Color.FromRgb(68, 68, 68)),
+            // All actions are neutral at rest. Severity colour appears ONLY
+            // under the pointer; never imply the choice is pre-approved.
+            Background = new SolidColorBrush(Color.FromRgb(46, 46, 46)),
+            Foreground = White,
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(84, 84, 84)),
             Cursor = Cursors.Hand
         };
         var template = new ControlTemplate(typeof(Button));
         var panel = new FrameworkElementFactory(typeof(Border));
+        panel.Name = "ButtonSurface";
         panel.SetValue(Border.SnapsToDevicePixelsProperty, true);
         panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
         panel.SetValue(Border.IsHitTestVisibleProperty, true);
@@ -106,7 +109,10 @@ internal static class StandardWarningDialog
         disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.48));
         template.Triggers.Add(disabled);
         var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-        hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.86));
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, selectedAccent, "ButtonSurface"));
+        hover.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.Black));
+        hover.Setters.Add(new Setter(Border.BorderBrushProperty,
+            new SolidColorBrush(Color.FromArgb(190, 242, 245, 255)), "ButtonSurface"));
         template.Triggers.Add(hover);
         button.Template = template;
         UiMotion.AttachButtonFeedback(button);
@@ -136,10 +142,15 @@ internal static class StandardWarningDialog
             Background = Brushes.Transparent
         };
 
+        // Single perimeter stroke for the entire warning window. It is not
+        // a nested rectangular window or an outline around the page content.
         var outer = new Border
         {
             Background = BrushFor(palette.Body),
             CornerRadius = new CornerRadius(8),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(190,
+                palette.Accent.R, palette.Accent.G, palette.Accent.B)),
+            BorderThickness = new Thickness(1.35),
             ClipToBounds = true,
             SnapsToDevicePixels = true
         };
@@ -148,6 +159,13 @@ internal static class StandardWarningDialog
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         outer.Child = grid;
+        outer.SizeChanged += (_, _) =>
+        {
+            if (outer.ActualWidth > 0 && outer.ActualHeight > 0)
+                grid.Clip = new RectangleGeometry(
+                    new Rect(0, 0, Math.Max(0, grid.ActualWidth),
+                        Math.Max(0, grid.ActualHeight)), 7, 7);
+        };
 
         void Finish(bool accepted)
         {
@@ -165,8 +183,10 @@ internal static class StandardWarningDialog
         caption.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         caption.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         caption.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var eventIcon = IconAssets.WarningGlyph(
-            request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : 22, 20);
+        // 48.png stays in the fatal HEADER. The skull (new #13) is the
+        // fatal CAUSE icon instead.
+        int headingId = YettaWarningWindow.HeaderIcon(request);
+        var eventIcon = IconAssets.Image(headingId, 24);
         eventIcon.Margin = new Thickness(0, 0, 8, 0);
         caption.Children.Add(eventIcon);
         var captionText = Text("Yetta · " + KindName(request.Kind), 12, White);
@@ -174,7 +194,8 @@ internal static class StandardWarningDialog
         caption.Children.Add(captionText);
         var close = new Button
         {
-            Content = "×", Width = 28, Height = 25, FontSize = 23,
+            Content = WarningArtwork.Image(5, 19),
+            Width = 32, Height = 30, FontSize = 23,
             BorderThickness = new Thickness(0), Background = Brushes.Transparent,
             Foreground = White, Cursor = Cursors.Hand, ToolTip = "Закрыть"
         };
@@ -204,8 +225,7 @@ internal static class StandardWarningDialog
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var causeIcon = IconAssets.Image(YettaWarningWindow.ObjectIcon(request), 44);
-        RenderOptions.SetBitmapScalingMode(causeIcon, BitmapScalingMode.HighQuality);
+        var causeIcon = WarningArtwork.Cause(request, 48);
         causeIcon.Margin = new Thickness(0, 0, 16, 0);
         subject.Children.Add(causeIcon);
         var name = Text(request.Subject, 20, White, bold: true);
@@ -224,10 +244,10 @@ internal static class StandardWarningDialog
         };
         Grid.SetColumn(name, 1);
         subject.Children.Add(name);
-        int state = YettaWarningWindow.Status(request, profile);
+        int state = YettaWarningWindow.StatusArtwork(request, profile);
         if (state != 0)
         {
-            var status = IconAssets.WarningGlyph(state, 30);
+            var status = WarningArtwork.Image(state, 35);
             status.Margin = new Thickness(12, 0, 0, 0);
             status.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(status, 2);
@@ -296,8 +316,10 @@ internal static class StandardWarningDialog
 
         // FOOTER: always visible even when text is long. Existing approval,
         // checkbox, key and audit semantics remain in force.
-        bool needsCheck = request.RequireAcknowledgement || request.Kind == WarningKind.Agreement;
-        bool needsKey = request.Kind is not (WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
+        bool needsCheck = !request.InformationOnly &&
+            (request.RequireAcknowledgement || request.Kind == WarningKind.Agreement);
+        bool needsKey = !request.InformationOnly &&
+            request.Kind is not (WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
             (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         var bottom = new StackPanel();
         var bottomSurface = new Border
@@ -344,7 +366,9 @@ internal static class StandardWarningDialog
             WarningKind.Agreement => "Согласен",
             _ => "Разрешить"
         };
-        bool oneAction = request.Kind is WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
+        bool oneAction = request.Kind is WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement
+            || request.InformationOnly;
+        if (request.InformationOnly) action = "Закрыть";
         var allow = Command(action, oneAction, BrushFor(palette.Accent));
         Button? deny = null;
         if (!oneAction)
