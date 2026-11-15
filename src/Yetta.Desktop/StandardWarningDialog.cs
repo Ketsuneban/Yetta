@@ -26,27 +26,13 @@ internal static class StandardWarningDialog
     private sealed record Palette(Color Header, Color Body, Color Footer, Color Accent);
     private static Palette Colors(WarningKind kind) => kind switch
     {
-        WarningKind.Caution => new(
-            Color.FromRgb(77, 67, 53), Color.FromRgb(55, 49, 39),
-            Color.FromRgb(32, 30, 27), Color.FromRgb(235, 176, 82)),
-        WarningKind.Dangerous => new(
-            Color.FromRgb(82, 53, 56), Color.FromRgb(59, 40, 43),
-            Color.FromRgb(35, 27, 29), Color.FromRgb(229, 119, 120)),
-        WarningKind.Critical => new(
-            Color.FromRgb(81, 44, 57), Color.FromRgb(53, 31, 43),
-            Color.FromRgb(33, 24, 30), Color.FromRgb(223, 99, 145)),
-        WarningKind.Fatal => new(
-            Color.FromRgb(61, 58, 72), Color.FromRgb(42, 42, 53),
-            Color.FromRgb(25, 25, 34), Color.FromRgb(177, 171, 215)),
-        WarningKind.Agreement => new(
-            Color.FromRgb(58, 62, 76), Color.FromRgb(43, 47, 60),
-            Color.FromRgb(26, 29, 38), Color.FromRgb(148, 179, 227)),
-        WarningKind.Dax => new(
-            Color.FromRgb(44, 65, 83), Color.FromRgb(31, 47, 64),
-            Color.FromRgb(22, 30, 42), Color.FromRgb(121, 179, 232)),
-        _ => new(
-            Color.FromRgb(54, 54, 54), Color.FromRgb(43, 43, 43),
-            Color.FromRgb(23, 23, 23), Color.FromRgb(76, 189, 242))
+        WarningKind.Caution => new(Color.FromRgb(76, 67, 51), Color.FromRgb(48, 44, 36), Color.FromRgb(27, 26, 23), Color.FromRgb(213, 157, 68)),
+        WarningKind.Dangerous => new(Color.FromRgb(76, 48, 49), Color.FromRgb(45, 32, 33), Color.FromRgb(24, 21, 22), Color.FromRgb(204, 104, 105)),
+        WarningKind.Critical => new(Color.FromRgb(69, 37, 49), Color.FromRgb(40, 25, 33), Color.FromRgb(21, 17, 22), Color.FromRgb(190, 82, 126)),
+        WarningKind.Fatal => new(Color.FromRgb(25, 25, 29), Color.FromRgb(13, 14, 18), Color.FromRgb(7, 8, 11), Color.FromRgb(105, 111, 130)),
+        WarningKind.Agreement => new(Color.FromRgb(52, 57, 70), Color.FromRgb(35, 40, 52), Color.FromRgb(20, 23, 31), Color.FromRgb(112, 153, 210)),
+        WarningKind.Dax => new(Color.FromRgb(39, 57, 73), Color.FromRgb(27, 40, 53), Color.FromRgb(17, 24, 33), Color.FromRgb(99, 157, 210)),
+        _ => new(Color.FromRgb(52, 54, 59), Color.FromRgb(35, 37, 42), Color.FromRgb(19, 20, 24), Color.FromRgb(100, 165, 205))
     };
     private static Brush BrushFor(Color color) => new SolidColorBrush(color);
     private static string KindName(WarningKind kind) => kind switch
@@ -71,26 +57,21 @@ internal static class StandardWarningDialog
 
     private static Button Command(string text, bool primary, Brush selectedAccent)
     {
+        var neutral = new SolidColorBrush(Color.FromRgb(49, 51, 57));
         var button = new Button
         {
-            Content = text,
-            Width = 225,
-            MinHeight = 42,
-            FontFamily = new FontFamily("Segoe UI"),
-            FontSize = 15,
-            Padding = new Thickness(10, 7, 10, 7),
-            Margin = new Thickness(4, 0, 4, 0),
-            Background = primary ? selectedAccent : new SolidColorBrush(Color.FromRgb(46, 46, 46)),
-            Foreground = primary ? Brushes.Black : White,
-            BorderThickness = new Thickness(primary ? 2 : 1),
-            BorderBrush = primary ? Brushes.White : new SolidColorBrush(Color.FromRgb(68, 68, 68)),
-            Cursor = Cursors.Hand
+            Content = text, Width = 225, MinHeight = 42,
+            FontFamily = new FontFamily("Segoe UI"), FontSize = 15,
+            Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(4, 0, 4, 0),
+            Background = neutral, Foreground = White,
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(91, 94, 103)),
+            Cursor = Cursors.Hand, FocusVisualStyle = null
         };
         var template = new ControlTemplate(typeof(Button));
         var panel = new FrameworkElementFactory(typeof(Border));
         panel.SetValue(Border.SnapsToDevicePixelsProperty, true);
-        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
-        panel.SetValue(Border.IsHitTestVisibleProperty, true);
+        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
         panel.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
         { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         panel.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
@@ -106,8 +87,11 @@ internal static class StandardWarningDialog
         disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.48));
         template.Triggers.Add(disabled);
         var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-        hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.86));
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, selectedAccent, "ButtonChrome"));
         template.Triggers.Add(hover);
+        var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
+        pressed.Setters.Add(new Setter(UIElement.OpacityProperty, 0.78));
+        template.Triggers.Add(pressed);
         button.Template = template;
         UiMotion.AttachButtonFeedback(button);
         return button;
@@ -139,7 +123,9 @@ internal static class StandardWarningDialog
         var outer = new Border
         {
             Background = BrushFor(palette.Body),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(0),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(105, 108, 117)),
             ClipToBounds = true,
             SnapsToDevicePixels = true
         };
@@ -166,7 +152,7 @@ internal static class StandardWarningDialog
         caption.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         caption.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var eventIcon = IconAssets.WarningGlyph(
-            request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : 22, 20);
+            YettaWarningWindow.HeaderIcon(request), 20);
         eventIcon.Margin = new Thickness(0, 0, 8, 0);
         caption.Children.Add(eventIcon);
         var captionText = Text("Yetta · " + KindName(request.Kind), 12, White);
@@ -204,7 +190,7 @@ internal static class StandardWarningDialog
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var causeIcon = IconAssets.Image(YettaWarningWindow.ObjectIcon(request), 44);
+        var causeIcon = IconAssets.Image(YettaWarningWindow.ObjectIcon(request), 52);
         RenderOptions.SetBitmapScalingMode(causeIcon, BitmapScalingMode.HighQuality);
         causeIcon.Margin = new Thickness(0, 0, 16, 0);
         subject.Children.Add(causeIcon);
@@ -227,7 +213,7 @@ internal static class StandardWarningDialog
         int state = YettaWarningWindow.Status(request, profile);
         if (state != 0)
         {
-            var status = IconAssets.WarningGlyph(state, 30);
+            var status = IconAssets.Image(state, 34);
             status.Margin = new Thickness(12, 0, 0, 0);
             status.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(status, 2);
@@ -303,6 +289,8 @@ internal static class StandardWarningDialog
         var bottomSurface = new Border
         {
             Background = BrushFor(palette.Footer),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(83, 86, 95)),
+            BorderThickness = new Thickness(0, 1, 0, 0),
             Padding = new Thickness(22, 17, 22, 22),
             Child = bottom
         };
