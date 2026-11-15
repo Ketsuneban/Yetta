@@ -34,11 +34,12 @@ internal static class UiMotion
     internal static void AnimateOpen(UIElement surface)
     {
         if (!Enabled) return;
-        surface.Loaded += (_, _) =>
+        if (surface is not FrameworkElement element) return;
+        element.Loaded += (_, _) =>
         {
-            surface.Opacity = 1;
+            element.Opacity = 1;
             var animation = Fade(0, 1, 200);
-            surface.BeginAnimation(UIElement.OpacityProperty, animation, HandoffBehavior.SnapshotAndReplace);
+            element.BeginAnimation(UIElement.OpacityProperty, animation, HandoffBehavior.SnapshotAndReplace);
         };
     }
 
