@@ -372,7 +372,7 @@ internal static class StandardWarningDialog
             keyRow.Children.Add(inputLayer);
             var reveal = new Button
             {
-                Content = IconAssets.Image(49, 18), Width = 38, Height = 36,
+                Content = IconAssets.Image(50, 18), Width = 38, Height = 36,
                 Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(0),
                 Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
                 BorderThickness = new Thickness(1), BorderBrush = Muted,
@@ -399,7 +399,7 @@ internal static class StandardWarningDialog
                     plain.Text = password.Password;
                     password.Visibility = Visibility.Collapsed;
                     plain.Visibility = Visibility.Visible;
-                    reveal.Content = IconAssets.Image(50, 18);
+                    reveal.Content = IconAssets.Image(49, 18);
                     reveal.ToolTip = TallowText.Get("ui.warning.0016");
                 }
                 else
@@ -407,7 +407,7 @@ internal static class StandardWarningDialog
                     password.Password = plain.Text;
                     plain.Visibility = Visibility.Collapsed;
                     password.Visibility = Visibility.Visible;
-                    reveal.Content = IconAssets.Image(49, 18);
+                    reveal.Content = IconAssets.Image(50, 18);
                     reveal.ToolTip = TallowText.Get("ui.warning.0014");
                 }
             };

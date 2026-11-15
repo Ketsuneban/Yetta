@@ -8,22 +8,48 @@ using System.Windows.Media.Imaging;
 namespace Yetta.Desktop;
 
 /// <summary>
-/// Numbered icons 1–50 ship as separate PNGs so every surface can use the
-/// resolution it actually needs: small badges stay on their 32px master while
-/// large artwork keeps its 384px original. The Yetta and DAX marks live next
-/// to them as <c>icons/yetta.png</c> and <c>icons/dax.png</c>.
+/// Two masters back the numbered icon set. Cells 1–20 are interface glyphs
+/// (terminal, info, gear, close, cursor…) that exist only in the packaged
+/// atlas; cells 21–50 also ship as standalone PNGs at a higher resolution
+/// (48–384px). The PNG folder additionally holds numbers 1–19, but those are a
+/// different file-type set, so the atlas stays authoritative for that range.
+/// The Yetta and DAX marks live next to them as <c>icons/yetta.png</c> and
+/// <c>icons/dax.png</c>.
 /// </summary>
 internal static class IconAssets
 {
+    private const int Cell = 32;
+    private const int AtlasLast = 20;
     private static readonly Dictionary<int, BitmapSource?> Cache = [];
+    private static BitmapSource? _atlas;
 
     private static BitmapSource? Get(int number)
     {
         if (number < 1 || number > 50) return null;
         if (Cache.TryGetValue(number, out var existing)) return existing;
-        var source = Load("icons/" + number + ".png");
+        var source = number <= AtlasLast
+            ? Atlas(number)
+            : (Load("icons/" + number + ".png") ?? Atlas(number));
         Cache[number] = source;
         return source;
+    }
+
+    private static BitmapSource? Atlas(int number)
+    {
+        try
+        {
+            var atlas = _atlas ??= Load("yetta-icons-atlas.png");
+            if (atlas is null) return null;
+            var bounds = new Int32Rect(
+                ((number - 1) % 10) * Cell, ((number - 1) / 10) * Cell, Cell, Cell);
+            var cropped = new CroppedBitmap(atlas, bounds);
+            cropped.Freeze();
+            return cropped;
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static BitmapSource? Load(string asset)
