@@ -6,12 +6,13 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
 
 /// <summary>
-/// UAC-inspired styling for Standard warnings ONLY. Not the Windows UAC
+/// UAC-inspired styling for all seven Yetta warning kinds. Not the Windows UAC
 /// secure desktop and not a substitute for Windows elevation or OS consent.
 /// Other warning types retain their existing rendering and control flows.
 /// </summary>
@@ -19,10 +20,45 @@ internal static class StandardWarningDialog
 {
     private static readonly Brush White = new SolidColorBrush(Color.FromRgb(248, 248, 248));
     private static readonly Brush Muted = new SolidColorBrush(Color.FromRgb(205, 205, 205));
-    private static readonly Brush Header = new SolidColorBrush(Color.FromRgb(54, 54, 54));
-    private static readonly Brush Body = new SolidColorBrush(Color.FromRgb(43, 43, 43));
-    private static readonly Brush Footer = new SolidColorBrush(Color.FromRgb(23, 23, 23));
-    private static readonly Brush Accent = new SolidColorBrush(Color.FromRgb(76, 189, 242));
+    // Muted shades, not solid safety-red/yellow fills. Each kind tints the
+    // actual window background and the selected action, independently of
+    // the header icon (which represents the source of the event).
+    private sealed record Palette(Color Header, Color Body, Color Footer, Color Accent);
+    private static Palette Colors(WarningKind kind) => kind switch
+    {
+        WarningKind.Caution => new(
+            Color.FromRgb(77, 67, 53), Color.FromRgb(55, 49, 39),
+            Color.FromRgb(32, 30, 27), Color.FromRgb(235, 176, 82)),
+        WarningKind.Dangerous => new(
+            Color.FromRgb(82, 53, 56), Color.FromRgb(59, 40, 43),
+            Color.FromRgb(35, 27, 29), Color.FromRgb(229, 119, 120)),
+        WarningKind.Critical => new(
+            Color.FromRgb(81, 44, 57), Color.FromRgb(53, 31, 43),
+            Color.FromRgb(33, 24, 30), Color.FromRgb(223, 99, 145)),
+        WarningKind.Fatal => new(
+            Color.FromRgb(61, 58, 72), Color.FromRgb(42, 42, 53),
+            Color.FromRgb(25, 25, 34), Color.FromRgb(177, 171, 215)),
+        WarningKind.Agreement => new(
+            Color.FromRgb(58, 62, 76), Color.FromRgb(43, 47, 60),
+            Color.FromRgb(26, 29, 38), Color.FromRgb(148, 179, 227)),
+        WarningKind.Dax => new(
+            Color.FromRgb(44, 65, 83), Color.FromRgb(31, 47, 64),
+            Color.FromRgb(22, 30, 42), Color.FromRgb(121, 179, 232)),
+        _ => new(
+            Color.FromRgb(54, 54, 54), Color.FromRgb(43, 43, 43),
+            Color.FromRgb(23, 23, 23), Color.FromRgb(76, 189, 242))
+    };
+    private static Brush BrushFor(Color color) => new SolidColorBrush(color);
+    private static string KindName(WarningKind kind) => kind switch
+    {
+        WarningKind.Caution => "Осторожно",
+        WarningKind.Dangerous => "Опасное действие",
+        WarningKind.Critical => "Критическое предупреждение",
+        WarningKind.Fatal => "Смертельное предупреждение",
+        WarningKind.Agreement => "Соглашение",
+        WarningKind.Dax => "DAX",
+        _ => "Стандартное"
+    };
 
     private static TextBlock Text(string text, double size, Brush foreground, bool bold = false) =>
         new()
@@ -33,7 +69,7 @@ internal static class StandardWarningDialog
             VerticalAlignment = VerticalAlignment.Center
         };
 
-    private static Button Command(string text, bool primary)
+    private static Button Command(string text, bool primary, Brush selectedAccent)
     {
         var button = new Button
         {
@@ -44,7 +80,7 @@ internal static class StandardWarningDialog
             FontSize = 15,
             Padding = new Thickness(10, 7, 10, 7),
             Margin = new Thickness(4, 0, 4, 0),
-            Background = primary ? Accent : new SolidColorBrush(Color.FromRgb(46, 46, 46)),
+            Background = primary ? selectedAccent : new SolidColorBrush(Color.FromRgb(46, 46, 46)),
             Foreground = primary ? Brushes.Black : White,
             BorderThickness = new Thickness(primary ? 2 : 1),
             BorderBrush = primary ? Brushes.White : new SolidColorBrush(Color.FromRgb(68, 68, 68)),
@@ -52,7 +88,9 @@ internal static class StandardWarningDialog
         };
         var template = new ControlTemplate(typeof(Button));
         var panel = new FrameworkElementFactory(typeof(Border));
+        panel.SetValue(Border.SnapsToDevicePixelsProperty, true);
         panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
+        panel.SetValue(Border.IsHitTestVisibleProperty, true);
         panel.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
         { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         panel.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
@@ -71,6 +109,7 @@ internal static class StandardWarningDialog
         hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.86));
         template.Triggers.Add(hover);
         button.Template = template;
+        UiMotion.AttachButtonFeedback(button);
         return button;
     }
 
@@ -78,6 +117,7 @@ internal static class StandardWarningDialog
     {
         // UAC is not being imitated functionally: this is an ordinary Yetta window.
         // Real Windows privilege prompts, if needed, are still exclusively OS-owned.
+        var palette = Colors(request.Kind);
         var window = new Window
         {
             Owner = owner,
@@ -98,7 +138,7 @@ internal static class StandardWarningDialog
 
         var outer = new Border
         {
-            Background = Body,
+            Background = BrushFor(palette.Body),
             CornerRadius = new CornerRadius(8),
             ClipToBounds = true,
             SnapsToDevicePixels = true
@@ -118,7 +158,7 @@ internal static class StandardWarningDialog
         // TOP: restrained caption, independent event icon, prominent question.
         var header = new StackPanel
         {
-            Background = Header,
+            Background = BrushFor(palette.Header),
             Margin = new Thickness(0),
         };
         var caption = new Grid { Margin = new Thickness(28, 15, 13, 4) };
@@ -129,7 +169,7 @@ internal static class StandardWarningDialog
             request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : 22, 20);
         eventIcon.Margin = new Thickness(0, 0, 8, 0);
         caption.Children.Add(eventIcon);
-        var captionText = Text("Предупреждение Yetta · Стандартное", 12, White);
+        var captionText = Text("Yetta · " + KindName(request.Kind), 12, White);
         Grid.SetColumn(captionText, 1);
         caption.Children.Add(captionText);
         var close = new Button
@@ -156,7 +196,7 @@ internal static class StandardWarningDialog
         grid.Children.Add(header);
 
         // BODY: object and status share a line; publisher is not falsely certified.
-        var body = new Grid { Background = Body, Margin = new Thickness(30, 23, 30, 21) };
+        var body = new Grid { Background = BrushFor(palette.Body), Margin = new Thickness(30, 23, 30, 21) };
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -256,12 +296,13 @@ internal static class StandardWarningDialog
 
         // FOOTER: always visible even when text is long. Existing approval,
         // checkbox, key and audit semantics remain in force.
-        bool needsCheck = request.RequireAcknowledgement;
-        bool needsKey = request.RequireTty || profile == "System";
+        bool needsCheck = request.RequireAcknowledgement || request.Kind == WarningKind.Agreement;
+        bool needsKey = request.Kind is not (WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
+            (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         var bottom = new StackPanel();
         var bottomSurface = new Border
         {
-            Background = Footer,
+            Background = BrushFor(palette.Footer),
             Padding = new Thickness(22, 17, 22, 22),
             Child = bottom
         };
@@ -296,12 +337,26 @@ internal static class StandardWarningDialog
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center
         };
-        var allow = Command("Разрешить", false);
-        var deny = Command("Запретить", true);
-        deny.IsCancel = !nonModal;
+        string action = request.Kind switch
+        {
+            WarningKind.Fatal => "Сброс",
+            WarningKind.Dax => "Ок",
+            WarningKind.Agreement => "Согласен",
+            _ => "Разрешить"
+        };
+        bool oneAction = request.Kind is WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
+        var allow = Command(action, oneAction, BrushFor(palette.Accent));
+        Button? deny = null;
+        if (!oneAction)
+        {
+            // A safe decline is highlighted by default; highlight follows
+            // warning severity just like the window background.
+            deny = Command("Запретить", true, BrushFor(palette.Accent));
+            deny.IsCancel = !nonModal;
+            controls.Children.Add(deny);
+        }
         allow.IsEnabled = !needsCheck && !needsKey;
         controls.Children.Add(allow);
-        controls.Children.Add(deny);
         bottom.Children.Add(controls);
         Grid.SetRow(bottomSurface, 2);
         grid.Children.Add(bottomSurface);
@@ -323,9 +378,21 @@ internal static class StandardWarningDialog
             checkbox.Unchecked += (_, _) => RefreshGate();
         }
         if (tty is not null) tty.PasswordChanged += (_, _) => RefreshGate();
-        allow.Click += (_, _) => { RefreshGate(); if (allow.IsEnabled) Finish(true); };
-        deny.Click += (_, _) => Finish(false);
+        allow.Click += (_, _) =>
+        {
+            RefreshGate();
+            if (!allow.IsEnabled) return;
+            if (request.Kind == WarningKind.Fatal)
+            {
+                // No Windows reset; existing callback only navigates to DAX Recovery.
+                request.RecoveryNavigation?.Invoke();
+            }
+            Finish(true);
+        };
+        if (deny is not null) deny.Click += (_, _) => Finish(false);
         window.Content = outer;
+        if (request.Kind == WarningKind.Fatal) window.Topmost = true;
+        UiMotion.AnimateOpen(outer);
 
         DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
         if (nonModal)
