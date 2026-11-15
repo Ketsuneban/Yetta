@@ -49,9 +49,12 @@ internal static class YettaWarningWindow
     {
         if (request.Kind == WarningKind.Fatal) return 48;
         if (request.Kind == WarningKind.Agreement) return 2;
-        if (request.InformationOnly || request.HeaderKind == WarningHeaderKind.Information)
-            return 31;
+        // An explicit event category wins over a generic information-board
+        // classification (e.g. access denial may also be informational).
         if (request.HeaderIconId is >= 1 and <= 50) return request.HeaderIconId.Value;
+        if (request.HeaderKind == WarningHeaderKind.Generic &&
+            (request.InformationOnly || request.Kind == WarningKind.Dax))
+            return 31;
         return request.HeaderKind switch
         {
             WarningHeaderKind.AccessDenied => 28,
