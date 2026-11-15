@@ -32,6 +32,18 @@ internal static class IconAssets
         catch (InvalidOperationException) { return null; }
     }
 
+    internal static Image WarningSkull(double size) => SpecialImage("warning-skull.png", size);
+
+    internal static Image DaxLogo(double size) => SpecialImage("dax-logo.png", size);
+
+    private static Image SpecialImage(string asset, double size)
+    {
+        var source = new BitmapImage(new Uri("pack://application:,,,/Assets/" + asset));
+        var image = new Image { Source = source, Width = size, Height = size, Stretch = Stretch.Uniform, SnapsToDevicePixels = true };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        return image;
+    }
+
     internal static Image Image(int number, double size)
     {
         BitmapSource? image = Get(number);
