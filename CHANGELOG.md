@@ -1,5 +1,13 @@
 # Yetta Changelog
 
+## 0.3.16-preview — 2026-11-15
+
+- Introduce a shared `local.json` for Yetta, Tallow, DAX, and Marvine, with Russian and existing English texts in the same catalog.
+- Move static WPF labels and C# messages into common key lookups without changing internal security decisions.
+- Load and cache the shared file in both EXEs, with an embedded fallback when it is missing or damaged.
+- Include `local.json` in the installer, portable release assets, and CI checks.
+
+
 ## 0.3.15-preview — 2026-11-15
 
 - Add Tallow's five-window limit for nonmodal warnings with a browsable sixth queue window, deduplication, and fatal priority.

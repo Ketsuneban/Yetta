@@ -109,4 +109,8 @@ try
 }
 finally { if (Directory.Exists(activityDirectory)) Directory.Delete(activityDirectory, true); }
 
+Assert(TallowText.All.Count >= 300, "shared text catalog loads migrated UI strings");
+Assert(TallowText.All.Values.Contains("Разрешить"), "Russian warning action available");
+Assert(TallowText.All.Values.Contains("Windows, on your terms."), "existing English UI text available");
+Assert(TallowText.All.Values.Contains("Проверить"), "DAX tray text available");
 Console.WriteLine("All Yetta Core smoke tests passed.");

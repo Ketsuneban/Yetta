@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta</AssemblyName>
     <RootNamespace>Yetta.Desktop</RootNamespace>
-    <Version>0.3.15</Version>
+    <Version>0.3.16</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -23,5 +23,8 @@
     <Resource Include="Assets/warning-skull.png" />
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../local.json" Link="local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

@@ -6,4 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../local.json" LogicalName="Yetta.Shared.local.json" />
+  </ItemGroup>
 </Project>
