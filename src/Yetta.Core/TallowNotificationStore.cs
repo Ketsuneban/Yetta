@@ -78,7 +78,7 @@ public sealed class TallowNotificationStore
         string temp = _path + ".tmp";
         try
         {
-            using (var writer = new StreamWriter(temp, append: false, new UTF8Encoding(false)))
+            using (var writer = new StreamWriter(temp, false, new UTF8Encoding(false)))
                 foreach (var item in items)
                     writer.WriteLine(JsonSerializer.Serialize(item, Options));
             File.Move(temp, _path, overwrite: true);
