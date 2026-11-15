@@ -113,4 +113,40 @@ Assert(TallowText.All.Count >= 300, "shared text catalog loads migrated UI strin
 Assert(TallowText.All.Values.Contains("Разрешить"), "Russian warning action available");
 Assert(TallowText.All.Values.Contains("Windows, on your terms."), "existing English UI text available");
 Assert(TallowText.All.Values.Contains("Проверить"), "DAX tray text available");
+
+// Hot catalog updates: the JSON changes without recompiling or restarting.
+var catalogOriginal = new Dictionary<string, string>(TallowText.All);
+var textKey = catalogOriginal.First(x => x.Value == "Разрешить").Key;
+var updated = new Dictionary<string, string>(catalogOriginal)
+{
+    [textKey] = "Тест: разрешить"
+};
+int events = 0;
+void OnTextsChanged(object? sender, TextCatalogChangedEventArgs args)
+{
+    events++;
+    Assert(args.Current[textKey] == TallowText.Get(textKey), "catalog notification reflects active text");
+}
+TallowText.Changed += OnTextsChanged;
+try
+{
+    Assert(TallowText.TryUpdate(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(updated)),
+        "valid catalog is applied without process restart");
+    Assert(TallowText.Get(textKey) == "Тест: разрешить", "changed label becomes visible immediately");
+    Assert(!TallowText.TryUpdate(System.Text.Encoding.UTF8.GetBytes("{}")),
+        "incomplete catalog is rejected");
+    Assert(!TallowText.TryUpdate(System.Text.Encoding.UTF8.GetBytes("{bad")),
+        "broken JSON is rejected");
+    Assert(TallowText.Get(textKey) == "Тест: разрешить",
+        "invalid catalogs preserve last valid copy");
+    Assert(TallowText.TryUpdate(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(catalogOriginal)),
+        "original catalog restored");
+    Assert(events == 2, "only actual catalog changes notify listeners");
+}
+finally
+{
+    TallowText.Changed -= OnTextsChanged;
+    TallowText.TryUpdate(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(catalogOriginal));
+}
+
 Console.WriteLine("All Yetta Core smoke tests passed.");

@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.15-preview";
+    private const string ReleaseVersion = "0.3.17-preview";
     private readonly SettingsStore _store = new();
     private readonly TallowNotificationStore _activityStore = new();
     private readonly AppSettings _settings;

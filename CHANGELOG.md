@@ -1,5 +1,14 @@
 # Yetta Changelog
 
+## 0.3.17-preview — 2026-11-15
+
+- Watch local.json for changes and poll GitHub main for new text approximately every minute.
+- Apply changes to open WPF windows and the DAX tray without restarting processes.
+- Download only validated, size-limited catalogs over HTTPS using conditional requests and atomic local writes; keep the last known good text if updates fail.
+- Preserve user input and confirmation state while refreshing static UI elements.
+- Add smoke tests for live text changes, invalid JSON rejection and change notifications.
+
+
 ## 0.3.16-preview — 2026-11-15
 
 - Introduce a shared `local.json` for Yetta, Tallow, DAX, and Marvine, with Russian and existing English texts in the same catalog.
