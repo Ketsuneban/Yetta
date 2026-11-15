@@ -21,6 +21,8 @@ internal static class UiMotion
         }
     }
 
+    internal static bool AnimationsEnabled => Enabled;
+
     private static Duration In(int milliseconds) =>
         new(TimeSpan.FromMilliseconds(milliseconds));
 

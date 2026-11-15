@@ -25,57 +25,100 @@ internal sealed record WarningRequest(
 /// </summary>
 internal static class YettaWarningWindow
 {
+    /// <summary>Cause icon for the main zone, following the numbered icon set.</summary>
     internal static int ObjectIcon(WarningRequest request)
     {
-        if (request.CauseIconId is >= 1 and <= 19) return request.CauseIconId.Value switch { 1 => 4, 2 => 37, 3 => 38, 4 => 39, 5 => 16, 6 => 40, 7 => 41, 8 => 42, 9 => 46, 10 => 43, 11 => 44, 12 => 45, 13 => 51, 14 => 46, 15 => 47, 16 => 27, 17 => 26, 18 => 35, 19 => 4, _ => 46 };
-        if (request.Kind == WarningKind.Fatal) return 51; // dedicated skull image
-        if (request.Kind == WarningKind.Agreement) return 12; // Yetta application
-        if (request.Kind == WarningKind.Dax) return 29; // DAX shield
+        if (request.Kind == WarningKind.Fatal) return 48;
+        if (request.CauseIconId is >= 1 and <= 50) return request.CauseIconId.Value;
         var path = request.SourcePath;
-        if (string.IsNullOrWhiteSpace(path)) return 46;
-        if (path.StartsWith(@"\\\\", StringComparison.Ordinal)) return 4; // Windows network/server source // Windows server-side resource
-        if (Directory.Exists(path)) return 10;
-        var full = Path.GetFullPath(path);
-        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        if (string.Equals(full.TrimEnd(Path.DirectorySeparatorChar), windows.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
-            return 4; // Windows logo
-        var ext = Path.GetExtension(path).ToLowerInvariant();
-        return ext switch
+        if (string.IsNullOrWhiteSpace(path))
+            return string.IsNullOrWhiteSpace(request.Publisher) ? 46 : 45;
+        try
+        {
+            if (Directory.Exists(path)) return 43;
+            var full = Path.GetFullPath(path);
+            if (File.Exists(full))
+            {
+                var attributes = File.GetAttributes(full);
+                if (attributes.HasFlag(FileAttributes.System) && attributes.HasFlag(FileAttributes.ReadOnly)) return 40;
+                if (IsUnderWindows(full)) return 42;
+            }
+            else if (IsUnderWindows(full))
+            {
+                return 42;
+            }
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException
+            or PathTooLongException or IOException or UnauthorizedAccessException)
+        {
+            // Fall through to the extension table.
+        }
+        return Extension(path) switch
         {
             ".py" => 37,
-            ".txt" or ".doc" or ".docx" or ".pdf" or ".rtf" or ".md" => 39,
-            ".exe" or ".com" or ".bat" or ".cmd" or ".ps1" or ".msi" => 41,
-            ".sys" or ".dll" or ".ini" or ".cfg" or ".reg" => 42,
-            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" => 44,
-            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".svg" or ".mp4" or ".mkv" or ".avi" or ".mov" => 47,
-            ".lnk" or ".appx" or ".msix" => 48,
+            ".txt" or ".doc" or ".docx" or ".odt" or ".rtf" or ".pdf" or ".md" or ".log" or ".csv" => 39,
+            ".exe" or ".com" or ".bat" or ".cmd" or ".ps1" or ".msi" or ".vbs" or ".jar" or ".scr" => 41,
+            ".sys" or ".dll" or ".ini" or ".cfg" or ".reg" or ".drv" or ".ocx" => 42,
+            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" or ".bz2" or ".xz" or ".iso" => 44,
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".svg" or ".ico"
+                or ".mp4" or ".mkv" or ".avi" or ".mov" or ".mp3" or ".wav" => 47,
+            ".lnk" => 38,
             _ => 46
         };
     }
 
+    /// <summary>Status square for the main zone; 0 means "no square".</summary>
     internal static int Status(WarningRequest request, string activeProfile)
     {
         // Status communicates safety only when a user must decide or acknowledge.
-        if (request.Kind == WarningKind.Information)
-            return 0;
-        if (request.Kind is WarningKind.Dax or WarningKind.Agreement)
-            return 35;
-        if (request.Kind == WarningKind.Fatal) return 35;
+        if (request.Kind is WarningKind.Fatal or WarningKind.Information) return 0;
         if (activeProfile is "Guest" or "SafeUser" || ConsentDialog.InWindowsSafeMode) return 35;
         return request.PotentialDamage ? 26 : 27;
     }
 
-    internal static int HeaderIcon(WarningRequest request) =>
-        request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : request.Kind switch
+    /// <summary>Header icon: what the warning is about, not how severe it is.</summary>
+    internal static int HeaderIcon(WarningRequest request)
+    {
+        if (request.HeaderIconId is >= 1 and <= 50) return request.HeaderIconId.Value;
+        return request.Kind switch
         {
-            WarningKind.Information => 30,
             WarningKind.Fatal => 48,
             WarningKind.Agreement => 2,
             WarningKind.Dax => 22,
-            WarningKind.Dangerous or WarningKind.Critical => 24,
             WarningKind.Caution => 23,
+            WarningKind.Dangerous or WarningKind.Critical => WindowsOnlyDanger(request) ? 25 : 24,
             _ => 22
         };
+    }
+
+    private static bool WindowsOnlyDanger(WarningRequest request)
+    {
+        var path = request.SourcePath;
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        try
+        {
+            return IsUnderWindows(Path.GetFullPath(path));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException
+            or PathTooLongException or System.Security.SecurityException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsUnderWindows(string fullPath)
+    {
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrEmpty(windows)) return false;
+        var root = windows.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Extension(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return string.IsNullOrEmpty(extension) ? string.Empty : extension.ToLowerInvariant();
+    }
 
     internal static bool Show(Window owner, WarningRequest request,
         string activeProfile = "User", bool nonModal = false) =>
