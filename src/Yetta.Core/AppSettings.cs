@@ -6,6 +6,7 @@ public sealed class AppSettings
     public string Theme { get; set; } = "Fluent";
     public bool ConfirmExternalLinks { get; set; } = true;
     public bool NotificationSoundsEnabled { get; set; } = true;
+    public int NotificationRetentionHours { get; set; } = 24;
     public List<string> InstalledProfiles { get; set; } = ["Guest"];
     public string ActiveProfile { get; set; } = "Guest";
     // Consent to the embedded user-level PowerShell session; never grants OS privileges.
@@ -14,6 +15,7 @@ public sealed class AppSettings
     public void Normalize()
     {
         if (Theme is not ("Fluent" or "Glass")) Theme = "Fluent";
+        if (NotificationRetentionHours is < 1 or > 720) NotificationRetentionHours = 24;
         InstalledProfiles ??= [];
         InstalledProfiles = InstalledProfiles
             .Where(p => AccessProfiles.CanInstallLogicalProfile(p))
