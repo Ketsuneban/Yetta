@@ -215,7 +215,7 @@ internal static class StandardWarningDialog
         int state = YettaWarningWindow.Status(request, profile);
         if (state != 0)
         {
-            var status = IconAssets.Image(state, 34);
+            var status = IconAssets.WarningGlyph(state, 34);
             status.Margin = new Thickness(12, 0, 0, 0);
             status.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(status, 2);
