@@ -13,7 +13,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.9-preview";
+    private const string ReleaseVersion = "0.3.10-preview";
     private readonly SettingsStore _store = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
@@ -50,6 +50,11 @@ public partial class MainWindow : Window
         };
         ApplyTheme();
         InitializeIconsAndCursors();
+        foreach (var navButton in _navigation.Values)
+            UiMotion.AttachButtonFeedback(navButton);
+        UiMotion.AttachButtonFeedback(CaptionMinimize);
+        UiMotion.AttachButtonFeedback(CaptionMaximize);
+        UiMotion.AttachButtonFeedback(CaptionClose);
         SourceInitialized += (_, _) => ApplyBackdrop();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
@@ -68,9 +73,6 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavRecovery, 9, "DAX Recovery");
         IconAssets.SetNav(NavSettings, 3, "Настройки");
         IconAssets.SetNavLogo(NavSources, "external-link.png", "Источники");
-        CaptionMinimize.Content = IconAssets.Image(15, 18);
-        CaptionMaximize.Content = IconAssets.Image(14, 18);
-        CaptionClose.Content = IconAssets.Image(16, 18);
         Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
     }
 
@@ -95,7 +97,7 @@ public partial class MainWindow : Window
     {
         if (CaptionMaximize is null) return;
         bool maximized = WindowState == System.Windows.WindowState.Maximized;
-        CaptionMaximize.Content = IconAssets.Image(maximized ? 15 : 14, 18);
+        CaptionMaximize.Content = maximized ? "❐" : "□";
         CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
 
@@ -203,6 +205,7 @@ public partial class MainWindow : Window
             pair.Value.Background = pair.Key == page ? Resource("SelectedBrush") : Brushes.Transparent;
             pair.Value.Foreground = pair.Key == page ? Accent : Muted;
             pair.Value.FontWeight = pair.Key == page ? FontWeights.SemiBold : FontWeights.Normal;
+            pair.Value.MinHeight = 45;
         }
 
         var headings = new Dictionary<string, (string Name, string Hint)>
@@ -233,6 +236,7 @@ public partial class MainWindow : Window
             case "sources": BuildSources(); break;
         }
         MainScroll.ScrollToTop();
+        UiMotion.AnimatePage(ContentPanel);
     }
 
     private TextBlock Text(string value, double size = 13, bool heading = false, bool muted = false)
@@ -267,10 +271,17 @@ public partial class MainWindow : Window
         {
             Content = label,
             Style = (Style)FindResource(primary ? "PrimaryButton" : "SecondaryButton"),
-            Margin = new Thickness(0, 0, 10, 8),
+            Margin = new Thickness(0, 0, 10, 10),
+            MinHeight = 44,
+            MinWidth = Math.Max(142, label.Length * 8 + 28),
+            Padding = new Thickness(18, 11, 18, 11),
             HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            FocusVisualStyle = null,
+            Cursor = Cursors.Hand,
             IsEnabled = enabled
         };
+        UiMotion.AttachButtonFeedback(button);
         button.Click += (_, _) => callback();
         return button;
     }
@@ -685,38 +696,145 @@ public partial class MainWindow : Window
 
     private void BuildConsole()
     {
-        AddIntro("Yetta / Console", "Встроенная консоль",
-            "Marvine — команды Yetta. Вкладки Windows Terminal и Windows PowerShell используют встроенную текстовую панель, которая передаёт введённые команды настоящему процессу Windows PowerShell текущего пользователя.");
-        var tabs = new WrapPanel();
-        foreach (string mode in new[] { "Marvine", "Windows Terminal", "Windows PowerShell" })
+        // Windows Terminal-inspired shell: only Marvine and one PowerShell
+        // engine are offered. "Windows Terminal" is the UI, not a second
+        // misleading pseudo-terminal engine.
+        if (_consoleMode == "Windows Terminal")
+            _consoleMode = "Windows PowerShell";
+
+        var shell = new Border
         {
-            string selected = mode;
-            tabs.Children.Add(ActionButton(mode, () =>
-            {
-                _consoleMode = selected;
-                Navigate("console");
-            }, _consoleMode == mode));
-        }
-        ContentPanel.Children.Add(tabs);
-        var terminal = new Border
-        {
+            Background = new SolidColorBrush(Color.FromRgb(12, 12, 12)),
+            CornerRadius = new CornerRadius(9),
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(_consoleMode == "Windows PowerShell" ? 5 : 14),
-            Background = _consoleMode switch
-            {
-                "Windows PowerShell" => new SolidColorBrush(Color.FromRgb(1, 36, 86)),
-                "Windows Terminal" => new SolidColorBrush(Color.FromRgb(15, 15, 18)),
-                _ => Resource("SidebarBackground")
-            },
-            Margin = new Thickness(0, 12, 0, 14),
-            Padding = new Thickness(17),
-            MinHeight = 290
+            ClipToBounds = true,
+            MinHeight = 430,
+            Margin = new Thickness(0, 0, 0, 12)
         };
-        var body = new StackPanel();
-        var heading = Text(_consoleMode + "  ·  " + (_consoleMode == "Marvine" ? "Yetta" : "PowerShell engine"), 14, heading: true);
-        heading.Foreground = _consoleMode == "Windows PowerShell" ? Brushes.White : Accent;
-        heading.Margin = new Thickness(0, 0, 0, 12);
-        body.Children.Add(heading);
+
+        var shellLayout = new DockPanel { LastChildFill = true };
+        var tabBar = new DockPanel
+        {
+            LastChildFill = false,
+            Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+            Height = 44
+        };
+        DockPanel.SetDock(tabBar, Dock.Top);
+        shellLayout.Children.Add(tabBar);
+
+        // The tab row is one functional console, with distinct profiles for
+        // Yetta commands and the genuine unelevated Windows PowerShell session.
+        var tabButtons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        DockPanel.SetDock(tabButtons, Dock.Left);
+        tabBar.Children.Add(tabButtons);
+
+        Button TabButton(string mode, string symbol)
+        {
+            bool selected = _consoleMode == mode;
+            var label = new StackPanel { Orientation = Orientation.Horizontal };
+            label.Children.Add(new TextBlock
+            {
+                Text = symbol, FontSize = 15,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 11, 0)
+            });
+            label.Children.Add(new TextBlock
+            {
+                Text = mode, FontSize = 12,
+                FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            var tab = new Button
+            {
+                Content = label,
+                Padding = new Thickness(16, 0, 16, 0),
+                MinWidth = mode == "Marvine" ? 126 : 186,
+                Height = 41,
+                Foreground = Brushes.White,
+                Background = selected
+                    ? new SolidColorBrush(Color.FromRgb(15, 15, 15))
+                    : new SolidColorBrush(Color.FromRgb(39, 39, 39)),
+                BorderThickness = new Thickness(0),
+                Margin = new Thickness(1, 3, 0, 0),
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null
+            };
+            tab.Click += (_, _) =>
+            {
+                if (_consoleMode == mode) return;
+                _consoleMode = mode;
+                Navigate("console");
+            };
+            return tab;
+        }
+
+        tabButtons.Children.Add(TabButton("Marvine", "⌘"));
+        tabButtons.Children.Add(TabButton("Windows PowerShell", "❯"));
+
+        // "+" opens a fresh PowerShell session. The current PowerShell
+        // session is disposed by Navigate; this is not multiple ConPTY sessions.
+        var addTab = new Button
+        {
+            Content = "+", FontSize = 21,
+            Width = 43, Height = 39,
+            Foreground = Brushes.White, Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            ToolTip = "Новая сессия Windows PowerShell",
+            FocusVisualStyle = null
+        };
+        addTab.Click += (_, _) =>
+        {
+            _consoleMode = "Windows PowerShell";
+            Navigate("console");
+        };
+        tabButtons.Children.Add(addTab);
+
+        var more = new Button
+        {
+            Content = "⌄", Width = 34, Height = 39,
+            FontSize = 17,
+            Foreground = Brushes.White,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            ToolTip = "Выбрать профиль терминала",
+            FocusVisualStyle = null
+        };
+        var profiles = new ContextMenu();
+        foreach (var profile in new[] { "Marvine", "Windows PowerShell" })
+        {
+            string chosen = profile;
+            var item = new MenuItem { Header = profile, IsChecked = _consoleMode == profile };
+            item.Click += (_, _) =>
+            {
+                if (chosen == _consoleMode) return;
+                _consoleMode = chosen;
+                Navigate("console");
+            };
+            profiles.Items.Add(item);
+        }
+        more.Click += (_, _) =>
+        {
+            profiles.PlacementTarget = more;
+            profiles.IsOpen = true;
+        };
+        tabButtons.Children.Add(more);
+
+        // The black content plane has no separator strokes, cards or focus
+        // rectangles. Full TTY support would require a separate ConPTY host.
+        var workspace = new Grid
+        {
+            Background = new SolidColorBrush(Color.FromRgb(12, 12, 12)),
+            Margin = new Thickness(0)
+        };
+        var body = new StackPanel { Margin = new Thickness(12, 11, 12, 13) };
+        workspace.Children.Add(body);
+        shellLayout.Children.Add(workspace);
+        shell.Child = shellLayout;
+        ContentPanel.Children.Add(shell);
 
         if (_consoleMode == "Marvine")
         {
@@ -737,7 +855,8 @@ public partial class MainWindow : Window
             _consoleOutput = display;
             body.Children.Add(new ScrollViewer
             {
-                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 298, Focusable = false, FocusVisualStyle = null,
+                BorderThickness = new Thickness(0), VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
             });
             _consoleInput = BuildTerminalInput("Команда Marvine", RunMarvine);
@@ -788,9 +907,7 @@ public partial class MainWindow : Window
         else
         {
             var description = Text(
-                "Реальный Windows PowerShell внутри интерфейса Yetta. " +
-                "Обработка текстовых команд доступна; полноэкранные TTY-программы, цветовые escape-коды " +
-                "и нативный интерфейс Windows Terminal пока не поддерживаются.", 11);
+                "Windows PowerShell 5.1 · встроенный текстовый терминал; полноценный ConPTY пока не поддерживается.", 11);
             description.Foreground = Brushes.LightGray;
             description.Margin = new Thickness(0, 0, 0, 10);
             body.Children.Add(description);
@@ -799,7 +916,8 @@ public partial class MainWindow : Window
             _consoleOutput = display;
             var scrolling = new ScrollViewer
             {
-                Height = 238, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 298, Focusable = false, FocusVisualStyle = null,
+                BorderThickness = new Thickness(0), VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
             };
             body.Children.Add(scrolling);
@@ -841,12 +959,12 @@ public partial class MainWindow : Window
             }
         }
 
-        terminal.Child = body;
-        ContentPanel.Children.Add(terminal);
+        // No extra border around the workspace, unlike the former card UI.
         AddNotice("Реальные права Windows",
-            "Запуск команд разрешён только на профиле USER и только без повышения самого приложения. " +
-            "Принятое согласие не предоставляет ADMIN или SYS и не отключает защиту Windows. " +
-            "Новые привилегированные функции потребуют отдельного подтверждения и аудита.");
+            "PowerShell здесь запускается с обычными правами текущего пользователя. " +
+            "Встроенная панель пока не поддерживает полноэкранный ConPTY, интерактивный " +
+            "TTY и все управляющие последовательности Windows Terminal. " +
+            "Принятое согласие не даёт ADMIN/SYSTEM и не отключает UAC.");
         _consoleInput?.Focus();
     }
 
@@ -854,11 +972,13 @@ public partial class MainWindow : Window
     {
         var field = new TextBox
         {
-            Background = Surface, Foreground = Ink,
+            Background = new SolidColorBrush(Color.FromRgb(24, 24, 24)),
+            Foreground = Brushes.White,
+            FocusVisualStyle = null,
             BorderBrush = Brushes.Transparent, BorderThickness = new Thickness(0),
-            FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter"),
-            FontSize = 13, Padding = new Thickness(12, 10, 12, 10),
-            CaretBrush = Accent, ToolTip = hint
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 14, Padding = new Thickness(10, 10, 10, 10),
+            CaretBrush = Brushes.White, ToolTip = hint
         };
         field.KeyDown += (_, e) =>
         {
@@ -909,8 +1029,9 @@ public partial class MainWindow : Window
     private TextBlock ConsoleLine(string message, bool prompt)
     {
         var line = Text(message, 12);
-        line.FontFamily = new FontFamily("pack://application:,,,/Assets/#Inter");
-        line.Foreground = prompt ? Accent : Ink;
+        line.FontFamily = new FontFamily("Consolas");
+        line.FontSize = 14;
+        line.Foreground = prompt ? Brushes.White : new SolidColorBrush(Color.FromRgb(217, 217, 217));
         line.Margin = new Thickness(0, 0, 0, 10);
         return line;
     }
