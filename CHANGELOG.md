@@ -1,5 +1,16 @@
 # Yetta Changelog
 
+## 0.3.15-preview — 2026-11-15
+
+- Add Tallow's five-window limit for nonmodal warnings with a browsable sixth queue window, deduplication, and fatal priority.
+- Allow users to reject queued requests; queued approvals still require the full warning dialog.
+- Keep Escape from dismissing warning dialogs and play the Windows critical-error system sound for fatal warnings.
+- Store activity notifications locally, group them by source and allow retention settings (24h default).
+- Restore existing Yetta UI from DAX tray on left-click when Windows allows it.
+- Add smoke tests for queue behavior and local notification cleanup.
+- DAX service/Defender, recovery, privileged operations and full six-window decision UI remain planned.
+
+
 ## 0.3.14-preview — 2026-11-15
 
 - Add the lightweight DAX tray companion and six owner-provided icons.
