@@ -90,4 +90,23 @@ clock = clock.AddSeconds(6);
 Assert(warnings.Submit("warning-0", "retry").Result == TallowWarningQueue<string>.Outcome.Show,
     "explicit request may be repeated after cooling off");
 
+
+string activityDirectory = Path.Combine(Path.GetTempPath(), "yetta-activity-test-" + Guid.NewGuid().ToString("N"));
+try
+{
+    string path = Path.Combine(activityDirectory, "activity.jsonl");
+    var now = DateTimeOffset.Parse("2026-11-15T16:00:00Z");
+    var history = new TallowNotificationStore(path, () => now);
+    history.Add("Tallow", "First", 24);
+    history.Add("DAX", "Second", 24);
+    Assert(history.Load().Count == 2, "activity persists across reads");
+    File.AppendAllText(path, "{ invalid JSON" + Environment.NewLine);
+    Assert(history.Load().Count == 2, "corrupt activity entry is skipped");
+    now = now.AddHours(25);
+    Assert(history.Load().Count == 0, "activity expires after default 24 hours");
+    Assert(!File.ReadAllText(path).Contains("First", StringComparison.Ordinal),
+        "expired activity is removed from persistence");
+}
+finally { if (Directory.Exists(activityDirectory)) Directory.Delete(activityDirectory, true); }
+
 Console.WriteLine("All Yetta Core smoke tests passed.");
