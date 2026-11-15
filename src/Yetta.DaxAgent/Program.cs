@@ -186,7 +186,7 @@ internal sealed class TrayAgent : ApplicationContext
         try
         {
             _lastReport = CheckComponents();
-            SetState(_lastReport.Contains(TallowText.Get("dax.tray.0022"), StringComparison.Ordinal) ? AgentState.Notice : AgentState.Healthy);
+            SetState(File.Exists(AppPath) ? AgentState.Healthy : AgentState.Notice);
             ShowBalloon(TallowText.Get("dax.tray.0027"), _lastReport.Replace(TallowText.Get("dax.tray.0028"), " "));
         }
         catch (Exception ex)
