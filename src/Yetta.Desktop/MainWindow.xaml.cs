@@ -76,9 +76,12 @@ public partial class MainWindow : Window
         Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
     }
 
-    private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
+    private void ShowYettaNotice(string title, string message,
+        WarningKind kind = WarningKind.Dax,
+        WarningHeaderKind header = WarningHeaderKind.Information) =>
         YettaWarningWindow.Show(this,
-            new WarningRequest(kind, title, message, Subject: "Yetta"),
+            new WarningRequest(kind, title, message, Subject: "Yetta",
+                HeaderKind: header, InformationOnly: true),
             _settings.ActiveProfile, nonModal: true);
 
     private bool ConfirmYettaAction(string title, string message) =>
@@ -371,7 +374,9 @@ public partial class MainWindow : Window
                 "Планируемая архитектура: DAX Gate / Guard, Process, Threat, System, Audit, Update.\\n\\n" +
                 "Мониторинг вредоносных программ, системная служба и автоматическое восстановление " +
                 "Windows пока не реализованы. Предупреждения Yetta не заменяют Microsoft Defender.",
-                Subject: "DAX", Publisher: "Исполнительный модуль защиты и доступа"),
+                Subject: "DAX", Publisher: "Исполнительный модуль защиты и доступа",
+                ObjectKind: WarningObjectKind.Dax,
+                HeaderKind: WarningHeaderKind.Information, InformationOnly: true),
             _settings.ActiveProfile, nonModal: true);
     }
 
@@ -1137,7 +1142,8 @@ public partial class MainWindow : Window
                         "TTY-проверка действует только как дополнительное подтверждение. ",
                         Subject: "Yetta · UI Test",
                         RequireAcknowledgement: choice is WarningKind.Caution or WarningKind.Dangerous,
-                        PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
+                        // Demo windows have no real DAX assessment: never fabricate a red status.
+                        PotentialDamage: false,
                         RecoveryNavigation: choice == WarningKind.Fatal
                             ? () => Navigate("recovery") : null),
                     _settings.ActiveProfile, nonModal: true);
@@ -1230,7 +1236,8 @@ public partial class MainWindow : Window
         if (target == "wt.exe" && !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
         {
             ShowYettaNotice("Недостаточный уровень доступа",
-                "DAX Guard: сначала примените уровень «Пользователь».");
+                "DAX Guard: сначала примените уровень «Пользователь».",
+                WarningKind.Caution, WarningHeaderKind.AccessDenied);
             return;
         }
         if (_settings.ConfirmExternalLinks && !ConfirmYettaAction(
