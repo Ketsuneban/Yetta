@@ -89,7 +89,7 @@ internal sealed class TrayAgent : ApplicationContext
     private void UpdateTray()
     {
         _tray.Icon = _icons[_state];
-        _tray.Text = ("DAX · Yetta — " + _state switch
+        _tray.Text = "DAX · Yetta — " + (_state switch
         {
             AgentState.Working => "Проверка",
             AgentState.Healthy => "Работает",
@@ -218,8 +218,8 @@ internal sealed class TrayAgent : ApplicationContext
                 using var server = new NamedPipeServerStream(Program.PipeName, PipeDirection.InOut, 1,
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await server.WaitForConnectionAsync(token);
-                using var reader = new StreamReader(server, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
-                using var writer = new StreamWriter(server, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
+                using var reader = new StreamReader(server, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+                using var writer = new StreamWriter(server, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
                 var line = await reader.ReadLineAsync(token);
                 var result = line switch
                 {
