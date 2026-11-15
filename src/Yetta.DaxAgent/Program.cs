@@ -33,6 +33,7 @@ internal sealed class TrayAgent : ApplicationContext
     private readonly NotifyIcon _tray;
     private readonly SynchronizationContext _ui;
     private readonly CancellationTokenSource _stop = new();
+    private readonly TallowTextUpdates _textUpdates = new();
     private readonly Dictionary<AgentState, Icon> _icons = new();
     private AgentState _state = AgentState.Healthy;
     private bool _shuttingDown;
@@ -66,6 +67,8 @@ internal sealed class TrayAgent : ApplicationContext
             else OpenYetta();
         };
         UpdateTray();
+        TallowText.Changed += OnCatalogChanged;
+        _textUpdates.Start();
         _ = ServeAsync(_stop.Token);
     }
 
@@ -90,7 +93,7 @@ internal sealed class TrayAgent : ApplicationContext
     private void UpdateTray()
     {
         _tray.Icon = _icons[_state];
-        _tray.Text = TallowText.Get("dax.tray.0007") + (_state switch
+        string status = TallowText.Get("dax.tray.0007") + (_state switch
         {
             AgentState.Working => TallowText.Get("dax.tray.0008"),
             AgentState.Healthy => TallowText.Get("dax.tray.0009"),
@@ -100,6 +103,26 @@ internal sealed class TrayAgent : ApplicationContext
             AgentState.Fatal => TallowText.Get("dax.tray.0013"),
             _ => TallowText.Get("dax.tray.0014")
         });
+        // Windows shell NotifyIcon text must remain <= 63 characters.
+        _tray.Text = status.Length > 63 ? status[..63] : status;
+    }
+
+    private void OnCatalogChanged(object? sender, TextCatalogChangedEventArgs change)
+    {
+        _ui.Post(_ =>
+        {
+            if (_shuttingDown) return;
+            if (_tray.ContextMenuStrip is { } menu)
+                foreach (ToolStripItem entry in menu.Items)
+                    if (entry is ToolStripMenuItem item)
+                        foreach (var pair in change.Previous)
+                            if (item.Text == pair.Value && change.Current.TryGetValue(pair.Key, out var next))
+                            {
+                                item.Text = next;
+                                break;
+                            }
+            UpdateTray();
+        }, null);
     }
 
     private void SetState(AgentState state) { _state = state; UpdateTray(); }
@@ -271,6 +294,8 @@ internal sealed class TrayAgent : ApplicationContext
     {
         if (disposing)
         {
+            TallowText.Changed -= OnCatalogChanged;
+            _textUpdates.Dispose();
             _stop.Cancel();
             _tray.Dispose();
             foreach (var icon in _icons.Values) icon.Dispose();
