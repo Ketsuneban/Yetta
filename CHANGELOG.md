@@ -1,5 +1,13 @@
 # Yetta Changelog
 
+## 0.3.14-preview — 2026-11-15
+
+- Add the lightweight DAX tray companion and six owner-provided icons.
+- Show Windows tray context actions and initial component availability reports.
+- Gate Yetta usage when the companion is disabled, closed or unavailable.
+- Fix the 0.3.13 installer omission: include both Yetta.exe and Yetta.DAX.exe.
+- Full DAX scanning, protection and recovery are still planned.
+
 ## 0.3.12-preview — 2026-11-15
 
 - Fix warning blue statuses for Agreement, DAX, Guest, SafeUser and Windows Safe Mode.
