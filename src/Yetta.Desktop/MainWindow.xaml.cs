@@ -36,6 +36,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _settings = _store.Load();
+        // settings.json can be edited. Never trust an Administrator label without
+        // an authenticated reply from the installed machine-level Windows service.
+        if (_settings.ActiveProfile == "Administrator" &&
+            !AdminBrokerClient.IsAvailableAsync().GetAwaiter().GetResult())
+        {
+            _settings.ActiveProfile = _settings.InstalledProfiles.Contains("User")
+                ? "User" : "Guest";
+            _store.Save(_settings);
+        }
         _navigation = new()
         {
             ["overview"] = NavOverview,
@@ -428,7 +437,8 @@ public partial class MainWindow : Window
     private void BuildGuard()
     {
         AddIntro("Yetta / DAX Guard", "Менеджер уровней доступа",
-            "В этой версии DAX Guard проверяет только логические политики Yetta. Установка Safe User и User не меняет токен Windows. Администратор и Система пока не устанавливаются.");
+            "Профиль Администратор использует отдельную защищённую службу Windows после однократного UAC при установке. " +
+            "Разрешены только операции из белого списка Yetta. SYSTEM и произвольная повышенная оболочка недоступны.");
 
         var current = new StackPanel();
         current.Children.Add(Text("ТЕКУЩИЙ УРОВЕНЬ", 10, heading: true, muted: true));
@@ -459,10 +469,28 @@ public partial class MainWindow : Window
             choices.Items.Add(item);
             if (profile == _settings.ActiveProfile) choices.SelectedItem = item;
         }
-        choices.SelectionChanged += (_, _) =>
+        choices.SelectionChanged += async (_, _) =>
         {
-            if (choices.SelectedItem is ComboBoxItem { Tag: string profile } &&
-                profile != _settings.ActiveProfile && AccessProfiles.Apply(_settings, profile))
+            if (choices.SelectedItem is not ComboBoxItem { Tag: string profile } ||
+                profile == _settings.ActiveProfile) return;
+
+            if (profile == "Administrator")
+            {
+                bool verified = await AdminBrokerClient.IsAvailableAsync();
+                if (!verified ||
+                    !AccessProfiles.RecordVerifiedAdministrator(_settings, verified))
+                {
+                    ShowYettaNotice("Профиль ADMIN недоступен",
+                        "Служба Windows не установлена, остановлена либо принадлежит другой учётной записи.",
+                        WarningKind.Caution);
+                    Navigate("guard");
+                    return;
+                }
+                SavePreferences();
+                Navigate("guard");
+                return;
+            }
+            if (AccessProfiles.Apply(_settings, profile))
             {
                 SavePreferences();
                 Navigate("guard");
@@ -504,6 +532,66 @@ public partial class MainWindow : Window
             row.Children.Add(button);
             ContentPanel.Children.Add(Card(row));
         }
+        AddSection("Административные операции Yetta",
+            "Привилегии находятся в защищённой службе. Это не режим запуска любого EXE " +
+            "без UAC и не доступ SYSTEM для консоли.");
+        var adminTools = new StackPanel();
+        adminTools.Children.Add(Text(
+            "Установка выполняется только с настоящим запросом Windows UAC. " +
+            "После подтверждения разрешённые операции Yetta выполняются через службу без новых UAC-окон. " +
+            "Все остальные запросы Windows остаются под контролем самой ОС.", 12, muted: true));
+        var adminActions = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
+        adminActions.Children.Add(ActionButton("Проверить службу", async () =>
+        {
+            var state = await AdminBrokerClient.CallAsync(AdminBrokerProtocol.Ping);
+            ShowYettaNotice(state.Success ? "Административная служба работает" : "Служба недоступна",
+                state.Message, state.Success ? WarningKind.Dax : WarningKind.Caution);
+        }));
+        adminActions.Children.Add(ActionButton("Проверить административную запись", async () =>
+        {
+            if (_settings.ActiveProfile != "Administrator")
+            {
+                ShowYettaNotice("Выберите ADMIN",
+                    "Для защищённой проверки сначала примените профиль Администратор.", WarningKind.Caution);
+                return;
+            }
+            var result = await AdminBrokerClient.TestMachineWriteAsync();
+            DaxAudit.Write("admin_broker", result.Success ? "machine_proof_written" : "denied",
+                result.Message);
+            ShowYettaNotice(result.Success ? "Операция выполнена" : "Операция отклонена",
+                result.Message + (result.Detail is null ? "" : "\\n" + result.Detail),
+                result.Success ? WarningKind.Dax : WarningKind.Caution);
+        }, true));
+        adminActions.Children.Add(ActionButton("Отозвать права и удалить службу", async () =>
+        {
+            if (!ConfirmYettaAction("Удаление профиля Администратор",
+                "Защищённая служба будет остановлена и удалена. Windows снова запросит UAC для удаления. " +
+                "После этого защищённые операции Yetta станут недоступны. Продолжить?")) return;
+            try
+            {
+                if (!await AdminBrokerClient.RemoveAsync())
+                {
+                    ShowYettaNotice("Удаление не завершено",
+                        "Служба осталась доступной или Windows отказала в удалении.", WarningKind.Caution);
+                    return;
+                }
+                _settings.InstalledProfiles.Remove("Administrator");
+                if (_settings.ActiveProfile == "Administrator")
+                    _settings.ActiveProfile = _settings.InstalledProfiles.Contains("User")
+                        ? "User" : "Guest";
+                SavePreferences();
+                Notify("DAX Guard", "Защищённая служба Администратор удалена.");
+                Navigate("guard");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception
+                or IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                ShowYettaNotice("Ошибка удаления службы", ex.Message, WarningKind.Caution);
+            }
+        }));
+        adminTools.Children.Add(adminActions);
+        ContentPanel.Children.Add(Card(adminTools));
+
         AddSection("Ключ TTY", "Дополнительное подтверждение критических операций. Ключ не повышает права Windows.");
         var ttyPanel = new StackPanel();
         ttyPanel.Children.Add(Text("•••• •••• •••• •••• •••• •••• •••• ••••", 17, heading: true));
@@ -547,16 +635,59 @@ public partial class MainWindow : Window
         ttyPanel.Children.Add(ttyActions);
         ContentPanel.Children.Add(Card(ttyPanel));
         AddNotice("Ограничение уровня SYSTEM",
-            "Выбор в приложении не способен предоставить SYSTEM-права. Для уровней Администратор и Система потребуются отдельная служба, UAC/TTY, независимый аудит и проверка доступа.");
+            "Профиль Система не реализован. Административная служба не исполняет произвольные команды, " +
+            "не запускает сторонние EXE с повышенными правами и не отключает Windows UAC.");
     }
 
-    private void InstallOrApplyProfile(string profile)
+    private async void InstallOrApplyProfile(string profile)
     {
+        if (profile == "Administrator")
+        {
+            bool verified = await AdminBrokerClient.IsAvailableAsync();
+            if (!verified)
+            {
+                if (!ConfirmYettaAction("Установить уровень Администратор",
+                    "Windows выдаст отдельный запрос UAC один раз для установки защищённой службы Yetta. " +
+                    "Служба получит системный токен, но поддерживает только проверенные операции самой Yetta. " +
+                    "Отключать UAC или автоматически повышать права сторонних программ она не будет. " +
+                    "Службу можно удалить в DAX Guard. Продолжить?")) return;
+                try
+                {
+                    verified = await AdminBrokerClient.InstallAsync();
+                }
+                catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                {
+                    Notify("DAX Guard", "Запрос Windows UAC отменён. Права не устанавливались.");
+                    return;
+                }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception
+                    or IOException or UnauthorizedAccessException or InvalidOperationException
+                    or FileNotFoundException)
+                {
+                    ShowYettaNotice("Не удалось установить ADMIN", ex.Message, WarningKind.Caution);
+                    return;
+                }
+            }
+
+            if (!AccessProfiles.RecordVerifiedAdministrator(_settings, verified))
+            {
+                ShowYettaNotice("Проверка ADMIN не пройдена",
+                    "Служба не подтвердила доступ. Профиль не активирован.", WarningKind.Caution);
+                return;
+            }
+
+            SavePreferences();
+            Notify("DAX Guard", "ADMIN активирован: разрешены только операции установленной службы.");
+            DaxAudit.Write("admin_profile", "activated", "Verified Windows broker; no arbitrary elevation.");
+            Navigate("guard");
+            return;
+        }
+
         if (!AccessProfiles.CanInstallLogicalProfile(profile))
         {
             ShowYettaNotice("Недоступный уровень доступа",
                 "Профиль «" + AccessProfiles.DisplayName(profile) +
-                "» пока недоступен. Для ADMIN/SYS необходим проверенный механизм Windows, а не изменение локальной настройки.",
+                "» пока недоступен. Уровень SYSTEM требует отдельной защищённой реализации.",
                 WarningKind.Dax);
             return;
         }
@@ -565,10 +696,9 @@ public partial class MainWindow : Window
         else
             AccessProfiles.Install(_settings, profile);
         SavePreferences();
-        Notify("DAX Guard", "Профиль " + AccessProfiles.DisplayName(profile) + " изменён. Это внутренний уровень Yetta, а не полномочия Windows.");
+        Notify("DAX Guard", "Профиль " + AccessProfiles.DisplayName(profile) + " изменён.");
         Navigate("guard");
     }
-
 
     private void OnFooterLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
