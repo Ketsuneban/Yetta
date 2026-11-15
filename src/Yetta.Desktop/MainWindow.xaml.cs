@@ -77,9 +77,6 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavRecovery, 9, "DAX Recovery");
         IconAssets.SetNav(NavSettings, 3, "Настройки");
         IconAssets.SetNavLogo(NavSources, "external-link.png", "Источники");
-        CaptionMinimize.Content = IconAssets.Image(15, 18);
-        CaptionMaximize.Content = IconAssets.Image(14, 18);
-        CaptionClose.Content = IconAssets.Image(16, 18);
         Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
     }
 
@@ -104,7 +101,7 @@ public partial class MainWindow : Window
     {
         if (CaptionMaximize is null) return;
         bool maximized = WindowState == System.Windows.WindowState.Maximized;
-        CaptionMaximize.Content = IconAssets.Image(maximized ? 15 : 14, 18);
+        CaptionMaximize.Content = maximized ? "❐" : "□";
         CaptionMaximize.ToolTip = maximized ? "Восстановить" : "Развернуть";
     }
 
