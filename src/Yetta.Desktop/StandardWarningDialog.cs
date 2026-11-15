@@ -159,12 +159,11 @@ internal static class StandardWarningDialog
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         outer.Child = grid;
-        outer.SizeChanged += (_, _) =>
+        grid.SizeChanged += (_, e) =>
         {
-            if (outer.ActualWidth > 0 && outer.ActualHeight > 0)
+            if (e.NewSize.Width > 0 && e.NewSize.Height > 0)
                 grid.Clip = new RectangleGeometry(
-                    new Rect(0, 0, Math.Max(0, grid.ActualWidth),
-                        Math.Max(0, grid.ActualHeight)), 7, 7);
+                    new Rect(new Point(), e.NewSize), 7, 7);
         };
 
         void Finish(bool accepted)
