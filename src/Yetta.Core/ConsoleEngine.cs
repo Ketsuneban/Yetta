@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.1-preview");
+    string Version = "0.3.12-preview");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false);
 
@@ -48,7 +48,7 @@ public static class ConsoleEngine
             "logs" => new ConsoleResult("Открываю DAX Logs.", NavigateTo: "logs"),
             "activity" or "notifications" => new ConsoleResult("Открываю Центр активности.", NavigateTo: "activity"),
             "overview" or "home" => new ConsoleResult("Открываю главную.", NavigateTo: "overview"),
-            "/snob" or "/snob help" => new ConsoleResult("Команда /snob зарезервирована для защищённых операций. Брокер DAX отсутствует; команда не запускает программы, не повышает права Windows и не отключает UAC."),
+            "/snob" or "/snob help" => new ConsoleResult("Tallow (/snob): защищённые операции пока недоступны. DAX-брокер отсутствует; команда не запускает программы, не повышает права Windows и не отключает UAC."),
             "recovery" => new ConsoleResult("Открываю DAX Recovery.", NavigateTo: "recovery"),
             "settings" => new ConsoleResult("Открываю настройки.", NavigateTo: "settings"),
             "sources" => new ConsoleResult("Открываю источники.", NavigateTo: "sources"),
