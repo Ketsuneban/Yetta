@@ -29,7 +29,8 @@ internal static class StandardWarningDialog
         WarningKind.Caution => new(Color.FromRgb(76, 67, 51), Color.FromRgb(48, 44, 36), Color.FromRgb(27, 26, 23), Color.FromRgb(213, 157, 68)),
         WarningKind.Dangerous => new(Color.FromRgb(76, 48, 49), Color.FromRgb(45, 32, 33), Color.FromRgb(24, 21, 22), Color.FromRgb(204, 104, 105)),
         WarningKind.Critical => new(Color.FromRgb(69, 37, 49), Color.FromRgb(40, 25, 33), Color.FromRgb(21, 17, 22), Color.FromRgb(190, 82, 126)),
-        WarningKind.Fatal => new(Color.FromRgb(25, 25, 29), Color.FromRgb(13, 14, 18), Color.FromRgb(7, 8, 11), Color.FromRgb(105, 111, 130)),
+        WarningKind.Information => new(Color.FromRgb(43, 57, 72), Color.FromRgb(30, 40, 51), Color.FromRgb(18, 24, 31), Color.FromRgb(99, 157, 210)),
+        WarningKind.Fatal => new(Color.FromRgb(12, 13, 16), Color.FromRgb(7, 8, 11), Color.FromRgb(3, 4, 6), Color.FromRgb(105, 111, 130)),
         WarningKind.Agreement => new(Color.FromRgb(52, 57, 70), Color.FromRgb(35, 40, 52), Color.FromRgb(20, 23, 31), Color.FromRgb(112, 153, 210)),
         WarningKind.Dax => new(Color.FromRgb(39, 57, 73), Color.FromRgb(27, 40, 53), Color.FromRgb(17, 24, 33), Color.FromRgb(99, 157, 210)),
         _ => new(Color.FromRgb(52, 54, 59), Color.FromRgb(35, 37, 42), Color.FromRgb(19, 20, 24), Color.FromRgb(100, 165, 205))
@@ -40,6 +41,7 @@ internal static class StandardWarningDialog
         WarningKind.Caution => "Осторожно",
         WarningKind.Dangerous => "Опасное действие",
         WarningKind.Critical => "Критическое предупреждение",
+        WarningKind.Information => "Информация",
         WarningKind.Fatal => "Смертельное предупреждение",
         WarningKind.Agreement => "Соглашение",
         WarningKind.Dax => "DAX",
@@ -283,7 +285,7 @@ internal static class StandardWarningDialog
         // FOOTER: always visible even when text is long. Existing approval,
         // checkbox, key and audit semantics remain in force.
         bool needsCheck = request.RequireAcknowledgement || request.Kind == WarningKind.Agreement;
-        bool needsKey = request.Kind is not (WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
+        bool needsKey = request.Kind is not (WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
             (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         var bottom = new StackPanel();
         var bottomSurface = new Border
@@ -327,12 +329,13 @@ internal static class StandardWarningDialog
         };
         string action = request.Kind switch
         {
+            WarningKind.Information => "Ок",
             WarningKind.Fatal => "Сброс",
             WarningKind.Dax => "Ок",
             WarningKind.Agreement => "Согласен",
             _ => "Разрешить"
         };
-        bool oneAction = request.Kind is WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
+        bool oneAction = request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
         var allow = Command(action, oneAction, BrushFor(palette.Accent));
         Button? deny = null;
         if (!oneAction)
