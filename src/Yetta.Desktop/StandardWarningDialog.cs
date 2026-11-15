@@ -192,7 +192,7 @@ internal static class StandardWarningDialog
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var causeIcon = IconAssets.Image(YettaWarningWindow.ObjectIcon(request), 52);
+        var causeIcon = request.Kind == WarningKind.Fatal ? IconAssets.WarningSkull(52) : request.Kind == WarningKind.Dax ? IconAssets.DaxLogo(52) : IconAssets.Image(YettaWarningWindow.ObjectIcon(request), 52);
         RenderOptions.SetBitmapScalingMode(causeIcon, BitmapScalingMode.HighQuality);
         causeIcon.Margin = new Thickness(0, 0, 16, 0);
         subject.Children.Add(causeIcon);
