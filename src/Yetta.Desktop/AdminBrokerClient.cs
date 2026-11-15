@@ -44,7 +44,8 @@ internal static class AdminBrokerClient
                 ?? new(false, "Пустой ответ защищённой службы.");
         }
         catch (Exception ex) when (ex is TimeoutException or IOException or
-            UnauthorizedAccessException or OperationCanceledException or JsonException)
+            UnauthorizedAccessException or OperationCanceledException or
+            JsonException or InvalidDataException)
         {
             return new(false, "Защищённая служба недоступна: " + ex.Message);
         }
