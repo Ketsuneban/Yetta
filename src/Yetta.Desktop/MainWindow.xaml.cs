@@ -1169,7 +1169,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 9));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 14));
             if (latest is null)
             {
                 ShowYettaNotice("Обновления Yetta", "Новой версии с установщиком пока нет.");
