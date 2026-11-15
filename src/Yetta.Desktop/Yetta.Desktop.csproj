@@ -21,6 +21,7 @@
     <Resource Include="Assets/external-link.png" />
     <Resource Include="Assets/dax-logo.png" />
     <Resource Include="Assets/yetta-icons-atlas.png" />
+    <Resource Include="Assets/yetta-warning-artwork-19.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
 </Project>
