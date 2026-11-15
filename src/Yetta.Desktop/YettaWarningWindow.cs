@@ -79,5 +79,5 @@ internal static class YettaWarningWindow
 
     internal static bool Show(Window owner, WarningRequest request,
         string activeProfile = "User", bool nonModal = false) =>
-        StandardWarningDialog.Show(owner, request, activeProfile, nonModal);
+        TallowWarningDispatcher.Show(owner, request, activeProfile, nonModal);
 }
