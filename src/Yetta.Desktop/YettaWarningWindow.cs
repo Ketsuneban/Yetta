@@ -214,8 +214,13 @@ internal static class YettaWarningWindow
     internal static bool Show(Window owner, WarningRequest request,
         string activeProfile = "User", bool nonModal = false)
     {
-        if (request.Kind == WarningKind.Standard)
-            return StandardWarningDialog.Show(owner, request, activeProfile, nonModal);
+        // All seven types share the UAC-inspired layout. The independent header
+        // artwork, severity colors, confirmation/TTY and recovery behaviors live
+        // in the common dialog implementation.
+        return StandardWarningDialog.Show(owner, request, activeProfile, nonModal);
+
+#pragma warning disable CS0162 // Previous renderer retained as migration reference.
+
 
         var window = GlassDialog.Create(owner, "Yetta · " + Title(request.Kind),
             730, 575, minWidth: 570, minHeight: 435);
@@ -557,5 +562,7 @@ internal static class YettaWarningWindow
         bool result = window.ShowDialog() == true;
         DaxAudit.Write("warning", result ? "accepted" : "dismissed", request.Kind + ": " + request.Reason);
         return result;
+#pragma warning restore CS0162
+
     }
 }
