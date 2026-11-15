@@ -288,18 +288,75 @@ internal static class StandardWarningDialog
             bottom.Children.Add(checkbox);
         }
         PasswordBox? tty = null;
+        TextBlock? keyFeedback = null;
+        TextBox? visibleKey = null;
+        StackPanel? keyPanel = null;
         if (needsKey)
         {
+            keyPanel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 12) };
+            var keyRow = new Grid();
+            keyRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            keyRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            keyRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var keySymbol = Text("⚿", 21, Muted);
+            keySymbol.Margin = new Thickness(0, 0, 12, 0);
+            keyRow.Children.Add(keySymbol);
             tty = new PasswordBox
             {
-                MaxLength = 64, Width = 390, Height = 30,
+                MaxLength = 64, Height = 34, PasswordChar = '•',
                 Background = new SolidColorBrush(Color.FromRgb(50, 50, 50)),
                 Foreground = White, CaretBrush = White,
-                ToolTip = "TTY-ключ (64 символа)",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 10)
+                BorderThickness = new Thickness(1), BorderBrush = Muted,
+                ToolTip = "TTY-Ключ · 64 символа",
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            bottom.Children.Add(tty);
+            visibleKey = new TextBox
+            {
+                MaxLength = 64, Height = 34, Visibility = Visibility.Collapsed,
+                Background = tty.Background, Foreground = White, CaretBrush = White,
+                BorderThickness = new Thickness(1), BorderBrush = Muted
+            };
+            var inputLayer = new Grid();
+            inputLayer.Children.Add(tty);
+            inputLayer.Children.Add(visibleKey);
+            Grid.SetColumn(inputLayer, 1);
+            keyRow.Children.Add(inputLayer);
+            var reveal = new Button
+            {
+                Content = "Показать", MinWidth = 86, Height = 34, Margin = new Thickness(8, 0, 0, 0),
+                Background = Brushes.Transparent, BorderThickness = new Thickness(0),
+                Foreground = Muted, Cursor = Cursors.Hand, FocusVisualStyle = null
+            };
+            Grid.SetColumn(reveal, 2);
+            keyRow.Children.Add(reveal);
+            keyPanel.Children.Add(keyRow);
+            keyFeedback = Text("TTY-Ключ", 12, Muted);
+            keyFeedback.Margin = new Thickness(29, 4, 0, 0);
+            keyPanel.Children.Add(keyFeedback);
+            bottom.Children.Add(keyPanel);
+            reveal.Click += (_, _) =>
+            {
+                bool show = visibleKey.Visibility != Visibility.Visible;
+                if (show)
+                {
+                    visibleKey.Text = tty.Password;
+                    tty.Visibility = Visibility.Collapsed;
+                    visibleKey.Visibility = Visibility.Visible;
+                    reveal.Content = "Скрыть";
+                }
+                else
+                {
+                    tty.Password = visibleKey.Text;
+                    visibleKey.Visibility = Visibility.Collapsed;
+                    tty.Visibility = Visibility.Visible;
+                    reveal.Content = "Показать";
+                }
+            };
+            visibleKey.TextChanged += (_, _) =>
+            {
+                if (visibleKey.Visibility == Visibility.Visible && tty.Password != visibleKey.Text)
+                    tty.Password = visibleKey.Text;
+            };
         }
         var controls = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -345,6 +402,14 @@ internal static class StandardWarningDialog
                 catch (Exception e) when (e is Win32Exception or InvalidDataException) { keyValid = false; }
             }
             allow.IsEnabled = approved && keyValid;
+            if (keyFeedback is not null && tty is not null)
+            {
+                int count = tty.Password.Length;
+                keyFeedback.Text = count < 64 ? "TTY-Ключ · " + count + "/64" : keyValid ? "Ключ совпадает ✔" : "Ключ неверный ✘";
+                keyFeedback.Foreground = count < 64 ? Muted : keyValid ? Brushes.LightGreen : Brushes.Salmon;
+                tty.BorderBrush = count < 64 ? Muted : keyValid ? Brushes.LightGreen : Brushes.Salmon;
+                if (visibleKey is not null) visibleKey.BorderBrush = tty.BorderBrush;
+            }
         }
         if (checkbox is not null)
         {
@@ -352,6 +417,12 @@ internal static class StandardWarningDialog
             checkbox.Unchecked += (_, _) => RefreshGate();
         }
         if (tty is not null) tty.PasswordChanged += (_, _) => RefreshGate();
+        if (checkbox is not null && keyPanel is not null)
+        {
+            keyPanel.Visibility = Visibility.Collapsed;
+            checkbox.Checked += (_, _) => { keyPanel.Visibility = Visibility.Visible; };
+            checkbox.Unchecked += (_, _) => { keyPanel.Visibility = Visibility.Collapsed; };
+        }
         allow.Click += (_, _) =>
         {
             RefreshGate();
