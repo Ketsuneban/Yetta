@@ -3,7 +3,7 @@ using System.Windows;
 
 namespace Yetta.Desktop;
 
-internal enum WarningKind { Standard, Caution, Dangerous, Critical, Fatal, Agreement, Dax }
+internal enum WarningKind { Standard, Information, Caution, Dangerous, Critical, Fatal, Agreement, Dax }
 
 internal sealed record WarningRequest(
     WarningKind Kind,
@@ -16,7 +16,8 @@ internal sealed record WarningRequest(
     bool RequireTty = false,
     bool PotentialDamage = false,
     Action? RecoveryNavigation = null,
-    int? HeaderIconId = null);
+    int? HeaderIconId = null,
+    int? CauseIconId = null);
 
 /// <summary>
 /// Central policy dispatch for all seven Yetta warnings. UI styling never grants
@@ -26,6 +27,7 @@ internal static class YettaWarningWindow
 {
     internal static int ObjectIcon(WarningRequest request)
     {
+        if (request.CauseIconId is >= 1 and <= 19) return request.CauseIconId.Value;
         if (request.Kind == WarningKind.Fatal) return 13; // skull: cause, not header
         if (request.Kind == WarningKind.Agreement) return 12; // Yetta application
         if (request.Kind == WarningKind.Dax) return 29; // DAX shield from existing atlas
@@ -54,7 +56,7 @@ internal static class YettaWarningWindow
     internal static int Status(WarningRequest request, string activeProfile)
     {
         // Status communicates safety only when a user must decide or acknowledge.
-        if (request.Kind == WarningKind.Information || request.Kind == WarningKind.Dax)
+        if (request.Kind is WarningKind.Information or WarningKind.Dax)
             return 0;
         if (request.Kind == WarningKind.Fatal) return 18;
         if (activeProfile is "Guest" or "SafeUser" || ConsentDialog.InWindowsSafeMode) return 18;
@@ -64,6 +66,7 @@ internal static class YettaWarningWindow
     internal static int HeaderIcon(WarningRequest request) =>
         request.HeaderIconId is >= 1 and <= 50 ? request.HeaderIconId.Value : request.Kind switch
         {
+            WarningKind.Information => 30,
             WarningKind.Fatal => 48,
             WarningKind.Agreement => 2,
             WarningKind.Dax => 33,
