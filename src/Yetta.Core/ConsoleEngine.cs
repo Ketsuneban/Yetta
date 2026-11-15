@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.14-preview");
+    string Version = "0.3.15-preview");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false);
 
