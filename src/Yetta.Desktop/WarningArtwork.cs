@@ -8,17 +8,14 @@ using System.Windows.Media.Imaging;
 namespace Yetta.Desktop;
 
 /// <summary>
-/// Owner-provided 19 warning graphics. Source dimensions are 96 or 384px,
-/// stored in a losslessly positioned 5x4 sprite grid (384px cell). Cropping
-/// uses the source image's TRUE bounds so no empty 384px margin shrinks a
-/// 96px icon. The legacy 32px UI atlas is never used for these objects.
+/// Owner-provided 19 warning graphics, retained with clean transparency.
+/// High-resolution originals were downsampled once at packaging to 96px,
+/// which is twice the 48px dialog display size. All 19 sprites occupy a
+/// separate 5x4 grid; the legacy cropped 32px atlas is never used for them.
 /// </summary>
 internal static class WarningArtwork
 {
-    private const int Cell = 384;
-    private static readonly int[] NativeWidths =
-        [96, 96, 96, 384, 96, 384, 384, 96, 384, 384,
-         96, 96, 96, 384, 384, 96, 96, 96, 96];
+    private const int Cell = 96;
     private static readonly Dictionary<int, BitmapSource> Cache = new();
     private static BitmapSource? _atlas;
 
@@ -27,7 +24,7 @@ internal static class WarningArtwork
         if (number is < 1 or > 19) number = 14;
         if (Cache.TryGetValue(number, out BitmapSource? cached)) return cached;
         _atlas ??= LoadAtlas();
-        int side = NativeWidths[number - 1];
+        int side = Cell;
         int cellX = ((number - 1) % 5) * Cell;
         int cellY = ((number - 1) / 5) * Cell;
         int margin = (Cell - side) / 2;
