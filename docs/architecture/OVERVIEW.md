@@ -1,6 +1,7 @@
 # Yetta architecture overview
 
-## Current state
+See [approved architecture decisions](TALLOW-DAX-DECISIONS.md) for the Tallow/DAX/Yetta/Marvine ownership model. The earlier preview description below is historical and does not imply implementation. 
+\n## Current state
 
 A first unprivileged Windows desktop preview (0.1.0-preview) is implemented in C#/.NET 10/WPF. It provides navigation, Fluent-inspired and Glass-inspired palettes, local preferences, read-only system information, user-confirmed shortcuts to Windows tools, and an allowlisted internal console.
 
@@ -9,11 +10,11 @@ The preview does **not** include a working Access Manager, DAX, DAX Guard, privi
 ## Planned high-level components
 
 - **Yetta UI** — two presentation modes sharing one application and settings model: Windows 11 Fluent-style and a custom translucent glass interface.
-- **Yetta Core** — module lifecycle, settings, localization, diagnostics, and update coordination.
+- **Tallow (Yetta Core)** — internal application core, module lifecycle, warning orchestration, diagnostics, recovery, and updates.
 - **Access Manager** — installation, status inspection, and revocation of the five access profiles.
 - **DAX** — a unified policy, security, and process-observation subsystem. Internally it is split into specialized logical workers while appearing as one system to the user.
 - **DAX Guard** — a mandatory policy gate. It checks the requested operation against the active access profile before execution.
-- **Yetta Console** — commands are initiated by the user; the application does not autonomously perform broad system changes.
+- **Marvine** — allowlisted user-facing console; Tallow is its logical execution actor, while Windows retains truthful process and account identity.
 - **Modules** — independent editors for individual Windows settings and components.
 
 ## Process scope
