@@ -30,6 +30,12 @@ public static class ConsentDialog
             Subject: level == YettaWarningLevel.Information ? "DAX" : "Yetta",
             RequireAcknowledgement: WarningPolicy.RequiresAdditionalAcknowledgement(level),
             RequireTty: level == YettaWarningLevel.Critical,
-            PotentialDamage: level is YettaWarningLevel.Dangerous or YettaWarningLevel.Critical));
+            // The warning category alone is not evidence of a DAX risk result.
+            PotentialDamage: false,
+            HeaderKind: level == YettaWarningLevel.Information
+                ? WarningHeaderKind.Information : WarningHeaderKind.Generic,
+            ObjectKind: level == YettaWarningLevel.Information
+                ? WarningObjectKind.Dax : WarningObjectKind.Application,
+            InformationOnly: level == YettaWarningLevel.Information));
     }
 }
