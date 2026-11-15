@@ -2,9 +2,20 @@
 
 ## Current implementation
 
-Yetta 0.2.0-preview is an **unprivileged UI prototype**, not an antivirus, endpoint protection agent or full Windows administration tool. It implements local UI preference storage, logical profile policy checks, a fixed set of internal Mavrine commands, and launching genuine Windows Terminal without elevation only when its logical User profile is active.
+The published Yetta 0.3.9-preview is a non-elevated WPF application. Its
+Administrator profile does not yet provide OS privileges.
 
-**Not implemented:** a privileged DAX service, verified Administrator or SYSTEM profile, process monitoring, Windows registry/service changes, Defender integration, system restore points, anti-tamper protection, and trusted updating. Do not use it to protect critical devices or as a replacement for Microsoft Defender.
+**In the non-published feature branch** there is a dedicated Windows
+Administrator broker prototype. It is not tested, signed or ready for use.
+Before shipping, require a signed trusted installer, Windows 10/11 testing,
+and an independent security review, especially of named-pipe authentication,
+service configuration and uninstall behavior.
+
+The draft broker executes ONLY built-in actions scoped to
+`HKLM\\SOFTWARE\\Yetta\\AdminBroker`. It explicitly disallows
+arbitrary shell commands, other program launches, UAC bypass and SYSTEM
+operations requested by untrusted code. It records protected machine-level
+audit entries. Read [the detailed threat model](docs/security/administrator-broker.md).
 
 ## Reporting vulnerabilities
 
