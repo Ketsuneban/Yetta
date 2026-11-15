@@ -20,6 +20,7 @@
     <Resource Include="Assets/yetta-logo.png" />
     <Resource Include="Assets/external-link.png" />
     <Resource Include="Assets/dax-logo.png" />
+    <Resource Include="Assets/warning-skull.png" />
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
