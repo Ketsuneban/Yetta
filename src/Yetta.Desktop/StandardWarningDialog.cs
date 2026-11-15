@@ -73,7 +73,8 @@ internal static class StandardWarningDialog
         var template = new ControlTemplate(typeof(Button));
         var panel = new FrameworkElementFactory(typeof(Border));
         panel.SetValue(Border.SnapsToDevicePixelsProperty, true);
-        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
+        panel.Name = "ButtonChrome";
+        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(0));
         panel.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
         { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         panel.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
@@ -162,7 +163,7 @@ internal static class StandardWarningDialog
         caption.Children.Add(captionText);
         var close = new Button
         {
-            Content = "×", Width = 28, Height = 25, FontSize = 23,
+            Content = IconAssets.Image(16, 18), Width = 28, Height = 25, FontSize = 23,
             BorderThickness = new Thickness(0), Background = Brushes.Transparent,
             Foreground = White, Cursor = Cursors.Hand, ToolTip = "Закрыть"
         };
@@ -225,9 +226,9 @@ internal static class StandardWarningDialog
         body.Children.Add(subject);
 
         var publisher = Text(string.IsNullOrWhiteSpace(request.Publisher)
-            ? "Издатель: неизвестен" : "Издатель: " + request.Publisher,
-            14, White);
-        publisher.Margin = new Thickness(0, 21, 0, 0);
+            ? "Неизвестный издатель" : request.Publisher,
+            13, Muted);
+        publisher.Margin = new Thickness(0, 17, 0, 0);
         publisher.Cursor = Cursors.Hand;
         publisher.ToolTip = "Открыть расположение файла (если указано)";
         publisher.MouseLeftButtonUp += (_, _) =>
@@ -243,48 +244,26 @@ internal static class StandardWarningDialog
         Grid.SetRow(publisher, 1);
         body.Children.Add(publisher);
 
-        // "Подробнее" unfolds the explanation. Scrolling is contained in this
-        // area only, so long text cannot hide confirmation controls.
-        var details = new Grid { Margin = new Thickness(0, 23, 0, 0) };
-        details.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        details.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var detailsLink = new Button
-        {
-            Content = "Подробнее",
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Padding = new Thickness(0),
-            Background = Brushes.Transparent, BorderThickness = new Thickness(0),
-            Foreground = new SolidColorBrush(Color.FromRgb(135, 220, 247)),
-            FontSize = 14, Cursor = Cursors.Hand
-        };
-        details.Children.Add(detailsLink);
+        // Description is always visible; scrolling never moves the footer.
         var bodyText = Text(request.Description, 13, Muted);
         bodyText.LineHeight = 21;
         var explanation = new ScrollViewer
         {
-            Visibility = Visibility.Collapsed,
             Content = bodyText,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(2, 12, 10, 0),
+            Padding = new Thickness(2, 12, 8, 0),
+            Margin = new Thickness(0, 15, 0, 0),
             Focusable = false
         };
-        detailsLink.Click += (_, _) =>
-        {
-            bool expanded = explanation.Visibility != Visibility.Visible;
-            explanation.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-            detailsLink.Content = expanded ? "Скрыть подробности" : "Подробнее";
-        };
-        Grid.SetRow(explanation, 1);
-        details.Children.Add(explanation);
-        Grid.SetRow(details, 2);
-        body.Children.Add(details);
+        Grid.SetRow(explanation, 2);
+        body.Children.Add(explanation);
         Grid.SetRow(body, 1);
         grid.Children.Add(body);
 
         // FOOTER: always visible even when text is long. Existing approval,
         // checkbox, key and audit semantics remain in force.
-        bool needsCheck = request.RequireAcknowledgement || request.Kind == WarningKind.Agreement;
+        bool needsCheck = request.RequireAcknowledgement;
         bool needsKey = request.Kind is not (WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement) &&
             (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         var bottom = new StackPanel();
@@ -322,11 +301,8 @@ internal static class StandardWarningDialog
             };
             bottom.Children.Add(tty);
         }
-        var controls = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
+        var controls = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         string action = request.Kind switch
         {
             WarningKind.Information => "Ок",
@@ -344,9 +320,16 @@ internal static class StandardWarningDialog
             // warning severity just like the window background.
             deny = Command("Запретить", true, BrushFor(palette.Accent));
             deny.IsCancel = !nonModal;
+            controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            deny.HorizontalAlignment = HorizontalAlignment.Stretch;
+            deny.Width = double.NaN;
+            Grid.SetColumn(deny, 0);
             controls.Children.Add(deny);
         }
         allow.IsEnabled = !needsCheck && !needsKey;
+        allow.HorizontalAlignment = HorizontalAlignment.Stretch;
+        allow.Width = double.NaN;
+        Grid.SetColumn(allow, oneAction ? 0 : 1);
         controls.Children.Add(allow);
         bottom.Children.Add(controls);
         Grid.SetRow(bottomSurface, 2);
