@@ -59,6 +59,11 @@ public partial class MainWindow : Window
         };
         ApplyTheme();
         InitializeIconsAndCursors();
+        foreach (var navButton in _navigation.Values)
+            UiMotion.AttachButtonFeedback(navButton);
+        UiMotion.AttachButtonFeedback(CaptionMinimize);
+        UiMotion.AttachButtonFeedback(CaptionMaximize);
+        UiMotion.AttachButtonFeedback(CaptionClose);
         SourceInitialized += (_, _) => ApplyBackdrop();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
