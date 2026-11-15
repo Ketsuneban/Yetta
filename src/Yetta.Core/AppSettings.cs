@@ -16,7 +16,7 @@ public sealed class AppSettings
         if (Theme is not ("Fluent" or "Glass")) Theme = "Fluent";
         InstalledProfiles ??= [];
         InstalledProfiles = InstalledProfiles
-            .Where(p => AccessProfiles.CanInstallLogicalProfile(p))
+            .Where(p => AccessProfiles.CanPersistProfile(p))
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (!InstalledProfiles.Contains("Guest", StringComparer.Ordinal))
