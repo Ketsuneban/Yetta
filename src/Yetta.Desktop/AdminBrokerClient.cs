@@ -33,6 +33,8 @@ internal static class AdminBrokerClient
                 PipeDirection.InOut, PipeOptions.Asynchronous,
                 TokenImpersonationLevel.Impersonation);
             await pipe.ConnectAsync(1000, timeout.Token);
+            if (!BrokerServerIdentity.IsInstalledServicePipe(pipe.SafePipeHandle))
+                return new(false, "Ответ не принадлежит зарегистрированной службе Windows YettaAdminBroker.");
 
             byte[] request = JsonSerializer.SerializeToUtf8Bytes(
                 new AdminBrokerRequest(AdminBrokerProtocol.Version, operation));
