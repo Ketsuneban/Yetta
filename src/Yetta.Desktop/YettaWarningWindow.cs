@@ -27,7 +27,7 @@ internal static class YettaWarningWindow
 {
     internal static int ObjectIcon(WarningRequest request)
     {
-        if (request.CauseIconId is >= 1 and <= 19) return request.CauseIconId.Value switch { 1 => 4, 2 => 37, 3 => 38, 4 => 39, 5 => 16, 6 => 40, 7 => 41, 8 => 42, 9 => 46, 10 => 43, 11 => 44, 12 => 48, 13 => 51, 14 => 46, 15 => 47, 16 => 27, 17 => 26, 18 => 35, 19 => 4, _ => 46 };
+        if (request.CauseIconId is >= 1 and <= 19) return request.CauseIconId.Value switch { 1 => 4, 2 => 37, 3 => 38, 4 => 39, 5 => 16, 6 => 40, 7 => 41, 8 => 42, 9 => 46, 10 => 43, 11 => 44, 12 => 45, 13 => 51, 14 => 46, 15 => 47, 16 => 27, 17 => 26, 18 => 35, 19 => 4, _ => 46 };
         if (request.Kind == WarningKind.Fatal) return 51; // dedicated skull image
         if (request.Kind == WarningKind.Agreement) return 12; // Yetta application
         if (request.Kind == WarningKind.Dax) return 29; // DAX shield
@@ -56,10 +56,12 @@ internal static class YettaWarningWindow
     internal static int Status(WarningRequest request, string activeProfile)
     {
         // Status communicates safety only when a user must decide or acknowledge.
-        if (request.Kind is WarningKind.Information or WarningKind.Dax)
+        if (request.Kind == WarningKind.Information)
             return 0;
+        if (request.Kind is WarningKind.Dax or WarningKind.Agreement)
+            return 35;
         if (request.Kind == WarningKind.Fatal) return 35;
-        if (activeProfile is "Guest" or "SafeUser" || ConsentDialog.InWindowsSafeMode) return 18;
+        if (activeProfile is "Guest" or "SafeUser" || ConsentDialog.InWindowsSafeMode) return 35;
         return request.PotentialDamage ? 26 : 27;
     }
 
@@ -69,7 +71,7 @@ internal static class YettaWarningWindow
             WarningKind.Information => 30,
             WarningKind.Fatal => 48,
             WarningKind.Agreement => 2,
-            WarningKind.Dax => 33,
+            WarningKind.Dax => 22,
             WarningKind.Dangerous or WarningKind.Critical => 24,
             WarningKind.Caution => 23,
             _ => 22
