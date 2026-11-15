@@ -1,5 +1,15 @@
 # Yetta Changelog
 
+## 0.3.10-preview — 2026-11-15
+
+- Apply the dark UAC-inspired warning layout to all seven Yetta warning kinds. Each has its own restrained header, body, and footer palette and a matching highlighted button; source icon remains independent of warning severity.
+- Preserve fixed action row, scrollable details, confirmation checkbox, TTY verification, topmost fatal window, DAX Recovery navigation and existing audit behavior. This is an app-owned dialog, never a Windows UAC replacement.
+- Increase button hit targets (including TTY copy and key rotation) and keep the entire control surface clickable.
+- Add modest, reduced-motion-aware animations to button hover/press, sidebar navigation, caption controls, page transitions and warning appearance.
+- Bring queued improvements from the working branch: unified Windows Terminal-like tab strip with Marvine/PowerShell and a single non-elevated PowerShell session, removal of default ScrollViewer focus outlines and restored native-style caption glyphs.
+- Keep experimental unsigned Administrator broker in its separate development branch; it is not part of this public release.
+
+
 ## 0.3.9-preview — 2026-11-15
 
 - Rework **only Standard** warnings to a dedicated dark, Windows UAC-inspired presentation: compact caption, prominent action question, icon/publisher row with adjacent DAX status, expandable "Подробнее" description, and fixed bottom action bar.
