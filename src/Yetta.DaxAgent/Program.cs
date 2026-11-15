@@ -111,15 +111,34 @@ internal sealed class TrayAgent : ApplicationContext
         _tray.ShowBalloonTip(5000);
     }
 
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
+
+    private sealed class ProcessSet(Process[] processes) : IDisposable
+    {
+        internal Process[] Processes { get; } = processes;
+        public void Dispose() { foreach (var process in Processes) process.Dispose(); }
+    }
+
     private static string AppPath => Path.Combine(AppContext.BaseDirectory, "Yetta.exe");
 
     private void OpenYetta()
     {
         try
         {
-            if (Process.GetProcessesByName("Yetta").Length > 0)
+            using var owned = new ProcessSet(Process.GetProcessesByName("Yetta"));
+            var active = owned.Processes.FirstOrDefault(p => !p.HasExited && p.MainWindowHandle != IntPtr.Zero);
+            if (active is not null)
             {
-                ShowBalloon("Yetta", "Интерфейс уже запущен. Перейдите к окну Yetta.");
+                IntPtr handle = active.MainWindowHandle;
+                _ = ShowWindowAsync(handle, 9); // SW_RESTORE; Windows may deny focus-stealing.
+                if (!SetForegroundWindow(handle))
+                    ShowBalloon("Yetta", "Интерфейс уже запущен. Переключитесь на Yetta.");
                 return;
             }
             if (!File.Exists(AppPath))
