@@ -209,6 +209,7 @@ public partial class MainWindow : Window
             pair.Value.Background = pair.Key == page ? Resource("SelectedBrush") : Brushes.Transparent;
             pair.Value.Foreground = pair.Key == page ? Accent : Muted;
             pair.Value.FontWeight = pair.Key == page ? FontWeights.SemiBold : FontWeights.Normal;
+            pair.Value.MinHeight = 45;
         }
 
         var headings = new Dictionary<string, (string Name, string Hint)>
@@ -239,6 +240,7 @@ public partial class MainWindow : Window
             case "sources": BuildSources(); break;
         }
         MainScroll.ScrollToTop();
+        UiMotion.AnimatePage(ContentPanel);
     }
 
     private TextBlock Text(string value, double size = 13, bool heading = false, bool muted = false)
@@ -273,10 +275,17 @@ public partial class MainWindow : Window
         {
             Content = label,
             Style = (Style)FindResource(primary ? "PrimaryButton" : "SecondaryButton"),
-            Margin = new Thickness(0, 0, 10, 8),
+            Margin = new Thickness(0, 0, 10, 10),
+            MinHeight = 44,
+            MinWidth = Math.Max(142, label.Length * 8 + 28),
+            Padding = new Thickness(18, 11, 18, 11),
             HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            FocusVisualStyle = null,
+            Cursor = Cursors.Hand,
             IsEnabled = enabled
         };
+        UiMotion.AttachButtonFeedback(button);
         button.Click += (_, _) => callback();
         return button;
     }
