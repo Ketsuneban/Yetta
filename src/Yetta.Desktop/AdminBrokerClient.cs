@@ -108,7 +108,13 @@ internal static class AdminBrokerClient
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException("Windows отказала в запуске удаления службы.");
         await process.WaitForExitAsync();
-        return process.ExitCode == 0 && !await IsAvailableAsync();
+        if (process.ExitCode != 0) return false;
+        for (int i = 0; i < 10; i++)
+        {
+            if (!await IsAvailableAsync()) return true;
+            await Task.Delay(300);
+        }
+        return false;
     }
 
     private static async Task WriteFrame(PipeStream pipe, byte[] body,
