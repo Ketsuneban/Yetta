@@ -13,6 +13,14 @@
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
   <Window.Resources>
+    <!-- Default WPF ScrollViewer template contributes a 1px rectangular
+         outline and keyboard focus rectangle, even when its parent Border
+         has BorderThickness=0. Remove those chrome strokes globally. -->
+    <Style TargetType="{x:Type ScrollViewer}">
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    </Style>
     <Style x:Key="SideButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
@@ -276,7 +284,7 @@
           <TextBlock Text="YETTA 0.3.9 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
-        <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
+        <ScrollViewer Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
           <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
             <Border Width="44" Height="44" CornerRadius="13"
                     Background="{DynamicResource SelectedBrush}">
@@ -327,7 +335,7 @@
           </Border>
         </Grid>
       </Border>
-      <ScrollViewer x:Name="MainScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
+      <ScrollViewer x:Name="MainScroll" Grid.Row="1" Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled" Padding="34,30,34,30">
         <ScrollViewer.Resources>
           <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ModernScrollBar}"/>
