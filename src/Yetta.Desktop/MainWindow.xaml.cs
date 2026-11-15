@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private TextBox? _consoleInput;
     private EmbeddedShellSession? _embeddedShell;
     private DaxProcessMonitor? _processMonitor;
+    private readonly DaxAgentGate _daxGate;
 
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
@@ -59,7 +60,8 @@ public partial class MainWindow : Window
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
-        Closed += (_, _) => { _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
+        _daxGate = new DaxAgentGate(this);
+        Closed += (_, _) => { _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private void InitializeIconsAndCursors()
