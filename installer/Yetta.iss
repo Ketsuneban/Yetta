@@ -28,6 +28,7 @@ VersionInfoVersion=0.3.9
 
 [Files]
 Source: "..\artifacts\Yetta-win-x64\Yetta.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\artifacts\Yetta-win-x64\Yetta.AdminBroker.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\src\Yetta.Desktop\Assets\OFL-Inter.txt"; DestDir: "{app}"; Flags: ignoreversion
 
