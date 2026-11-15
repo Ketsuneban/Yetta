@@ -100,7 +100,8 @@ internal static class StandardWarningDialog
         return button;
     }
 
-    internal static bool Show(Window owner, WarningRequest request, string profile, bool nonModal)
+    internal static bool Show(Window owner, WarningRequest request, string profile, bool nonModal,
+        Action<Window>? onWindowCreated = null)
     {
         // UAC is not being imitated functionally: this is an ordinary Yetta window.
         // Real Windows privilege prompts, if needed, are still exclusively OS-owned.
@@ -122,6 +123,16 @@ internal static class StandardWarningDialog
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = Brushes.Transparent
         };
+
+        window.PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) e.Handled = true;
+        };
+        if (request.Kind == WarningKind.Fatal)
+        {
+            try { System.Media.SystemSounds.Hand.Play(); }
+            catch (InvalidOperationException) { }
+        }
 
         var outer = new Border
         {
@@ -376,7 +387,7 @@ internal static class StandardWarningDialog
             // A safe decline is highlighted by default; highlight follows
             // warning severity just like the window background.
             deny = Command("Запретить", true, BrushFor(palette.Accent));
-            deny.IsCancel = !nonModal;
+            deny.IsCancel = false; // Escape must never dismiss warnings.
             controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             deny.HorizontalAlignment = HorizontalAlignment.Stretch;
             deny.Width = double.NaN;
@@ -439,6 +450,7 @@ internal static class StandardWarningDialog
         if (request.Kind == WarningKind.Fatal) window.Topmost = true;
         UiMotion.AnimateOpen(outer);
 
+        onWindowCreated?.Invoke(window);
         DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
         if (nonModal)
         {
