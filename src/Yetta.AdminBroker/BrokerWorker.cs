@@ -95,7 +95,7 @@ internal sealed class BrokerWorker(ILogger<BrokerWorker> log) : BackgroundServic
                 return;
             }
             catch (Exception e) when (e is IOException or OperationCanceledException
-                or UnauthorizedAccessException or InvalidOperationException)
+                or UnauthorizedAccessException or InvalidOperationException or InvalidDataException)
             {
                 log.LogWarning(e, "Rejected or timed-out broker connection.");
             }
