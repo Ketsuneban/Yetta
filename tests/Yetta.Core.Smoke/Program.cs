@@ -16,6 +16,17 @@ Assert(AccessProfiles.Install(defaults,"User"),"User installs logical standard p
 Assert(AccessProfiles.Apply(defaults,"User"),"User can be applied");
 Assert(AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"User permits non-elevated Terminal");
 Assert(!AccessProfiles.Install(defaults,"Administrator"),"Administrator cannot be falsely installed");
+Assert(!AccessProfiles.RecordVerifiedAdministrator(defaults, verified: false),
+    "Administrator refuses unverified UI choice");
+Assert(!AccessProfiles.Apply(defaults,"Administrator"),
+    "Administrator cannot be granted by the user-editable profile setting");
+Assert(AccessProfiles.RecordVerifiedAdministrator(defaults, verified: true),
+    "Broker confirmation allows a UI administrator profile to be recorded");
+Assert(defaults.ActiveProfile=="Administrator","verified administrator UI selection recorded");
+Assert(!AccessProfiles.CanLaunchElevatedShell(defaults),
+    "administrator profile never unlocks arbitrary elevated shell");
+Assert(AccessProfiles.Apply(defaults,"User"),"normal user remains selectable");
+
 Assert(!AccessProfiles.Install(defaults,"System"),"System cannot be falsely installed");
 Assert(!AccessProfiles.CanLaunchElevatedShell(defaults),"elevated shell not enabled");
 Assert(!AccessProfiles.Apply(defaults,"System"),"non-installed level cannot be applied");
