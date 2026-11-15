@@ -15,6 +15,7 @@ public partial class MainWindow : Window
 {
     private const string ReleaseVersion = "0.3.14-preview";
     private readonly SettingsStore _store = new();
+    private readonly TallowNotificationStore _activityStore = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, Button> _navigation;
     private readonly List<(string Command, string Reply)> _history = [];
@@ -37,6 +38,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _settings = _store.Load();
+        try
+        {
+            foreach (var record in _activityStore.Load(_settings.NotificationRetentionHours))
+                _notifications.Add((record.Time.LocalDateTime, record.Source, record.Message));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DaxAudit.Write("activity", "load_failed", ex.GetType().Name);
+        }
         _navigation = new()
         {
             ["overview"] = NavOverview,
@@ -592,8 +602,14 @@ public partial class MainWindow : Window
 
     private void Notify(string source, string message)
     {
+        _notifications.RemoveAll(x => x.Time < DateTime.Now.AddHours(-_settings.NotificationRetentionHours));
         _notifications.Add((DateTime.Now, source, message));
-        if (_notifications.Count > 100) _notifications.RemoveAt(0);
+        if (_notifications.Count > 1000) _notifications.RemoveAt(0);
+        try { _activityStore.Add(source, message, _settings.NotificationRetentionHours); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DaxAudit.Write("activity", "persist_failed", ex.GetType().Name);
+        }
 
         var toast = new Border
         {
@@ -651,18 +667,22 @@ public partial class MainWindow : Window
     private void BuildActivity()
     {
         AddIntro("Yetta / Activity Center", "Центр активности",
-            "Локальные события текущего запуска Yetta. Это не журнал безопасности DAX и не мониторинг Windows.");
+            "События Tallow сгруппированы по источникам и сохраняются локально с заданным сроком хранения. Журнал безопасности DAX ведётся отдельно.");
         if (_notifications.Count == 0)
         {
             AddNotice("Пока нет событий", "После изменений оформления или уровня Yetta события появятся здесь.");
             return;
         }
-        foreach (var note in _notifications.AsEnumerable().Reverse())
+        foreach (var group in _notifications.GroupBy(note => note.Source).OrderBy(group => group.Key))
         {
-            var panel = new StackPanel();
-            panel.Children.Add(Text(note.Source + " · " + note.Time.ToString("HH:mm:ss"), 13, heading: true));
-            panel.Children.Add(Text(note.Message, 12, muted: true));
-            ContentPanel.Children.Add(Card(panel));
+            AddSection(group.Key + " · " + group.Count() + " событий");
+            foreach (var note in group.Reverse())
+            {
+                var panel = new StackPanel();
+                panel.Children.Add(Text(note.Time.ToString("dd.MM.yyyy HH:mm:ss"), 12, heading: true));
+                panel.Children.Add(Text(note.Message, 12, muted: true));
+                ContentPanel.Children.Add(Card(panel));
+            }
         }
     }
 
@@ -1082,6 +1102,45 @@ public partial class MainWindow : Window
         sounds.Checked += (_, _) => { _settings.NotificationSoundsEnabled = true; SavePreferences(); };
         sounds.Unchecked += (_, _) => { _settings.NotificationSoundsEnabled = false; SavePreferences(); };
         ContentPanel.Children.Add(Card(sounds));
+        var retention = new ComboBox { Width = 260, HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 6, 0, 4), Foreground = Ink };
+        foreach (int hours in new[] { 1, 6, 24, 72, 168, 720 })
+        {
+            var option = new ComboBoxItem
+            {
+                Content = hours switch
+                {
+                    1 => "1 час", 6 => "6 часов", 24 => "24 часа (по умолчанию)",
+                    72 => "3 дня", 168 => "7 дней", _ => "30 дней"
+                },
+                Tag = hours
+            };
+            retention.Items.Add(option);
+            if (hours == _settings.NotificationRetentionHours)
+                retention.SelectedItem = option;
+        }
+        if (retention.SelectedItem is null) retention.SelectedIndex = 2;
+        retention.SelectionChanged += (_, _) =>
+        {
+            if (retention.SelectedItem is not ComboBoxItem selected || selected.Tag is not int hours) return;
+            _settings.NotificationRetentionHours = hours;
+            _notifications.RemoveAll(x => x.Time < DateTime.Now.AddHours(-hours));
+            SavePreferences();
+            try { _ = _activityStore.Load(hours); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                DaxAudit.Write("activity", "cleanup_failed", ex.GetType().Name);
+            }
+        };
+        ContentPanel.Children.Add(Card(new StackPanel
+        {
+            Children =
+            {
+                Text("Хранить уведомления Центра активности", 12, muted: true),
+                retention
+            }
+        }));
+
 
         AddSection("Подтверждения");
         var confirmation = new CheckBox
