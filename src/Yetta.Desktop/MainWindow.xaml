@@ -276,7 +276,7 @@
           <TextBlock Text="YETTA 0.3.9 · WINDOWS 11" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
-        <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
+        <ScrollViewer Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
           <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
             <Border Width="44" Height="44" CornerRadius="13"
                     Background="{DynamicResource SelectedBrush}">
@@ -327,7 +327,7 @@
           </Border>
         </Grid>
       </Border>
-      <ScrollViewer x:Name="MainScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
+      <ScrollViewer x:Name="MainScroll" Grid.Row="1" Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled" Padding="34,30,34,30">
         <ScrollViewer.Resources>
           <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ModernScrollBar}"/>
