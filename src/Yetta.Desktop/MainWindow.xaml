@@ -351,7 +351,7 @@
       </ScrollViewer>
       <Border Grid.Row="2">
         <Grid Margin="34,0">
-          <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}">Иконки предоставлены сервисом <Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink">Icons8</Hyperlink></TextBlock>
+          <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"><Run Text="{DynamicResource Local.ui.xaml.0027}"/><Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink"><Run Text="{DynamicResource Local.ui.xaml.0028}"/></Hyperlink></TextBlock>
           <TextBlock Text="{DynamicResource Local.ui.xaml.0022}" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
