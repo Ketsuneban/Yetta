@@ -2,7 +2,7 @@ namespace Yetta.Core;
 
 /// <summary>
 /// Yetta's user-selected capability policy. This class cannot grant OS rights.
-/// Administrator/System require a future separately audited Windows broker.
+/// Every privileged action must also check the actual Windows token.
 /// </summary>
 public static class AccessProfiles
 {
@@ -10,6 +10,18 @@ public static class AccessProfiles
 
     public static bool CanInstallLogicalProfile(string profile) =>
         profile is "Guest" or "SafeUser" or "User";
+
+    // The desktop supplies this only after checking its real Windows token.
+    // The returned profile remains a UI preference, not a Windows privilege.
+    public static bool InstallAdministrator(AppSettings settings, bool verifiedWindowsAdministrator)
+    {
+        if (!verifiedWindowsAdministrator) return false;
+        settings.Normalize();
+        if (!settings.InstalledProfiles.Contains("Administrator", StringComparer.Ordinal))
+            settings.InstalledProfiles.Add("Administrator");
+        settings.Normalize();
+        return true;
+    }
 
     public static bool Install(AppSettings settings, string profile)
     {

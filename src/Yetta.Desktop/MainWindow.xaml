@@ -40,6 +40,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="Shell" Background="{TemplateBinding Background}"
+                    BorderBrush="Transparent" BorderThickness="1"
                     CornerRadius="12" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="Center"/>
@@ -48,6 +49,9 @@
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Shell" Property="Background" Value="{DynamicResource HoverBackground}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Shell" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -65,6 +69,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonChrome" Background="{TemplateBinding Background}"
+                    BorderBrush="Transparent" BorderThickness="1"
                     CornerRadius="11" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
@@ -74,6 +79,9 @@
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="ButtonChrome" Property="Opacity" Value=".40"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="ButtonChrome" Property="BorderBrush" Value="{DynamicResource TextPrimary}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

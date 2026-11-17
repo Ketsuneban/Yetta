@@ -12,14 +12,20 @@ public sealed class AppSettings
     public string ActiveProfile { get; set; } = "Guest";
     // Consent to the embedded user-level PowerShell session; never grants OS privileges.
     public bool EmbeddedShellConsentGranted { get; set; } = false;
+    public bool MarvineSubsyEnabled { get; set; } = true;
+    public string MarvineColorset { get; set; } = "EGA";
+    public int MarvineHistoryLimit { get; set; } = 1000;
+    public string? PythonExecutablePath { get; set; }
 
     public void Normalize()
     {
         if (Theme is not ("Fluent" or "Glass")) Theme = "Fluent";
         if (NotificationRetentionHours is < 1 or > 720) NotificationRetentionHours = 24;
+        if (MarvineColorset is not ("EGA" or "No Color")) MarvineColorset = "EGA";
+        MarvineHistoryLimit = Math.Clamp(MarvineHistoryLimit, 100, 10000);
         InstalledProfiles ??= [];
         InstalledProfiles = InstalledProfiles
-            .Where(p => AccessProfiles.CanInstallLogicalProfile(p))
+            .Where(p => AccessProfiles.CanInstallLogicalProfile(p) || p == "Administrator")
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (!InstalledProfiles.Contains("Guest", StringComparer.Ordinal))

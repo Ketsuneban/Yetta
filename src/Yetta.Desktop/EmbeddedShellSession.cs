@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace Yetta.Desktop;
 
@@ -37,6 +38,9 @@ public sealed class EmbeddedShellSession : IDisposable
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardInputEncoding = new UTF8Encoding(false),
+            StandardOutputEncoding = new UTF8Encoding(false),
+            StandardErrorEncoding = new UTF8Encoding(false),
             CreateNoWindow = true,
             WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
         };
@@ -45,6 +49,7 @@ public sealed class EmbeddedShellSession : IDisposable
         var process = new Process { StartInfo = start, EnableRaisingEvents = true };
         if (!process.Start()) throw new InvalidOperationException("PowerShell did not start.");
         process.StandardInput.AutoFlush = true;
+        process.StandardInput.WriteLine("[Console]::InputEncoding = [Text.UTF8Encoding]::new($false); [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::InputEncoding");
         return new EmbeddedShellSession(process, onOutput);
     }
 

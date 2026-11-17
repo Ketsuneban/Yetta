@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -7,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace Yetta.Desktop;
 
-public sealed record UpdateRelease(Version Version, string Tag, Uri InstallerUrl, Uri ChecksumUrl);
+public sealed record UpdateRelease(long Id, Version Version, string Tag, Uri InstallerUrl, Uri ChecksumUrl);
 
 /// <summary>
 /// Opt-in unprivileged preview updater: GitHub release metadata + SHA-256
@@ -22,44 +23,73 @@ public static class YettaUpdater
     private static HttpClient Client()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.10"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.23"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
 
     public static async Task<UpdateRelease?> FindUpdateAsync(Version current, CancellationToken token = default)
     {
+        var releases = await ListReleasesAsync(token);
+        return releases.Where(release => release.Version > current)
+            .OrderByDescending(release => release.Version).FirstOrDefault();
+    }
+
+    public static async Task<IReadOnlyList<UpdateRelease>> ListReleasesAsync(CancellationToken token = default)
+    {
         using var http = Client();
-        using var reply = await http.GetAsync($"https://api.github.com/repos/{Repo}/releases?per_page=15", token);
+        var releases = new List<UpdateRelease>();
+        for (int page = 1; page <= 10; page++)
+        {
+            using var reply = await http.GetAsync($"https://api.github.com/repos/{Repo}/releases?per_page=100&page={page}", token);
+            reply.EnsureSuccessStatusCode();
+            await using var stream = await reply.Content.ReadAsStreamAsync(token);
+            using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token);
+            int count = 0;
+            foreach (var release in json.RootElement.EnumerateArray())
+            {
+                count++;
+                if (ParseRelease(release) is UpdateRelease item) releases.Add(item);
+            }
+            if (count < 100) break;
+        }
+        return releases.OrderByDescending(item => item.Version).ToArray();
+    }
+
+    public static async Task<UpdateRelease?> FindReleaseByIdAsync(long id, CancellationToken token = default)
+    {
+        using var http = Client();
+        using var reply = await http.GetAsync($"https://api.github.com/repos/{Repo}/releases/{id}", token);
+        if (reply.StatusCode == HttpStatusCode.NotFound) return null;
         reply.EnsureSuccessStatusCode();
         await using var stream = await reply.Content.ReadAsStreamAsync(token);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token);
+        var release = ParseRelease(json.RootElement);
+        return release?.Id == id ? release : null;
+    }
 
-        UpdateRelease? latest = null;
-        foreach (var release in json.RootElement.EnumerateArray())
+    private static UpdateRelease? ParseRelease(JsonElement release)
+    {
+        if (release.GetProperty("draft").GetBoolean()) return null;
+        string tag = release.GetProperty("tag_name").GetString() ?? "";
+        string raw = tag.TrimStart('v').Replace("-preview", "", StringComparison.OrdinalIgnoreCase);
+        if (!Version.TryParse(raw, out var version)) return null;
+        Uri? setup = null, checksum = null;
+        foreach (var asset in release.GetProperty("assets").EnumerateArray())
         {
-            if (release.GetProperty("draft").GetBoolean()) continue;
-            string tag = release.GetProperty("tag_name").GetString() ?? "";
-            string raw = tag.TrimStart('v').Replace("-preview", "", StringComparison.OrdinalIgnoreCase);
-            if (!Version.TryParse(raw, out var version) || version <= current) continue;
-            Uri? setup = null, checksum = null;
-            foreach (var asset in release.GetProperty("assets").EnumerateArray())
-            {
-                string name = asset.GetProperty("name").GetString() ?? "";
-                string url = asset.GetProperty("browser_download_url").GetString() ?? "";
-                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-                    uri.Scheme != Uri.UriSchemeHttps ||
-                    !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-                    !uri.AbsolutePath.StartsWith($"/{Repo}/releases/download/", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                if (name == "YettaSetup.exe") setup = uri;
-                if (name == "INSTALLER-SHA256.txt") checksum = uri;
-            }
-            if (setup is not null && checksum is not null &&
-                (latest is null || version > latest.Version))
-                latest = new UpdateRelease(version, tag, setup, checksum);
+            string name = asset.GetProperty("name").GetString() ?? "";
+            string url = asset.GetProperty("browser_download_url").GetString() ?? "";
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                uri.Scheme != Uri.UriSchemeHttps ||
+                !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
+                !uri.AbsolutePath.StartsWith($"/{Repo}/releases/download/", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (name == "YettaSetup.exe") setup = uri;
+            if (name == "INSTALLER-SHA256.txt") checksum = uri;
         }
-        return latest;
+        return setup is not null && checksum is not null
+            ? new UpdateRelease(release.GetProperty("id").GetInt64(), version, tag, setup, checksum)
+            : null;
     }
 
     public static async Task<string> DownloadInstallerAsync(UpdateRelease release,

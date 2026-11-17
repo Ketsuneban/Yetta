@@ -1,9 +1,10 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.15-preview");
+    string Version = "0.3.22-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
-    string? SwitchThemeTo = null, bool ClearOutput = false);
+    string? SwitchThemeTo = null, bool ClearOutput = false,
+    string? Request = null, string? Argument = null);
 
 /// <summary>
 /// Marvine is an original, strictly allowlisted UI command router. No shell,
@@ -13,7 +14,37 @@ public static class ConsoleEngine
 {
     public static ConsoleResult Execute(string? input, ConsoleContext context)
     {
-        string command = (input ?? string.Empty).Trim().ToLowerInvariant();
+        string raw = (input ?? string.Empty).Trim();
+        if (raw.Length > 4096)
+            return new ConsoleResult("[⚠] Marvine: команда слишком длинная (максимум 4096 символов).");
+        string command = raw.ToLowerInvariant();
+        if (command is "/help" or "/help 1" or "/help 2" or "/help 3")
+        {
+            int page = command.Length > 6 && int.TryParse(command[6..], out int requested) ? requested : 1;
+            return new ConsoleResult(HelpPage(page, context.ActiveProfile));
+        }
+        if (command.StartsWith("/help ", StringComparison.Ordinal))
+            return new ConsoleResult("[⚠] Marvine: страницы справки: /help 1, /help 2, /help 3.");
+        if (command is "/yetta version" or "/yetta update")
+            return new ConsoleResult("", Request: command[7..].ToUpperInvariant());
+        if (command.StartsWith("/yetta download ", StringComparison.Ordinal))
+            return new ConsoleResult("", Request: "DOWNLOAD", Argument: raw[16..].Trim());
+        if (command is "/tty info" or "/tty update")
+            return new ConsoleResult("", Request: command[5..].ToUpperInvariant() == "INFO" ? "TTY_INFO" : "TTY_UPDATE");
+        if (command is "/marvine subsy enable" or "/marvine subsy disable")
+            return new ConsoleResult("", Request: "SUBSY", Argument: command.EndsWith("enable", StringComparison.Ordinal) ? "enable" : "disable");
+        if (command is "/marvine colorset ega" or "/marvine colorset no color")
+            return new ConsoleResult("", Request: "COLORSET", Argument: command.EndsWith("ega", StringComparison.Ordinal) ? "EGA" : "No Color");
+        if (command is "/script list")
+            return new ConsoleResult("", Request: "SCRIPT_LIST");
+        if (command.StartsWith("/script run ", StringComparison.Ordinal))
+            return new ConsoleResult("", Request: "SCRIPT_RUN", Argument: raw[12..].Trim());
+        if (command.StartsWith("/script stop ", StringComparison.Ordinal))
+            return new ConsoleResult("", Request: "SCRIPT_STOP", Argument: raw[13..].Trim());
+        if (command is "/snob" or "/snob help")
+            return new ConsoleResult("[ℹ] Marvine: /snob пока не повышает права; нужен проверяемый посредник DAX [A].");
+        if (command.StartsWith("/snob ", StringComparison.Ordinal))
+            return new ConsoleResult("[✖] Marvine: повышение прав недоступно: посредник DAX [A] ещё не установлен.");
         return command switch
         {
             "" => new ConsoleResult(TallowText.Get("marvine.console.0001")),
@@ -58,6 +89,42 @@ public static class ConsoleEngine
             "clear" => new ConsoleResult("", ClearOutput: true),
             _ => new ConsoleResult(TallowText.Get("marvine.console.0033") + command +
                 TallowText.Get("marvine.console.0034"))
+        };
+    }
+
+    public static IReadOnlyList<string> Suggestions(string? prefix)
+    {
+        string query = (prefix ?? "").TrimStart();
+        string[] commands = ["/help", "/yetta version", "/yetta update", "/yetta download ",
+            "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable",
+            "/marvine colorset EGA", "/marvine colorset No Color", "/script list",
+            "/script run ", "/script stop ", "/snob help", "clear", "status", "settings"];
+        return commands.Where(item => item.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Take(6).ToArray();
+    }
+
+    private static string HelpPage(int page, string profile)
+    {
+        if (page is < 1 or > 3) return "[⚠] Marvine: доступные страницы справки: 1–3.";
+        return page switch
+        {
+            1 => "[⌘] Marvine: команды · страница 1/3\n" +
+                "[Зелёный] /help [1–3] — справка\n" +
+                "[Зелёный] /yetta version — установленная и последняя версии\n" +
+                "[Зелёный] /yetta update — установить последний релиз\n" +
+                "[Зелёный] /yetta download <ID> — установить релиз по ID\n" +
+                "[Зелёный] /tty info|update — показать или сменить ключ\n" +
+                "Напиши /help 2 для следующей страницы.",
+            2 => "[⌘] Marvine: команды · страница 2/3\n" +
+                "[Зелёный] /marvine subsy enable|disable — подсистема интерфейса\n" +
+                "[Зелёный] /marvine colorset EGA|No Color — цвета сообщений\n" +
+                "[Зелёный] /script list — список Python-скриптов\n" +
+                "[Жёлтый] /script run <путь> — администратор Windows и DAX [A]\n" +
+                "[Зелёный] /script stop <ID|путь> — остановить скрипт\n" +
+                "Напиши /help 3 для следующей страницы.",
+            _ => "[⌘] Marvine: команды · страница 3/3\n" +
+                "[Серый] /snob — повышение прав появится вместе с DAX [A]\n" +
+                "[Зелёный] clear, status, info, settings, guard, logs\n" +
+                "Зелёный — доступно; красный — нет прав; жёлтый — частично; серый — в разработке."
         };
     }
 }

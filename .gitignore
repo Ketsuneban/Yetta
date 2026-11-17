@@ -7,6 +7,9 @@ Thumbs.db
 node_modules/
 dist/
 coverage/
+**/bin/
+**/obj/
+artifacts/
 
 # Downloaded open-license font (see scripts/prepare-fonts.ps1)
 src/Yetta.Desktop/Assets/Inter.ttf

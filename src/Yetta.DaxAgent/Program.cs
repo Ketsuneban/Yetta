@@ -3,13 +3,14 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO.Pipes;
 using System.Reflection;
+using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
 
 namespace Yetta.DaxAgent;
 
 /// <summary>
-/// Lightweight, unprivileged tray companion. Checks service liveliness only.
+/// Tray companion running with its launcher's Windows token.
 /// Not an antivirus, Windows service, admin broker or malware scanner.
 /// </summary>
 internal static class Program
@@ -30,6 +31,15 @@ internal enum AgentState { Working = 1, Healthy = 2, Notice = 3, Threat = 4, Dis
 
 internal sealed class TrayAgent : ApplicationContext
 {
+    private static bool CanAuthorizeAdminScript()
+    {
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch (Exception) { return false; }
+    }
     private readonly NotifyIcon _tray;
     private readonly SynchronizationContext _ui;
     private readonly CancellationTokenSource _stop = new();
@@ -272,6 +282,8 @@ internal sealed class TrayAgent : ApplicationContext
                     "ENABLE" => "ENABLED",
                     "DISABLE" => "DISABLED",
                     "STATE" => _state.ToString().ToUpperInvariant(),
+                    "AUTHORIZE_SCRIPT" => _state == AgentState.Healthy && CanAuthorizeAdminScript()
+                        ? "AUTHORIZED" : "DENIED",
                     "STOP_FOR_UPDATE" => "STOPPING",
                     _ => "UNKNOWN"
                 };
