@@ -272,6 +272,7 @@ internal sealed class TrayAgent : ApplicationContext
                     "ENABLE" => "ENABLED",
                     "DISABLE" => "DISABLED",
                     "STATE" => _state.ToString().ToUpperInvariant(),
+                    "STOP_FOR_UPDATE" => "STOPPING",
                     _ => "UNKNOWN"
                 };
                 await writer.WriteLineAsync(result);
@@ -279,6 +280,7 @@ internal sealed class TrayAgent : ApplicationContext
                 if (line == "RESTART") _ui.Post(async _ => await RestartAsync(), null);
                 if (line == "ENABLE") _ui.Post(_ => Enable(), null);
                 if (line == "DISABLE") _ui.Post(_ => Disable(), null);
+                if (line == "STOP_FOR_UPDATE") _ui.Post(_ => ExitAgent(), null);
             }
             catch (OperationCanceledException) { break; }
             catch (IOException) { await Task.Delay(250, token).ConfigureAwait(false); }

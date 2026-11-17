@@ -290,7 +290,7 @@
           <TextBlock Text="{DynamicResource Local.ui.xaml.0004}"
                      TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"
                      FontSize="12" Margin="8,0,0,10"/>
-          <TextBlock Text="{DynamicResource Local.ui.xaml.0005}" FontSize="10"
+          <TextBlock x:Name="SidebarVersion" FontSize="10"
                      Foreground="{DynamicResource TextSecondary}" Margin="8,0"/>
         </StackPanel>
         <ScrollViewer Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
@@ -354,7 +354,7 @@
       <Border Grid.Row="2">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"><Run Text="{DynamicResource Local.ui.xaml.0027}"/><Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink"><Run Text="{DynamicResource Local.ui.xaml.0028}"/></Hyperlink></TextBlock>
-          <TextBlock Text="{DynamicResource Local.ui.xaml.0022}" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <TextBlock x:Name="FooterVersion" HorizontalAlignment="Right" VerticalAlignment="Center"
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
         </Grid>
       </Border>

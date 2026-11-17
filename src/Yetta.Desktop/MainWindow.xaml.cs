@@ -15,7 +15,8 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.21-preview";
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 21);
+    private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private CancellationTokenSource? _downloadCancel;
@@ -44,6 +45,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        SidebarVersion.Text = "YETTA " + ReleaseVersion + " · WINDOWS 11";
+        FooterVersion.Text = ReleaseVersion;
         _settings = _store.Load();
         try
         {
@@ -1244,7 +1247,7 @@ public partial class MainWindow : Window
         if (!await _updateGate.WaitAsync(0)) return;
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 21), _updateStop.Token);
+            var latest = await YettaUpdater.FindUpdateAsync(CurrentVersion, _updateStop.Token);
             if (latest is null)
             {
                 if (manual) ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
@@ -1285,11 +1288,22 @@ public partial class MainWindow : Window
             _downloadCancel = null;
             _downloadingVersion = null;
             if (!manual && !_settings.AutoUpdatesEnabled) return;
-            Process.Start(new ProcessStartInfo(path)
+            try
+            {
+                if (await DaxAgentGate.RequestAsync("STOP_FOR_UPDATE", _updateStop.Token) == "STOPPING")
+                    await Task.Delay(800, _updateStop.Token);
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException)
+            {
+                DaxAudit.Write("update", "dax_stop_unavailable", ex.GetType().Name);
+            }
+            var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
+            var start = new ProcessStartInfo(path)
             {
                 UseShellExecute = true,
-                Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
-            });
+                Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /LOG=\"" + log + "\""
+            };
+            using var installer = Process.Start(start) ?? throw new InvalidOperationException("Installer did not start.");
             Close();
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
