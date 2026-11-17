@@ -5,6 +5,8 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace Yetta.Desktop;
 
@@ -19,29 +21,77 @@ public static class YettaUpdater
 {
     private const string Repo = "Ketsuneban/Yetta";
     private const long MaxInstallerBytes = 512L * 1024 * 1024;
+    private static DateTimeOffset _apiRetryAfter;
 
     private static HttpClient Client()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.23"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.24"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
 
     public static async Task<UpdateRelease?> FindUpdateAsync(Version current, CancellationToken token = default)
     {
-        var releases = await ListReleasesAsync(token);
+        var releases = await FeedReleasesAsync(token);
         return releases.Where(release => release.Version > current)
             .OrderByDescending(release => release.Version).FirstOrDefault();
     }
 
+    private static async Task<IReadOnlyList<UpdateRelease>> FeedReleasesAsync(CancellationToken token)
+    {
+        using var http = Client();
+        using var reply = await http.GetAsync($"https://github.com/{Repo}/releases.atom",
+            HttpCompletionOption.ResponseHeadersRead, token);
+        reply.EnsureSuccessStatusCode();
+        if (reply.Content.Headers.ContentLength is long length && length > 2_000_000)
+            throw new InvalidDataException("Лента релизов GitHub слишком большая.");
+        await using var stream = await reply.Content.ReadAsStreamAsync(token);
+        using var reader = XmlReader.Create(stream, new XmlReaderSettings
+        {
+            Async = true,
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null,
+            MaxCharactersInDocument = 2_000_000
+        });
+        var feed = await XDocument.LoadAsync(reader, LoadOptions.None, token);
+        XNamespace atom = "http://www.w3.org/2005/Atom";
+        var releases = new List<UpdateRelease>();
+        string prefix = $"/{Repo}/releases/tag/";
+        foreach (var entry in feed.Root?.Elements(atom + "entry") ?? [])
+        {
+            string? href = entry.Elements(atom + "link")
+                .FirstOrDefault(link => (string?)link.Attribute("rel") == "alternate")?
+                .Attribute("href")?.Value;
+            if (!Uri.TryCreate(href, UriKind.Absolute, out var uri) ||
+                uri.Scheme != Uri.UriSchemeHttps ||
+                !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
+                !uri.AbsolutePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            string tag = uri.AbsolutePath[prefix.Length..];
+            if (!Regex.IsMatch(tag, @"\Av\d+\.\d+\.\d+(?:-preview)?\z", RegexOptions.CultureInvariant) ||
+                !Version.TryParse(tag[1..].Replace("-preview", "", StringComparison.OrdinalIgnoreCase),
+                    out var version)) continue;
+            releases.Add(new UpdateRelease(0, version, tag,
+                new Uri($"https://github.com/{Repo}/releases/download/{tag}/YettaSetup.exe"),
+                new Uri($"https://github.com/{Repo}/releases/download/{tag}/INSTALLER-SHA256.txt")));
+        }
+        if (releases.Count == 0) throw new InvalidDataException("Лента релизов GitHub пуста или повреждена.");
+        return releases.OrderByDescending(item => item.Version).ToArray();
+    }
+
     public static async Task<IReadOnlyList<UpdateRelease>> ListReleasesAsync(CancellationToken token = default)
     {
+        if (DateTimeOffset.UtcNow < _apiRetryAfter) return await FeedReleasesAsync(token);
         using var http = Client();
         var releases = new List<UpdateRelease>();
         for (int page = 1; page <= 10; page++)
         {
             using var reply = await http.GetAsync($"https://api.github.com/repos/{Repo}/releases?per_page=100&page={page}", token);
+            if (IsRateLimited(reply))
+            {
+                RememberRateLimit(reply);
+                return await FeedReleasesAsync(token);
+            }
             reply.EnsureSuccessStatusCode();
             await using var stream = await reply.Content.ReadAsStreamAsync(token);
             using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token);
@@ -58,14 +108,47 @@ public static class YettaUpdater
 
     public static async Task<UpdateRelease?> FindReleaseByIdAsync(long id, CancellationToken token = default)
     {
+        if (DateTimeOffset.UtcNow < _apiRetryAfter)
+            throw new InvalidOperationException("Лимит GitHub API достигнут. Используй тег релиза из /yetta version вместо числового ID.");
         using var http = Client();
         using var reply = await http.GetAsync($"https://api.github.com/repos/{Repo}/releases/{id}", token);
+        if (IsRateLimited(reply))
+        {
+            RememberRateLimit(reply);
+            throw new InvalidOperationException("Лимит GitHub API достигнут. Используй тег релиза из /yetta version вместо числового ID.");
+        }
         if (reply.StatusCode == HttpStatusCode.NotFound) return null;
         reply.EnsureSuccessStatusCode();
         await using var stream = await reply.Content.ReadAsStreamAsync(token);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token);
         var release = ParseRelease(json.RootElement);
         return release?.Id == id ? release : null;
+    }
+
+    public static UpdateRelease? FindReleaseByTag(string? tag)
+    {
+        if (tag is null || !Regex.IsMatch(tag,
+            @"\Av\d+\.\d+\.\d+(?:-preview)?\z", RegexOptions.CultureInvariant)) return null;
+        if (!Version.TryParse(tag[1..].Replace("-preview", "", StringComparison.OrdinalIgnoreCase),
+            out var version)) return null;
+        return new UpdateRelease(0, version, tag,
+            new Uri($"https://github.com/{Repo}/releases/download/{tag}/YettaSetup.exe"),
+            new Uri($"https://github.com/{Repo}/releases/download/{tag}/INSTALLER-SHA256.txt"));
+    }
+
+    private static bool IsRateLimited(HttpResponseMessage reply) =>
+        reply.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests;
+
+    private static void RememberRateLimit(HttpResponseMessage reply)
+    {
+        DateTimeOffset retry = DateTimeOffset.UtcNow.AddMinutes(15);
+        if (reply.Headers.TryGetValues("X-RateLimit-Reset", out var values) &&
+            long.TryParse(values.FirstOrDefault(), out long seconds))
+        {
+            try { retry = DateTimeOffset.FromUnixTimeSeconds(seconds).AddSeconds(5); }
+            catch (ArgumentOutOfRangeException) { }
+        }
+        _apiRetryAfter = retry > DateTimeOffset.UtcNow ? retry : DateTimeOffset.UtcNow.AddMinutes(15);
     }
 
     private static UpdateRelease? ParseRelease(JsonElement release)

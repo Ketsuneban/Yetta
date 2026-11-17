@@ -17,7 +17,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 23);
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 24);
     private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
@@ -1338,7 +1338,7 @@ public partial class MainWindow : Window
                 InvalidDataException or UnauthorizedAccessException or
                 System.ComponentModel.Win32Exception or InvalidOperationException or
                 ArgumentException or TimeoutException or OperationCanceledException or
-                System.Text.Json.JsonException)
+                System.Text.Json.JsonException or System.Xml.XmlException)
             {
                 message = "[✖] Marvine: " + FriendlyMarvineError(ex);
             }
@@ -1357,9 +1357,12 @@ public partial class MainWindow : Window
         TimeoutException => "DAX не ответил вовремя. Проверь, запущен ли DAX.",
         UnauthorizedAccessException => "нет доступа к файлу или папке Windows.",
         FileNotFoundException missing => missing.Message,
+        HttpRequestException { StatusCode: System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.TooManyRequests }
+            => "GitHub временно ограничил запросы. Повтори проверку позже.",
         HttpRequestException => "не удалось связаться с GitHub. Проверь подключение к сети.",
         InvalidDataException => "полученные данные или контрольная сумма повреждены.",
         System.Text.Json.JsonException => "GitHub вернул данные в неожиданном формате.",
+        System.Xml.XmlException => "лента релизов GitHub повреждена или недоступна.",
         System.ComponentModel.Win32Exception => "Windows не удалось запустить нужную программу.",
         ArgumentException => "проверь аргументы команды и путь к файлу.",
         IOException => "ошибка чтения или записи файла.",
@@ -1375,20 +1378,25 @@ public partial class MainWindow : Window
                 var releases = await YettaUpdater.ListReleasesAsync(_updateStop.Token);
                 return "[⌘] Yetta: установлена " + ReleaseVersion +
                     (releases.Count == 0 ? "\n[⚠] GitHub: подходящие релизы не найдены."
-                    : "\n[ℹ] Доступные релизы (ID GitHub):\n" +
-                      string.Join("\n", releases.Select(item => item.Tag + " · ID " + item.Id)));
+                    : "\n[ℹ] Доступные релизы:\n" +
+                      string.Join("\n", releases.Select(item => item.Tag + " · ID " +
+                          (item.Id == 0 ? item.Tag : item.Id.ToString()))));
             }
             case "UPDATE":
                 await CheckAndInstallUpdateAsync(true);
                 return "[ℹ] Yetta: проверка обновления завершена.";
             case "DOWNLOAD":
             {
-                if (!long.TryParse(argument, out long id) || id <= 0)
-                    return "[⚠] Marvine: укажи числовой ID из команды /yetta version.";
-                var release = await YettaUpdater.FindReleaseByIdAsync(id, _updateStop.Token);
+                UpdateRelease? release;
+                if (long.TryParse(argument, out long id) && id > 0)
+                    release = await YettaUpdater.FindReleaseByIdAsync(id, _updateStop.Token);
+                else
+                    release = YettaUpdater.FindReleaseByTag(argument);
+                if (release is null && string.IsNullOrWhiteSpace(argument))
+                    return "[⚠] Marvine: укажи ID или тег из команды /yetta version.";
                 if (release is null) return "[✖] Marvine: релиз с таким ID не найден среди доступных установщиков.";
                 if (!ConfirmYettaAction("Установить Yetta " + release.Tag,
-                    "Будет загружен и запущен установщик релиза с ID " + id + "."))
+                    "Будет загружен и запущен установщик релиза " + release.Tag + "."))
                     return "[ℹ] Marvine: установка отменена.";
                 if (!await _updateGate.WaitAsync(0)) return "[♨] Marvine: другое обновление уже выполняется.";
                 try { await InstallReleaseAsync(release); }
@@ -1717,7 +1725,7 @@ public partial class MainWindow : Window
         {
             if (_settings.AutoUpdatesEnabled)
                 await CheckAndInstallUpdateAsync(false);
-            try { await Task.Delay(TimeSpan.FromMinutes(1), _updateStop.Token); }
+            try { await Task.Delay(TimeSpan.FromMinutes(5), _updateStop.Token); }
             catch (OperationCanceledException) { break; }
         }
     }
@@ -1750,10 +1758,10 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException or
-            System.Text.Json.JsonException)
+            System.Text.Json.JsonException or System.Xml.XmlException)
         {
             if (manual || ex is not OperationCanceledException)
-                ShowYettaNotice(TallowText.Get("ui.main.0203"), ex.Message, WarningKind.Caution);
+                ShowYettaNotice(TallowText.Get("ui.main.0203"), FriendlyMarvineError(ex), WarningKind.Caution);
         }
         finally { _downloadCancel = null; _downloadingVersion = null; _updateGate.Release(); }
     }
