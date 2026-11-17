@@ -45,7 +45,7 @@ public sealed class SettingsStore
         string directory = Path.GetDirectoryName(_path)
             ?? throw new InvalidOperationException("Invalid settings path.");
         Directory.CreateDirectory(directory);
-        string temp = _path + ".tmp";
+        string temp = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             File.WriteAllText(temp, JsonSerializer.Serialize(settings, JsonOptions));

@@ -48,6 +48,8 @@ jobs:
         run: dotnet restore src/Yetta.Desktop/Yetta.Desktop.csproj
       - name: Core smoke tests
         run: dotnet run --project tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj --configuration Release
+      - name: Updater feed smoke tests
+        run: dotnet run --project tests/Yetta.Updater.Smoke/Yetta.Updater.Smoke.csproj --configuration Release
       - name: Compile desktop application
         run: dotnet build src/Yetta.Desktop/Yetta.Desktop.csproj --configuration Release --no-restore -warnaserror
       - name: Publish portable single-file executable
@@ -102,7 +104,7 @@ jobs:
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.3.24-preview-win-x64-QA
+          name: Yetta-0.3.25-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -120,7 +122,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.3.24-preview-win-x64-QA
+          name: Yetta-0.3.25-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh

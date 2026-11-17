@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -26,7 +27,7 @@ public static class YettaUpdater
     private static HttpClient Client()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.24"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.25"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
@@ -47,6 +48,12 @@ public static class YettaUpdater
         if (reply.Content.Headers.ContentLength is long length && length > 2_000_000)
             throw new InvalidDataException("Лента релизов GitHub слишком большая.");
         await using var stream = await reply.Content.ReadAsStreamAsync(token);
+        return await ParseFeedAsync(stream, token);
+    }
+
+    public static async Task<IReadOnlyList<UpdateRelease>> ParseFeedAsync(Stream stream,
+        CancellationToken token = default)
+    {
         using var reader = XmlReader.Create(stream, new XmlReaderSettings
         {
             Async = true,
@@ -179,10 +186,25 @@ public static class YettaUpdater
         IProgress<double>? progress = null, CancellationToken token = default)
     {
         using var http = Client();
-        var manifest = await http.GetStringAsync(release.ChecksumUrl, token);
+        using var manifestReply = await http.GetAsync(release.ChecksumUrl,
+            HttpCompletionOption.ResponseHeadersRead, token);
+        manifestReply.EnsureSuccessStatusCode();
+        if (manifestReply.Content.Headers.ContentLength is long manifestLength && manifestLength > 8192)
+            throw new InvalidDataException("Файл контрольной суммы слишком большой.");
+        await using var manifestStream = await manifestReply.Content.ReadAsStreamAsync(token);
+        using var manifestBuffer = new MemoryStream();
+        var manifestChunk = new byte[4096];
+        int manifestRead;
+        while ((manifestRead = await manifestStream.ReadAsync(manifestChunk, token)) > 0)
+        {
+            if (manifestBuffer.Length + manifestRead > 8192)
+                throw new InvalidDataException("Файл контрольной суммы слишком большой.");
+            manifestBuffer.Write(manifestChunk, 0, manifestRead);
+        }
+        string manifest = Encoding.UTF8.GetString(manifestBuffer.ToArray());
         var match = Regex.Match(manifest,
             @"\bSHA256\s+YettaSetup\.exe\s+([0-9a-fA-F]{64})\b",
-            RegexOptions.CultureInvariant);
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (!match.Success) throw new InvalidDataException("No installer SHA-256 in the release manifest.");
 
         string directory = Path.Combine(
@@ -190,6 +212,7 @@ public static class YettaUpdater
             "Yetta", "Updates");
         Directory.CreateDirectory(directory);
         string destination = Path.Combine(directory, "YettaSetup-" + release.Version + ".exe");
+        string partial = destination + "." + Guid.NewGuid().ToString("N") + ".download";
 
         try
         {
@@ -200,7 +223,7 @@ public static class YettaUpdater
                 throw new InvalidDataException("Installer exceeds size limit.");
 
             await using (var input = await reply.Content.ReadAsStreamAsync(token))
-            await using (var output = new FileStream(destination, FileMode.Create,
+            await using (var output = new FileStream(partial, FileMode.CreateNew,
                 FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
                 var buffer = new byte[81920];
@@ -217,16 +240,20 @@ public static class YettaUpdater
                 }
             }
 
-            await using var verify = File.OpenRead(destination);
-            string actual = Convert.ToHexString(await SHA256.HashDataAsync(verify, token));
+            string actual;
+            await using (var verify = File.OpenRead(partial))
+                actual = Convert.ToHexString(await SHA256.HashDataAsync(verify, token));
             if (!actual.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Installer checksum mismatch.");
+            File.Move(partial, destination, overwrite: true);
             progress?.Report(1);
             return destination;
         }
         catch
         {
-            if (File.Exists(destination)) File.Delete(destination);
+            try { if (File.Exists(partial)) File.Delete(partial); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
             throw;
         }
     }

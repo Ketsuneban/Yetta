@@ -17,13 +17,14 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 24);
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 25);
     private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private CancellationTokenSource? _downloadCancel;
     private Version? _dismissedAutoVersion;
     private Version? _downloadingVersion;
+    private DateTimeOffset _nextAutoUpdateErrorNotice;
     private readonly SettingsStore _store = new();
     private readonly TallowNotificationStore _activityStore = new();
     private readonly AppSettings _settings;
@@ -1760,8 +1761,16 @@ public partial class MainWindow : Window
             System.ComponentModel.Win32Exception or TaskCanceledException or
             System.Text.Json.JsonException or System.Xml.XmlException)
         {
-            if (manual || ex is not OperationCanceledException)
-                ShowYettaNotice(TallowText.Get("ui.main.0203"), FriendlyMarvineError(ex), WarningKind.Caution);
+            if (ex is OperationCanceledException && !manual) return;
+            string message = FriendlyMarvineError(ex);
+            DaxAudit.Write("update", "check_failed", ex.GetType().Name);
+            if (manual)
+                ShowYettaNotice(TallowText.Get("ui.main.0203"), message, WarningKind.Caution);
+            else if (DateTimeOffset.UtcNow >= _nextAutoUpdateErrorNotice)
+            {
+                _nextAutoUpdateErrorNotice = DateTimeOffset.UtcNow.AddHours(6);
+                Notify("Обновления Yetta", message);
+            }
         }
         finally { _downloadCancel = null; _downloadingVersion = null; _updateGate.Release(); }
     }

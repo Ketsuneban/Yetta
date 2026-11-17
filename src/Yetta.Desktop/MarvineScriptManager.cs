@@ -28,7 +28,22 @@ internal sealed class MarvineScriptManager : IDisposable
             throw new FileNotFoundException("Нужен существующий файл Python (.py).", path);
         lock (_sync)
         {
-            if (_scripts.ContainsKey(id)) throw new InvalidOperationException("Этот ID уже занят.");
+            if (_scripts.TryGetValue(id, out var previous))
+            {
+                if (!previous.Process.HasExited) throw new InvalidOperationException("Этот ID уже занят.");
+                previous.Process.Dispose();
+                _scripts.Remove(id);
+            }
+            if (_scripts.Count >= 100)
+            {
+                foreach (var finished in _scripts.Values.Where(item => item.Process.HasExited).ToArray())
+                {
+                    finished.Process.Dispose();
+                    _scripts.Remove(finished.Id);
+                }
+                if (_scripts.Count >= 100)
+                    throw new InvalidOperationException("Достигнут предел одновременно запущенных скриптов (100).");
+            }
             var process = StartPython(path, interpreterPath);
             process.OutputDataReceived += (_, e) => { if (e.Data is not null) onOutput("[▪] " + id + ": " + e.Data); };
             process.ErrorDataReceived += (_, e) => { if (e.Data is not null) onOutput("[⚠] " + id + ": " + e.Data); };
