@@ -27,7 +27,7 @@ public static class YettaUpdater
     private static HttpClient Client()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.26"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.3.27"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
@@ -214,6 +214,23 @@ public static class YettaUpdater
         string destination = Path.Combine(directory, "YettaSetup-" + release.Version + ".exe");
         string partial = destination + "." + Guid.NewGuid().ToString("N") + ".download";
 
+        // A verified installer can be reused after a cancelled or interrupted launch.
+        try
+        {
+            if (File.Exists(destination) && new FileInfo(destination).Length <= MaxInstallerBytes)
+            {
+                await using var cached = File.OpenRead(destination);
+                string cachedHash = Convert.ToHexString(await SHA256.HashDataAsync(cached, token));
+                if (cachedHash.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
+                {
+                    progress?.Report(1);
+                    return destination;
+                }
+            }
+        }
+        catch (IOException) { /* Redownload when the previous file is unavailable. */ }
+        catch (UnauthorizedAccessException) { /* The new download reports a useful error if the folder is blocked. */ }
+
         try
         {
             using var reply = await http.GetAsync(release.InstallerUrl,
@@ -222,11 +239,12 @@ public static class YettaUpdater
             if (reply.Content.Headers.ContentLength is long length && length > MaxInstallerBytes)
                 throw new InvalidDataException("Installer exceeds size limit.");
 
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             await using (var input = await reply.Content.ReadAsStreamAsync(token))
             await using (var output = new FileStream(partial, FileMode.CreateNew,
-                FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                FileAccess.Write, FileShare.None, 262144, useAsync: true))
             {
-                var buffer = new byte[81920];
+                var buffer = new byte[262144];
                 long downloaded = 0;
                 int count;
                 while ((count = await input.ReadAsync(buffer, token)) > 0)
@@ -235,14 +253,14 @@ public static class YettaUpdater
                     if (downloaded > MaxInstallerBytes)
                         throw new InvalidDataException("Installer exceeds size limit.");
                     await output.WriteAsync(buffer.AsMemory(0, count), token);
+                    hash.AppendData(buffer, 0, count);
                     if (reply.Content.Headers.ContentLength is long total && total > 0)
-                        progress?.Report(Math.Clamp((double)downloaded / total, 0, 1));
+                        progress?.Report(Math.Clamp((double)downloaded / total * 0.98, 0, 0.98));
                 }
             }
 
-            string actual;
-            await using (var verify = File.OpenRead(partial))
-                actual = Convert.ToHexString(await SHA256.HashDataAsync(verify, token));
+            progress?.Report(0.99);
+            string actual = Convert.ToHexString(hash.GetHashAndReset());
             if (!actual.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Installer checksum mismatch.");
             File.Move(partial, destination, overwrite: true);

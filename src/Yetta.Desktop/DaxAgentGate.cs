@@ -62,14 +62,18 @@ internal sealed class DaxAgentGate : IDisposable
         var retry = new Button
         {
             Content = TallowText.Get("ui.daxGate.0003"), MinWidth = 160,
-            Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 10, 0)
+            Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 10, 0),
+            Style = (Style)owner.FindResource("SecondaryButton")
         };
+        UiMotion.AttachButtonFeedback(retry);
         retry.Click += async (_, _) => { TryLaunch(); await CheckAsync(); };
         var reinstall = new Button
         {
             Content = TallowText.Get("ui.daxGate.0004"), MinWidth = 190,
-            Padding = new Thickness(12, 9, 12, 9)
+            Padding = new Thickness(12, 9, 12, 9),
+            Style = (Style)owner.FindResource("SecondaryButton")
         };
+        UiMotion.AttachButtonFeedback(reinstall);
         reinstall.Click += (_, _) =>
         {
             try

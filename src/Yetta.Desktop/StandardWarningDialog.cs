@@ -29,9 +29,14 @@ internal static class StandardWarningDialog
 
     private static Palette Colors(WarningKind kind) => kind switch
     {
-        WarningKind.Caution => new(Color.FromRgb(255, 192, 74), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49)),
-        WarningKind.Dangerous or WarningKind.Critical or WarningKind.Fatal => new(Color.FromRgb(240, 105, 105), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49)),
-        _ => new(Color.FromRgb(108, 181, 242), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49))
+        WarningKind.Information => new(Color.FromRgb(99, 192, 238), Color.FromRgb(44, 62, 73), Color.FromRgb(33, 45, 53), Color.FromRgb(20, 27, 31)),
+        WarningKind.Caution => new(Color.FromRgb(255, 193, 91), Color.FromRgb(82, 65, 43), Color.FromRgb(58, 47, 36), Color.FromRgb(29, 25, 22)),
+        WarningKind.Dangerous => new(Color.FromRgb(246, 126, 122), Color.FromRgb(92, 48, 49), Color.FromRgb(60, 37, 39), Color.FromRgb(30, 22, 23)),
+        WarningKind.Critical => new(Color.FromRgb(246, 105, 143), Color.FromRgb(101, 43, 60), Color.FromRgb(62, 31, 44), Color.FromRgb(28, 19, 25)),
+        WarningKind.Fatal => new(Color.FromRgb(220, 147, 176), Color.FromRgb(68, 44, 62), Color.FromRgb(43, 31, 42), Color.FromRgb(22, 18, 23)),
+        WarningKind.Agreement => new(Color.FromRgb(135, 178, 249), Color.FromRgb(51, 61, 86), Color.FromRgb(36, 44, 63), Color.FromRgb(22, 27, 38)),
+        WarningKind.Dax => new(Color.FromRgb(113, 213, 213), Color.FromRgb(36, 70, 77), Color.FromRgb(28, 48, 54), Color.FromRgb(19, 30, 34)),
+        _ => new(Color.FromRgb(100, 185, 239), Color.FromRgb(55, 55, 55), Color.FromRgb(43, 43, 43), Color.FromRgb(20, 20, 20))
     };
 
     private static TextBlock Text(string text, double size, Brush foreground, bool bold = false) =>
@@ -105,7 +110,7 @@ internal static class StandardWarningDialog
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
             return image;
         }
-        return IconAssets.Image(YettaWarningWindow.ObjectIcon(request), size);
+        return IconAssets.Image(YettaWarningWindow.HeaderIcon(request), size);
     }
 
     internal static bool Show(Window owner, WarningRequest request, string profile, bool nonModal,
@@ -121,9 +126,9 @@ internal static class StandardWarningDialog
             Title = TallowText.Get("ui.warning.0007") + request.Reason,
             Width = 620,
             Height = request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
-                ? 500 : request.Description.Length > 250 ? 430 : 375,
+                ? 540 : request.Description.Length > 250 ? 490 : 460,
             MinWidth = 540,
-            MinHeight = 340,
+            MinHeight = 430,
             MaxWidth = SystemParameters.WorkArea.Width * 0.95,
             MaxHeight = SystemParameters.WorkArea.Height * 0.9,
             WindowStyle = WindowStyle.None,
@@ -131,7 +136,7 @@ internal static class StandardWarningDialog
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(26, 32, 39)),
+            Background = new SolidColorBrush(palette.Surface),
             FontFamily = SystemFonts.MessageFontFamily
         };
         window.SourceInitialized += (_, _) =>
@@ -162,38 +167,59 @@ internal static class StandardWarningDialog
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         outer.Child = grid;
 
+        bool finishing = false;
         void Finish(bool accepted)
         {
-            if (nonModal) window.Close();
-            else window.DialogResult = accepted;
+            if (finishing) return;
+            finishing = true;
+            void Complete()
+            {
+                if (nonModal) window.Close();
+                else window.DialogResult = accepted;
+            }
+            if (!UiMotion.AnimationsEnabled) { Complete(); return; }
+            var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
+                FillBehavior = FillBehavior.HoldEnd
+            };
+            fade.Completed += (_, _) => Complete();
+            outer.BeginAnimation(UIElement.OpacityProperty, fade);
         }
+        window.Closing += (_, args) =>
+        {
+            if (finishing) return;
+            args.Cancel = true;
+            Finish(false);
+        };
 
         // TOP ZONE: event icon, reason and the close button.
         var header = new Border
         {
             Background = new SolidColorBrush(palette.Header),
-            Padding = new Thickness(24, 15, 12, 15)
+            Padding = new Thickness(30, 20, 12, 20)
         };
         var headerGrid = new Grid();
-        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var eventIcon = IconAssets.Image(YettaWarningWindow.HeaderIcon(request), 26);
-        eventIcon.Margin = new Thickness(0, 0, 14, 0);
-        headerGrid.Children.Add(eventIcon);
-        var reason = Text(request.Reason, 19, White, bold: true);
-        Grid.SetColumn(reason, 1);
-        headerGrid.Children.Add(reason);
+        var heading = new StackPanel();
+        var caption = Text("Контроль действий Yetta", 12, White);
+        caption.Margin = new Thickness(0, 0, 0, 22);
+        heading.Children.Add(caption);
+        heading.Children.Add(Text(request.Reason, 23, White, bold: true));
+        headerGrid.Children.Add(heading);
         var close = new Button
         {
             Content = new TextBlock { Text = "\uE8BB", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 12, Foreground = White },
             Width = 44, Height = 38,
             BorderThickness = new Thickness(0), Background = Brushes.Transparent,
             Cursor = Cursors.Hand, FocusVisualStyle = null,
+            Style = (Style)Application.Current.FindResource("DialogCloseButton"),
             ToolTip = TallowText.Get("ui.warning.0008")
         };
+        UiMotion.AttachButtonFeedback(close);
         close.Click += (_, _) => Finish(false);
-        Grid.SetColumn(close, 2);
+        Grid.SetColumn(close, 1);
         headerGrid.Children.Add(close);
         header.Child = headerGrid;
         header.MouseLeftButtonDown += (_, e) =>
@@ -206,13 +232,15 @@ internal static class StandardWarningDialog
         grid.Children.Add(header);
 
         // MAIN ZONE: the object, its publisher/path and the scrollable text.
-        var body = new Grid { Margin = new Thickness(26, 22, 26, 16) };
+        var body = new Grid { Margin = new Thickness(30, 24, 30, 18) };
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         var subject = new Grid();
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var cause = CauseIcon(request, 48);
+        var cause = CauseIcon(request, 44);
         cause.Margin = new Thickness(0, 0, 16, 0);
         subject.Children.Add(cause);
         var details = new StackPanel { Margin = new Thickness(0), VerticalAlignment = VerticalAlignment.Center };
@@ -233,9 +261,9 @@ internal static class StandardWarningDialog
         details.Children.Add(name);
         var publisherText = request.Publisher;
         if (string.IsNullOrWhiteSpace(publisherText)) publisherText = TallowText.Get("ui.warning.0010");
-        var publisher = Text(publisherText, 12.5, Faint);
-        publisher.Margin = new Thickness(0, 5, 0, 0);
-        publisher.Cursor = Cursors.Hand;
+        var publisher = Text("Издатель: " + publisherText, 13, Muted);
+        publisher.Margin = new Thickness(0, 25, 0, 0);
+        publisher.Cursor = request.SourcePath is null ? Cursors.Arrow : Cursors.Hand;
         publisher.ToolTip = TallowText.Get("ui.warning.0011");
         publisher.MouseLeftButtonUp += (_, _) =>
         {
@@ -247,28 +275,45 @@ internal static class StandardWarningDialog
             }
             catch (Win32Exception) { }
         };
-        details.Children.Add(publisher);
         Grid.SetColumn(details, 1);
         subject.Children.Add(details);
         Grid.SetRow(subject, 0);
         body.Children.Add(subject);
+        Grid.SetRow(publisher, 1);
+        body.Children.Add(publisher);
 
         var bodyText = Text(request.Description, 13.5, Muted);
         bodyText.LineHeight = 22;
+        bool expanded = request.Kind is WarningKind.Dangerous or WarningKind.Critical or
+            WarningKind.Fatal or WarningKind.Agreement or WarningKind.Dax;
+        var more = Text(expanded ? "Свернуть подробности" : "Подробнее", 15,
+            new SolidColorBrush(palette.Accent));
+        more.Cursor = Cursors.Hand;
+        more.Margin = new Thickness(0, 27, 0, 12);
+        Grid.SetRow(more, 2);
+        body.Children.Add(more);
         var explanation = new ScrollViewer
         {
             Content = bodyText,
+            Visibility = expanded ? Visibility.Visible : Visibility.Collapsed,
             VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(0, 16, 8, 0),
+            Padding = new Thickness(0, 0, 8, 0),
             Focusable = false
         };
-        Grid.SetRow(explanation, 1);
+        more.MouseLeftButtonUp += (_, _) =>
+        {
+            expanded = !expanded;
+            more.Text = expanded ? "Свернуть подробности" : "Подробнее";
+            explanation.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            if (expanded) FadeIn(explanation);
+        };
+        Grid.SetRow(explanation, 3);
         body.Children.Add(explanation);
         Grid.SetRow(body, 1);
         grid.Children.Add(body);
 
-        // FOOTER: agreement / key gate, decision buttons and status square.
+        // FOOTER: agreement / key gate and the two decision buttons.
         var footerStack = new StackPanel();
         var footer = new Border
         {
@@ -361,15 +406,14 @@ internal static class StandardWarningDialog
             inputLayer.Children.Add(hint);
             Grid.SetColumn(inputLayer, 1);
             keyRow.Children.Add(inputLayer);
-            var reveal = new Button
-            {
-                Content = IconAssets.Image(50, 18), Width = 38, Height = 36,
-                Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(0),
-                Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
-                BorderThickness = new Thickness(1), BorderBrush = Muted,
-                Cursor = Cursors.Hand, FocusVisualStyle = null,
-                ToolTip = TallowText.Get("ui.warning.0014")
-            };
+            var reveal = Command("", false, new SolidColorBrush(palette.Accent));
+            reveal.Content = IconAssets.Image(50, 18);
+            reveal.Width = 38;
+            reveal.Height = 36;
+            reveal.MinHeight = 36;
+            reveal.Margin = new Thickness(8, 0, 0, 0);
+            reveal.Padding = new Thickness(0);
+            reveal.ToolTip = TallowText.Get("ui.warning.0014");
             Grid.SetColumn(reveal, 2);
             keyRow.Children.Add(reveal);
             keyPanel.Children.Add(keyRow);
@@ -421,7 +465,7 @@ internal static class StandardWarningDialog
             WarningKind.Agreement => TallowText.Get("ui.warning.0019"),
             _ => TallowText.Get("ui.warning.0020")
         };
-        var allow = Command(action, true, new SolidColorBrush(palette.Accent));
+        var allow = Command(action, oneAction, new SolidColorBrush(palette.Accent));
         allow.HorizontalAlignment = HorizontalAlignment.Stretch;
         allow.Width = double.NaN;
         Button? deny = null;
@@ -432,37 +476,19 @@ internal static class StandardWarningDialog
         }
         else
         {
-            // A safe decline is offered next to the approval, never instead of it.
-            deny = Command(TallowText.Get("ui.warning.0021"), false, new SolidColorBrush(palette.Accent));
+            // Match the Windows layout: continue on the left, decline on the right.
+            deny = Command(TallowText.Get("ui.warning.0021"), true, new SolidColorBrush(palette.Accent));
             deny.IsCancel = false; // Escape must never dismiss warnings.
             deny.HorizontalAlignment = HorizontalAlignment.Stretch;
             deny.Width = double.NaN;
             controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            Grid.SetColumn(deny, 0);
-            controls.Children.Add(deny);
-            Grid.SetColumn(allow, 1);
+            Grid.SetColumn(allow, 0);
             controls.Children.Add(allow);
+            Grid.SetColumn(deny, 1);
+            controls.Children.Add(deny);
         }
         buttonRow.Children.Add(controls);
-        int state = YettaWarningWindow.Status(request, profile);
-        if (state != 0)
-        {
-            var status = new TextBlock
-            {
-                Text = "\uE72E", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-                FontSize = 19, Foreground = new SolidColorBrush(palette.Accent),
-                Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center
-            };
-            status.ToolTip = state switch
-            {
-                26 => TallowText.Get("ui.warning.0028"),
-                35 => TallowText.Get("ui.warning.0029"),
-                _ => TallowText.Get("ui.warning.0027")
-            };
-            Grid.SetColumn(status, 1);
-            buttonRow.Children.Add(status);
-        }
         footerStack.Children.Add(buttonRow);
         Grid.SetRow(footer, 2);
         grid.Children.Add(footer);

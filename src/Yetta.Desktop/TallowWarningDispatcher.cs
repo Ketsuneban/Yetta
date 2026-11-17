@@ -146,7 +146,9 @@ internal static class TallowWarningDispatcher
     private static Button MakeButton(string label, Action action)
     {
         var button = new Button { Content = label, Padding = new Thickness(8, 6, 8, 6),
-            Margin = new Thickness(3), MinHeight = 34, FocusVisualStyle = null };
+            Margin = new Thickness(3), MinHeight = 34, FocusVisualStyle = null,
+            Style = (Style)Application.Current.MainWindow.FindResource("SecondaryButton") };
+        UiMotion.AttachButtonFeedback(button);
         button.Click += (_, _) => action();
         return button;
     }

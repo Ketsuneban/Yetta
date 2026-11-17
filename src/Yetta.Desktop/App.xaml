@@ -3,6 +3,26 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
+    <Style x:Key="DialogCloseButton" TargetType="Button">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="ButtonChrome" Background="Transparent" CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ButtonChrome" Property="Background" Value="#33FFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="ButtonChrome" Property="Background" Value="#55FFFFFF"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <Style TargetType="{x:Type Window}">
       <Setter Property="FontFamily" Value="{x:Static SystemFonts.MessageFontFamily}"/>
     </Style>
@@ -14,7 +34,6 @@
     <SolidColorBrush x:Key="AccentForeground" Color="#06221E"/>
     <SolidColorBrush x:Key="TextPrimary" Color="#EAF6F5"/>
     <SolidColorBrush x:Key="TextSecondary" Color="#92A8AD"/>
-    <SolidColorBrush x:Key="OutlineBrush" Color="#354C53"/>
     <SolidColorBrush x:Key="SelectedBrush" Color="#20453F"/>
   </Application.Resources>
 </Application>

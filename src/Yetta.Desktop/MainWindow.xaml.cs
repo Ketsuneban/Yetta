@@ -18,7 +18,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 26);
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 27);
     private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
@@ -81,9 +81,9 @@ public partial class MainWindow : Window
         InitializeIconsAndCursors();
         foreach (var navButton in _navigation.Values)
             UiMotion.AttachButtonFeedback(navButton);
-        UiMotion.AttachButtonFeedback(CaptionMinimize);
-        UiMotion.AttachButtonFeedback(CaptionMaximize);
-        UiMotion.AttachButtonFeedback(CaptionClose);
+        UiMotion.AttachButtonFeedback(CaptionMinimize, rounded: false);
+        UiMotion.AttachButtonFeedback(CaptionMaximize, rounded: false);
+        UiMotion.AttachButtonFeedback(CaptionClose, rounded: false);
         SourceInitialized += (_, _) => ApplyBackdrop();
         UpdateCaptionState();
         StateChanged += (_, _) => UpdateCaptionState();
@@ -163,9 +163,9 @@ public partial class MainWindow : Window
         Color accent = SystemParameters.HighContrast ? SystemColors.HighlightColor
             : Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Accent));
         bool dark = background.R + background.G + background.B < 384;
-        Color surface = Mix(background, foreground, dark ? 0.14 : 0.035);
-        SetColor("WindowBackground", Mix(background, foreground, dark ? 0.055 : 0.012));
-        SetColor("SidebarBackground", Mix(background, foreground, dark ? 0.09 : 0.025));
+        Color surface = Mix(background, foreground, dark ? 0.10 : 0.035);
+        SetColor("WindowBackground", Mix(background, foreground, dark ? 0.075 : 0.012));
+        SetColor("SidebarBackground", Mix(background, foreground, dark ? 0.085 : 0.025));
         SetColor("CardBackground", surface);
         SetColor("HoverBackground", Mix(background, foreground, dark ? 0.18 : 0.10));
         SetColor("AccentBrush", accent);
@@ -173,14 +173,13 @@ public partial class MainWindow : Window
             ? Colors.Black : Colors.White);
         SetColor("TextPrimary", foreground);
         SetColor("TextSecondary", Mix(foreground, background, 0.35));
-        SetColor("OutlineBrush", Mix(background, foreground, 0.20));
         SetColor("SelectedBrush", Mix(background, accent, dark ? 0.27 : 0.15));
         GlassDialog.IsGlass = glass;
         ApplyBackdrop();
         ThemeIndicator.Text = "Windows 11";
     }
 
-    private void ApplyBackdrop() => WindowsBackdrop.Configure(this, false);
+    private void ApplyBackdrop() => WindowsBackdrop.Configure(this);
 
     private void SavePreferences()
     {
@@ -335,8 +334,9 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center
         };
         System.Windows.Automation.AutomationProperties.SetName(toggle, title);
-        toggle.Checked += (_, _) => changed(true);
-        toggle.Unchecked += (_, _) => changed(false);
+        toggle.Loaded += (_, _) => UiMotion.MoveToggle(toggle, initial, animate: false);
+        toggle.Checked += (_, _) => { UiMotion.MoveToggle(toggle, true); changed(true); };
+        toggle.Unchecked += (_, _) => { UiMotion.MoveToggle(toggle, false); changed(false); };
         Grid.SetColumn(toggle, 1);
         row.Children.Add(toggle);
         return row;
@@ -745,8 +745,10 @@ public partial class MainWindow : Window
         {
             Content = "×", Width = 30, Height = 26,
             Background = Brushes.Transparent, Foreground = Muted,
-            BorderThickness = new Thickness(0), Cursor = Cursors.Hand
+            BorderThickness = new Thickness(0), Cursor = Cursors.Hand,
+            Style = (Style)Application.Current.FindResource("DialogCloseButton")
         };
+        UiMotion.AttachButtonFeedback(close);
         close.Click += (_, _) => ToastHost.Children.Remove(toast);
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
@@ -901,8 +903,10 @@ public partial class MainWindow : Window
                 BorderThickness = new Thickness(0),
                 Margin = new Thickness(1, 3, 0, 0),
                 Cursor = Cursors.Hand,
-                FocusVisualStyle = null
+                FocusVisualStyle = null,
+                Style = (Style)FindResource("PrimaryButton")
             };
+            UiMotion.AttachButtonFeedback(tab);
             tab.Click += (_, _) =>
             {
                 if (_consoleMode == mode) return;
@@ -924,44 +928,16 @@ public partial class MainWindow : Window
             Foreground = Brushes.White, Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             ToolTip = TallowText.Get("ui.main.0117"),
-            FocusVisualStyle = null
+            FocusVisualStyle = null,
+            Style = (Style)FindResource("SecondaryButton")
         };
+        UiMotion.AttachButtonFeedback(addTab);
         addTab.Click += (_, _) =>
         {
             _consoleMode = "Windows PowerShell";
             Navigate("console");
         };
         tabButtons.Children.Add(addTab);
-
-        var more = new Button
-        {
-            Content = "⌄", Width = 34, Height = 39,
-            FontSize = 17,
-            Foreground = Brushes.White,
-            Background = Brushes.Transparent,
-            BorderThickness = new Thickness(0),
-            ToolTip = TallowText.Get("ui.main.0118"),
-            FocusVisualStyle = null
-        };
-        var profiles = new ContextMenu();
-        foreach (var profile in new[] { "Marvine", "Windows PowerShell" })
-        {
-            string chosen = profile;
-            var item = new MenuItem { Header = profile, IsChecked = _consoleMode == profile };
-            item.Click += (_, _) =>
-            {
-                if (chosen == _consoleMode) return;
-                _consoleMode = chosen;
-                Navigate("console");
-            };
-            profiles.Items.Add(item);
-        }
-        more.Click += (_, _) =>
-        {
-            profiles.PlacementTarget = more;
-            profiles.IsOpen = true;
-        };
-        tabButtons.Children.Add(more);
 
         // The black content plane has no separator strokes, cards or focus
         // rectangles. Full TTY support would require a separate ConPTY host.
@@ -1537,9 +1513,12 @@ public partial class MainWindow : Window
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Right };
         var cancel = new Button { Content = "Отменить", MinWidth = 100, MinHeight = 34, IsCancel = true,
-            Margin = new Thickness(0, 0, 8, 0) };
+            Margin = new Thickness(0, 0, 8, 0), Style = (Style)FindResource("SecondaryButton") };
+        UiMotion.AttachButtonFeedback(cancel);
         cancel.Click += (_, _) => dialog.DialogResult = false;
-        var ok = new Button { Content = "Продолжить", MinWidth = 110, MinHeight = 34, IsDefault = true };
+        var ok = new Button { Content = "Продолжить", MinWidth = 110, MinHeight = 34, IsDefault = true,
+            Style = (Style)FindResource("PrimaryButton") };
+        UiMotion.AttachButtonFeedback(ok);
         ok.Click += (_, _) =>
         {
             if (Regex.IsMatch(input.Text, @"\A[A-Za-z0-9]{1,16}\z", RegexOptions.CultureInvariant))
@@ -1809,46 +1788,94 @@ public partial class MainWindow : Window
 
     private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false)
     {
-            var toast = new ToastContentBuilder()
-                .AddText("Скачивание новой версии Yetta")
-                .AddProgressBar(title: latest.Tag, value: 0, status: "Скачивание...")
-                .AddButton(new ToastButton().SetContent("Отменить").AddArgument("action", "cancel-update"));
-            try { toast.Show(notification => { notification.Tag = "yetta-update"; notification.Group = "updates"; }); }
-            catch (Exception ex) { DaxAudit.Write("update", "toast_unavailable", ex.GetType().Name); }
-            var progress = new Progress<double>(value =>
-            {
-                try
-                {
-                    var data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
-                        latest.Tag, value, null, "Скачивание...", (uint)(value * 1000 + 1));
-                    ToastNotificationManagerCompat.CreateToastNotifier().Update(data, "yetta-update", "updates");
-                }
-                catch (Exception ex) { DaxAudit.Write("update", "toast_progress_unavailable", ex.GetType().Name); }
-            });
             using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
             _downloadCancel = downloadCancel;
             _downloadingVersion = latest.Version;
-            var path = await YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token);
-            _downloadCancel = null;
-            _downloadingVersion = null;
-            if (automatic && !_settings.AutoUpdatesEnabled) return;
+            var toast = new ToastContentBuilder()
+                .AddText("Скачивание новой версии Yetta")
+                .AddProgressBar(title: "Версия " + latest.Version, value: 0, status: "Скачивание…")
+                .AddButton(new ToastButton().SetContent("Отменить")
+                    .AddArgument("action", "cancel-update").SetBackgroundActivation())
+                .SetToastScenario(ToastScenario.Reminder);
+            uint sequence = 1;
+            int shownPercent = 0;
+            string shownStatus = "Скачивание…";
+            bool toastShown = false;
+            bool toastUpdating = true;
             try
             {
-                if (await DaxAgentGate.RequestAsync("STOP_FOR_UPDATE", _updateStop.Token) == "STOPPING")
-                    await Task.Delay(800, _updateStop.Token);
+                toast.Show(notification =>
+                {
+                    notification.Tag = "yetta-update";
+                    notification.Group = "updates";
+                    notification.Data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
+                        "Версия " + latest.Version, 0, "0%", "Скачивание…", sequence);
+                });
+                toastShown = true;
             }
-            catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException)
+            catch (Exception ex) { DaxAudit.Write("update", "toast_unavailable", ex.GetType().Name); }
+            void UpdateToast(double value, string status)
             {
-                DaxAudit.Write("update", "dax_stop_unavailable", ex.GetType().Name);
+                if (!toastShown || !toastUpdating) return;
+                int percent = (int)Math.Round(Math.Clamp(value, 0, 1) * 100);
+                if (percent < shownPercent || percent == shownPercent && status == shownStatus)
+                    return;
+                shownPercent = percent;
+                shownStatus = status;
+                try
+                {
+                    var data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
+                        "Версия " + latest.Version, value,
+                        percent.ToString(System.Globalization.CultureInfo.InvariantCulture) + "%",
+                        status, ++sequence);
+                    var result = ToastNotificationManagerCompat.CreateToastNotifier()
+                        .Update(data, "yetta-update", "updates");
+                    if (result != Windows.UI.Notifications.NotificationUpdateResult.Succeeded)
+                    {
+                        toastUpdating = false;
+                        DaxAudit.Write("update", "toast_progress_unavailable", result.ToString());
+                    }
+                }
+                catch (Exception ex) { DaxAudit.Write("update", "toast_progress_unavailable", ex.GetType().Name); }
             }
-            var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
-            var start = new ProcessStartInfo(path)
+            var progress = new Progress<double>(value =>
             {
-                UseShellExecute = true,
-                Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /LOG=\"" + log + "\""
-            };
-            using var installer = Process.Start(start) ?? throw new InvalidOperationException("Installer did not start.");
-            Close();
+                UpdateToast(value, value >= 0.99 && value < 1 ? "Проверка файла…" :
+                    value >= 1 ? "Загрузка завершена" : "Скачивание…");
+            });
+            try
+            {
+                var path = await YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token);
+                UpdateToast(1, "Загрузка завершена");
+                if (automatic && !_settings.AutoUpdatesEnabled) return;
+                try
+                {
+                    if (await DaxAgentGate.RequestAsync("STOP_FOR_UPDATE", _updateStop.Token) == "STOPPING")
+                        await Task.Delay(800, _updateStop.Token);
+                }
+                catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException)
+                {
+                    DaxAudit.Write("update", "dax_stop_unavailable", ex.GetType().Name);
+                }
+                var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
+                var start = new ProcessStartInfo(path)
+                {
+                    UseShellExecute = true,
+                    Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /LOG=\"" + log + "\""
+                };
+                using var installer = Process.Start(start) ?? throw new InvalidOperationException("Installer did not start.");
+                Close();
+            }
+            finally
+            {
+                _downloadCancel = null;
+                _downloadingVersion = null;
+                if (toastShown)
+                {
+                    try { ToastNotificationManagerCompat.History.Remove("yetta-update", "updates"); }
+                    catch (Exception ex) { DaxAudit.Write("update", "toast_cleanup_unavailable", ex.GetType().Name); }
+                }
+            }
     }
 
     private void BuildSources()

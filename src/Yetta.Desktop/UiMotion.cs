@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -7,7 +8,7 @@ namespace Yetta.Desktop;
 
 /// <summary>
 /// Short, non-blocking transitions for the existing WPF interface.
-/// Does not animate security decisions or delay the approval callbacks.
+/// Keeps layout and button targets stable while animating their visible surfaces.
 /// Respects the Windows reduced-animation setting where available.
 /// </summary>
 internal static class UiMotion
@@ -39,28 +40,76 @@ internal static class UiMotion
         if (surface is not FrameworkElement element) return;
         element.Loaded += (_, _) =>
         {
-            element.Opacity = 1;
-            var animation = Fade(0, 1, 200);
-            element.BeginAnimation(UIElement.OpacityProperty, animation, HandoffBehavior.SnapshotAndReplace);
+            AnimateEntrance(element, 210, 10);
         };
     }
 
     internal static void AnimatePage(UIElement surface)
     {
         if (!Enabled) return;
-        var animation = Fade(0.55, 1, 175);
-        surface.BeginAnimation(UIElement.OpacityProperty, animation, HandoffBehavior.SnapshotAndReplace);
+        if (surface is FrameworkElement element) AnimateEntrance(element, 190, 8);
     }
 
-    internal static void AttachButtonFeedback(Button button)
+    private static void AnimateEntrance(FrameworkElement element, int millis, double distance)
     {
-        // Keep the entire control surface as the hit target; only change
-        // opacity in response to hover/press (no moving layout or tiny hitbox).
+        element.BeginAnimation(UIElement.OpacityProperty, Fade(0, 1, millis),
+            HandoffBehavior.SnapshotAndReplace);
+        var transform = new TranslateTransform();
+        element.RenderTransform = transform;
+        transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(distance, 0, In(millis))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.Stop
+        });
+    }
+
+    internal static void AttachButtonFeedback(Button button, bool rounded = true)
+    {
         button.MinHeight = Math.Max(button.MinHeight, 38);
-        button.MouseEnter += (_, _) => AnimateOpacity(button, 0.88, 120);
-        button.MouseLeave += (_, _) => AnimateOpacity(button, 1, 150);
-        button.PreviewMouseLeftButtonDown += (_, _) => AnimateOpacity(button, 0.72, 75);
-        button.PreviewMouseLeftButtonUp += (_, _) => AnimateOpacity(button, 1, 120);
+        Border? Chrome() => button.Template?.FindName("ButtonChrome", button) as Border
+            ?? button.Template?.FindName("Shell", button) as Border
+            ?? button.Template?.FindName("CaptionSurface", button) as Border;
+        if (rounded)
+        {
+            void MatchHitBox()
+            {
+                if (button.ActualWidth <= 0 || button.ActualHeight <= 0) return;
+                button.ApplyTemplate();
+                double radius = Chrome()?.CornerRadius.TopLeft ?? 11;
+                button.Clip = new RectangleGeometry(
+                    new Rect(0, 0, button.ActualWidth, button.ActualHeight), radius, radius);
+            }
+            button.Loaded += (_, _) => MatchHitBox();
+            button.SizeChanged += (_, _) => MatchHitBox();
+        }
+        void Feedback(double opacity, int duration)
+        {
+            if (!button.IsEnabled) return;
+            // Animate the rounded template surface, never the rectangular control box.
+            var chrome = Chrome();
+            if (chrome is not null) AnimateOpacity(chrome, opacity, duration);
+        }
+        button.MouseEnter += (_, _) => Feedback(0.88, 120);
+        button.MouseLeave += (_, _) => Feedback(1, 150);
+        button.PreviewMouseLeftButtonDown += (_, _) => Feedback(0.72, 75);
+        button.PreviewMouseLeftButtonUp += (_, _) => Feedback(0.88, 120);
+    }
+
+    internal static void MoveToggle(ToggleButton toggle, bool enabled, bool animate = true)
+    {
+        toggle.ApplyTemplate();
+        if (toggle.Template?.FindName("Thumb", toggle) is not FrameworkElement thumb ||
+            thumb.RenderTransform is not TranslateTransform transform) return;
+        transform.BeginAnimation(TranslateTransform.XProperty, null);
+        double destination = enabled ? 20 : 0;
+        if (!animate || !Enabled) { transform.X = destination; return; }
+        transform.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(transform.X, destination, In(170))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop
+            });
+        transform.X = destination;
     }
 
     private static void AnimateOpacity(UIElement element, double value, int millis)

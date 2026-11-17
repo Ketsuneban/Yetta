@@ -5,23 +5,15 @@ using System.Windows.Interop;
 namespace Yetta.Desktop;
 
 /// <summary>
-/// Opt-in native backdrop for a regular non-layered WPF window. Windows 11 can
-/// provide real DWM Acrylic; older Windows gracefully keep opaque Fluent.
-/// Never enables WPF AllowsTransparency on the main HWND (incompatible with DWM).
+/// Native rounded corners and frame attributes for an opaque WPF window.
 /// </summary>
 internal static class WindowsBackdrop
 {
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Margins { public int Left, Right, Top, Bottom; }
-
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute,
         ref int value, int size);
 
-    [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmExtendFrameIntoClientArea(IntPtr window, ref Margins margins);
-
-    internal static bool Configure(Window window, bool glass)
+    internal static bool Configure(Window window)
     {
         if (!OperatingSystem.IsWindows()) return false;
         IntPtr hwnd = new WindowInteropHelper(window).Handle;
@@ -42,17 +34,12 @@ internal static class WindowsBackdrop
             }
             int corners = 2;
             _ = DwmSetWindowAttribute(hwnd, 33, ref corners, sizeof(int));
-            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
-                return false;
-            int backdrop = SystemParameters.HighContrast ? 1 : glass ? 3 : 2;
-            int result = DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int));
-            if (result < 0) return false;
-            if (backdrop is 2 or 3)
-            {
-                var fullFrame = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-                return DwmExtendFrameIntoClientArea(hwnd, ref fullFrame) >= 0;
-            }
-            return false;
+            // The old full-client glass frame introduced hairlines along panels
+            // at fractional display scales. Keep the native corners, but draw
+            // the client area as one opaque WPF surface.
+            int noBackdrop = 1;
+            _ = DwmSetWindowAttribute(hwnd, 38, ref noBackdrop, sizeof(int));
+            return true;
         }
         catch (DllNotFoundException) { return false; }
         catch (EntryPointNotFoundException) { return false; }
