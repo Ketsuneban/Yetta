@@ -63,7 +63,7 @@ public static class YettaUpdater
     }
 
     public static async Task<string> DownloadInstallerAsync(UpdateRelease release,
-        CancellationToken token = default)
+        IProgress<double>? progress = null, CancellationToken token = default)
     {
         using var http = Client();
         var manifest = await http.GetStringAsync(release.ChecksumUrl, token);
@@ -99,6 +99,8 @@ public static class YettaUpdater
                     if (downloaded > MaxInstallerBytes)
                         throw new InvalidDataException("Installer exceeds size limit.");
                     await output.WriteAsync(buffer.AsMemory(0, count), token);
+                    if (reply.Content.Headers.ContentLength is long total && total > 0)
+                        progress?.Report(Math.Clamp((double)downloaded / total, 0, 1));
                 }
             }
 
@@ -106,6 +108,7 @@ public static class YettaUpdater
             string actual = Convert.ToHexString(await SHA256.HashDataAsync(verify, token));
             if (!actual.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Installer checksum mismatch.");
+            progress?.Report(1);
             return destination;
         }
         catch

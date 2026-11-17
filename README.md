@@ -1,20 +1,20 @@
 # Yetta
 
-**Текущий тестовый релиз: [0.3.17-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.17-preview).**
+**Текущий тестовый релиз: [0.3.20-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.20-preview).**
 
-**Yetta** — открытый инструмент персонализации Windows 11, разрабатываемый поэтапно. **0.3.17-preview** обновляет тексты Yetta, DAX и Marvine во время работы при изменениях `local.json` на GitHub. Установщик, проверка обновлений и текстовый хост PowerShell сохранены из 0.3.0. DAX и полномочия SYSTEM по-прежнему не реализованы.
+**Yetta** — открытый инструмент персонализации Windows 11, разрабатываемый поэтапно. **0.3.20-preview** автоматически проверяет GitHub Releases во время работы, показывает загрузку в системном уведомлении Windows 11 и запускает установку после проверки SHA-256. Ручное обновление и отключение автоматического режима доступны в настройках. DAX и полномочия SYSTEM по-прежнему не реализованы.
 
 **Сайт:** https://yetta.pages.dev/ · **Исходный код:** https://github.com/Ketsuneban/Yetta · **Связь:** invzum@gmail.com
 
 ## Скачать EXE
 
-**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.17-preview)**
+**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.20-preview)**
 
 На странице релиза откройте **Assets → YettaSetup.exe** для установки или **Yetta.exe** для портативного запуска. Это отдельный исполняемый файл **для Windows 11 x64**, не ZIP. Он публикуется после успешной автоматической сборки Yetta и DAX. Установщик включает оба приложения; для портативного запуска требуется скачать **Yetta.exe**, **Yetta.DAX.exe** и **local.json** в одну папку. Для запуска отдельный .NET Runtime не нужен.
 
 Проверьте хеш файла по `SHA256SUMS.txt`, опубликованному рядом с EXE. Это **не цифровая подпись**. В этой версии подписанного установщика нет. **Если антивирус блокирует файл, не отключайте защиту и не добавляйте его в исключения**: сообщите о проблеме в [Issues](https://github.com/Ketsuneban/Yetta/issues).
 
-## Что работает в 0.3.17-preview
+## Что работает в 0.3.20-preview
 
 | Раздел | Возможности |
 |---|---|

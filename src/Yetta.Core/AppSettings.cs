@@ -6,6 +6,7 @@ public sealed class AppSettings
     public string Theme { get; set; } = "Fluent";
     public bool ConfirmExternalLinks { get; set; } = true;
     public bool NotificationSoundsEnabled { get; set; } = true;
+    public bool AutoUpdatesEnabled { get; set; } = true;
     public int NotificationRetentionHours { get; set; } = 24;
     public List<string> InstalledProfiles { get; set; } = ["Guest"];
     public string ActiveProfile { get; set; } = "Guest";

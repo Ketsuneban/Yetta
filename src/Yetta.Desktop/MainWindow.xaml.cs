@@ -7,13 +7,19 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Microsoft.Toolkit.Uwp.Notifications;
 using Yetta.Core;
 
 namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.17-preview";
+    private const string ReleaseVersion = "0.3.20-preview";
+    private readonly CancellationTokenSource _updateStop = new();
+    private readonly SemaphoreSlim _updateGate = new(1, 1);
+    private CancellationTokenSource? _downloadCancel;
+    private Version? _dismissedAutoVersion;
+    private Version? _downloadingVersion;
     private readonly SettingsStore _store = new();
     private readonly TallowNotificationStore _activityStore = new();
     private readonly AppSettings _settings;
@@ -71,7 +77,9 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
         _daxGate = new DaxAgentGate(this);
-        Closed += (_, _) => { _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
+        ToastNotificationManagerCompat.OnActivated += OnUpdateToastActivated;
+        Loaded += (_, _) => _ = WatchUpdatesAsync();
+        Closed += (_, _) => { ToastNotificationManagerCompat.OnActivated -= OnUpdateToastActivated; _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private void InitializeIconsAndCursors()
@@ -1172,6 +1180,16 @@ public partial class MainWindow : Window
         }, enabled: _settings.EmbeddedShellConsentGranted));
 
         AddSection(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0176"));
+        var autoUpdates = new CheckBox
+        {
+            Content = "Автоматически загружать и устанавливать новые версии Yetta",
+            IsChecked = _settings.AutoUpdatesEnabled,
+            Foreground = Ink,
+            Margin = new Thickness(0, 3, 0, 8)
+        };
+        autoUpdates.Checked += (_, _) => { _settings.AutoUpdatesEnabled = true; SavePreferences(); _ = CheckAndInstallUpdateAsync(false); };
+        autoUpdates.Unchecked += (_, _) => { _settings.AutoUpdatesEnabled = false; SavePreferences(); };
+        ContentPanel.Children.Add(Card(autoUpdates));
         ContentPanel.Children.Add(Card(Text(
             TallowText.Get("ui.main.0177") + ReleaseVersion +
             TallowText.Get("ui.main.0178") +
@@ -1180,7 +1198,7 @@ public partial class MainWindow : Window
             12, muted: true)));
         ContentPanel.Children.Add(ActionButton(TallowText.Get("ui.main.0181"), async () =>
         {
-            await CheckAndInstallUpdateAsync();
+            await CheckAndInstallUpdateAsync(true);
         }, true));
 
         AddSection(TallowText.Get("ui.main.0182"), TallowText.Get("ui.main.0183"));
@@ -1224,17 +1242,37 @@ public partial class MainWindow : Window
         }));
     }
 
-    private async Task CheckAndInstallUpdateAsync()
+    private async Task WatchUpdatesAsync()
     {
+        while (!_updateStop.IsCancellationRequested)
+        {
+            if (_settings.AutoUpdatesEnabled)
+                await CheckAndInstallUpdateAsync(false);
+            try { await Task.Delay(TimeSpan.FromMinutes(1), _updateStop.Token); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    private void OnUpdateToastActivated(ToastNotificationActivatedEventArgsCompat args)
+    {
+        if (args.Argument.Contains("cancel-update", StringComparison.Ordinal))
+            Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
+    }
+
+    private async Task CheckAndInstallUpdateAsync(bool manual)
+    {
+        if (!await _updateGate.WaitAsync(0)) return;
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 15));
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 20), _updateStop.Token);
             if (latest is null)
             {
-                ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
+                if (manual) ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
                 return;
             }
-            if (!ConsentDialog.Confirm(this,
+            if (!manual && latest.Version == _dismissedAutoVersion) return;
+            if (!manual && !_settings.AutoUpdatesEnabled) return;
+            if (manual && !ConsentDialog.Confirm(this,
                 TallowText.Get("ui.main.0197") + latest.Version + "?",
                 TallowText.Get("ui.main.0198") +
                 TallowText.Get("ui.main.0199") +
@@ -1244,16 +1282,44 @@ public partial class MainWindow : Window
                 YettaWarningLevel.Consent))
                 return;
 
-            var path = await YettaUpdater.DownloadInstallerAsync(latest);
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            var toast = new ToastContentBuilder()
+                .AddText("Скачивание новой версии Yetta")
+                .AddProgressBar(title: latest.Tag, value: 0, status: "Скачивание...")
+                .AddButton(new ToastButton().SetContent("Отменить").AddArgument("action", "cancel-update"));
+            try { toast.Show(notification => { notification.Tag = "yetta-update"; notification.Group = "updates"; }); }
+            catch (Exception ex) { DaxAudit.Write("update", "toast_unavailable", ex.GetType().Name); }
+            var progress = new Progress<double>(value =>
+            {
+                try
+                {
+                    var data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
+                        latest.Tag, value, null, "Скачивание...", (uint)(value * 1000 + 1));
+                    ToastNotificationManagerCompat.CreateToastNotifier().Update(data, "yetta-update", "updates");
+                }
+                catch (Exception ex) { DaxAudit.Write("update", "toast_progress_unavailable", ex.GetType().Name); }
+            });
+            using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
+            _downloadCancel = downloadCancel;
+            _downloadingVersion = latest.Version;
+            var path = await YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token);
+            _downloadCancel = null;
+            _downloadingVersion = null;
+            if (!manual && !_settings.AutoUpdatesEnabled) return;
+            Process.Start(new ProcessStartInfo(path)
+            {
+                UseShellExecute = true,
+                Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+            });
             Close();
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException)
         {
-            ShowYettaNotice(TallowText.Get("ui.main.0203"), ex.Message, WarningKind.Caution);
+            if (manual || ex is not OperationCanceledException)
+                ShowYettaNotice(TallowText.Get("ui.main.0203"), ex.Message, WarningKind.Caution);
         }
+        finally { _downloadCancel = null; _downloadingVersion = null; _updateGate.Release(); }
     }
 
     private void BuildSources()
