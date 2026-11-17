@@ -77,9 +77,13 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
         _daxGate = new DaxAgentGate(this);
-        ToastNotificationManagerCompat.OnActivated += OnUpdateToastActivated;
+        ToastNotificationManagerCompat.OnActivated += args =>
+        {
+            if (args.Argument.Contains("cancel-update", StringComparison.Ordinal))
+                Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
+        };
         Loaded += (_, _) => _ = WatchUpdatesAsync();
-        Closed += (_, _) => { ToastNotificationManagerCompat.OnActivated -= OnUpdateToastActivated; _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
+        Closed += (_, _) => { _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private void InitializeIconsAndCursors()
@@ -1251,12 +1255,6 @@ public partial class MainWindow : Window
             try { await Task.Delay(TimeSpan.FromMinutes(1), _updateStop.Token); }
             catch (OperationCanceledException) { break; }
         }
-    }
-
-    private void OnUpdateToastActivated(ToastNotificationActivatedEventArgsCompat args)
-    {
-        if (args.Argument.Contains("cancel-update", StringComparison.Ordinal))
-            Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
     }
 
     private async Task CheckAndInstallUpdateAsync(bool manual)
