@@ -6,10 +6,10 @@ namespace Yetta.Core;
 /// </summary>
 public static class AccessProfiles
 {
-    public static readonly string[] All = ["Guest", "SafeUser", "User", "Administrator", "System"];
+    public static readonly string[] All = ["Guest", "User", "Administrator", "System"];
 
     public static bool CanInstallLogicalProfile(string profile) =>
-        profile is "Guest" or "SafeUser" or "User";
+        profile is "Guest" or "User";
 
     // The desktop supplies this only after checking its real Windows token.
     // The returned profile remains a UI preference, not a Windows privilege.
@@ -44,7 +44,6 @@ public static class AccessProfiles
 
     public static string DisplayName(string profile) => profile switch
     {
-        "SafeUser" => TallowText.Get("core.access.0001"),
         "User" => TallowText.Get("ui.main.0058"),
         "Administrator" => TallowText.Get("core.access.0002"),
         "System" => TallowText.Get("core.access.0003"),
@@ -53,7 +52,6 @@ public static class AccessProfiles
 
     public static string Description(string profile) => profile switch
     {
-        "SafeUser" => TallowText.Get("core.access.0005"),
         "User" => TallowText.Get("core.access.0006"),
         "Administrator" => TallowText.Get("core.access.0007"),
         "System" => TallowText.Get("core.access.0008"),

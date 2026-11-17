@@ -40,7 +40,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="Shell" Background="{TemplateBinding Background}"
-                    BorderBrush="Transparent" BorderThickness="1"
+                    BorderBrush="Transparent" BorderThickness="0"
                     CornerRadius="12" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="Center"/>
@@ -51,7 +51,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Shell" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="Shell" Property="Background" Value="{DynamicResource SelectedBrush}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -69,7 +69,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonChrome" Background="{TemplateBinding Background}"
-                    BorderBrush="Transparent" BorderThickness="1"
+                    BorderBrush="Transparent" BorderThickness="0"
                     CornerRadius="11" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
@@ -81,7 +81,7 @@
                 <Setter TargetName="ButtonChrome" Property="Opacity" Value=".40"/>
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="ButtonChrome" Property="BorderBrush" Value="{DynamicResource TextPrimary}"/>
+                <Setter TargetName="ButtonChrome" Property="Opacity" Value=".75"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -212,7 +212,7 @@
               <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
                      Focusable="False" PopupAnimation="Fade"
                      IsOpen="{TemplateBinding IsDropDownOpen}">
-                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                <Border MinWidth="{Binding ActualWidth, ElementName=DropToggle}"
                         Margin="0,5,0,10" Padding="5" MaxHeight="300"
                         Background="{DynamicResource SidebarBackground}"
                         BorderBrush="Transparent" BorderThickness="0"
@@ -226,6 +226,35 @@
                 </Border>
               </Popup>
             </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="{x:Type ComboBox}" BasedOn="{StaticResource AccessCombo}"/>
+    <Style x:Key="SettingToggle" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Width" Value="48"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Grid Width="48" Height="28">
+              <Border x:Name="Track" CornerRadius="14" Background="{DynamicResource HoverBackground}"/>
+              <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="{DynamicResource TextPrimary}"
+                       HorizontalAlignment="Left" Margin="4,0,0,0"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="Thumb" Property="Margin" Value="0,0,4,0"/>
+                <Setter TargetName="Thumb" Property="Fill" Value="{DynamicResource AccentForeground}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>

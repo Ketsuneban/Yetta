@@ -19,11 +19,12 @@ public sealed class AppSettings
 
     public void Normalize()
     {
-        if (Theme is not ("Fluent" or "Glass")) Theme = "Fluent";
+        Theme = "Fluent";
         if (NotificationRetentionHours is < 1 or > 720) NotificationRetentionHours = 24;
         if (MarvineColorset is not ("EGA" or "No Color")) MarvineColorset = "EGA";
         MarvineHistoryLimit = Math.Clamp(MarvineHistoryLimit, 100, 10000);
         InstalledProfiles ??= [];
+        if (ActiveProfile == "SafeUser") ActiveProfile = "Guest";
         InstalledProfiles = InstalledProfiles
             .Where(p => AccessProfiles.CanInstallLogicalProfile(p) || p == "Administrator")
             .Distinct(StringComparer.Ordinal)

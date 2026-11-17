@@ -9,9 +9,12 @@ var defaults = new AppSettings();
 Assert(defaults.ActiveProfile == "Guest" && defaults.InstalledProfiles.SequenceEqual(["Guest"]),
     "Guest is the only initially installed profile");
 Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults), "Guest blocks external terminal");
-Assert(AccessProfiles.Install(defaults,"SafeUser"),"SafeUser installs logical read-only policy");
-Assert(AccessProfiles.Apply(defaults,"SafeUser"),"SafeUser can be selected");
-Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"SafeUser blocks external terminal");
+Assert(!AccessProfiles.Install(defaults,"SafeUser"),"SafeUser is merged into Guest");
+defaults.ActiveProfile = "SafeUser";
+defaults.InstalledProfiles.Add("SafeUser");
+defaults.Normalize();
+Assert(defaults.ActiveProfile == "Guest" && !defaults.InstalledProfiles.Contains("SafeUser"),
+    "old SafeUser preference migrates to Guest");
 Assert(AccessProfiles.Install(defaults,"User"),"User installs logical standard policy");
 Assert(AccessProfiles.Apply(defaults,"User"),"User can be applied");
 Assert(AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"User permits non-elevated Terminal");
@@ -34,7 +37,7 @@ try
     var store = new SettingsStore(Path.Combine(dir,"settings.json"));
     Assert(store.Load().ActiveProfile=="Guest","safe defaults without config");
     store.Save(new AppSettings { Theme="Glass", InstalledProfiles=["Guest","User"], ActiveProfile="User"});
-    Assert(store.Load().ActiveProfile=="User" && store.Load().Theme=="Glass","settings persistence");
+    Assert(store.Load().ActiveProfile=="User" && store.Load().Theme=="Fluent","single theme migration");
     File.WriteAllText(store.FilePath,"{corrupted");
     Assert(store.Load().ActiveProfile=="Guest","corrupted settings handled safely");
 }
@@ -42,7 +45,7 @@ finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
 var c=new ConsoleContext("Glass","Guest");
 Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("recovery"),"Marvine help");
-Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo=="Fluent","theme command");
+Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo is null,"theme switching disabled");
 Assert(ConsoleEngine.Execute("guard",c).NavigateTo=="guard","guard navigation");
 Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
 Assert(ConsoleEngine.Execute("/snob",c).Message.Contains("не повышает права"),"reserved command cannot elevate");

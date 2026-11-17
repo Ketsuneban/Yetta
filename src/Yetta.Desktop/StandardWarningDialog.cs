@@ -11,8 +11,8 @@ using Yetta.Core;
 namespace Yetta.Desktop;
 
 /// <summary>
-/// Windows 11 UAC-inspired presentation for all seven Yetta warnings: a
-/// translucent glass surface with the warning reason, the affected object, a
+/// Windows 11-inspired presentation for Yetta warnings: a
+/// native DWM framed surface with the warning reason, the affected object, a
 /// scrollable explanation, an optional agreement / TTY-key gate and the
 /// decision buttons. Styling never grants Windows privileges and never skips
 /// the DAX confirmation requirements.
@@ -25,22 +25,13 @@ internal static class StandardWarningDialog
     private static readonly Brush Success = new SolidColorBrush(Color.FromRgb(96, 200, 120));
     private static readonly Brush Failure = new SolidColorBrush(Color.FromRgb(232, 106, 106));
 
-    // Translucent surfaces: the alpha is what lets the acrylic backdrop read as
-    // frosted glass, and it degrades to a solid tint when no backdrop is applied.
     private sealed record Palette(Color Accent, Color Header, Color Surface, Color Footer);
-
-    private static Color Argb(byte a, byte r, byte g, byte b) => Color.FromArgb(a, r, g, b);
 
     private static Palette Colors(WarningKind kind) => kind switch
     {
-        WarningKind.Caution => new(Color.FromRgb(213, 157, 68), Argb(0xB8, 76, 67, 51), Argb(0xB3, 48, 44, 36), Argb(0xD0, 27, 26, 23)),
-        WarningKind.Dangerous => new(Color.FromRgb(204, 104, 105), Argb(0xB8, 76, 48, 49), Argb(0xB3, 45, 32, 33), Argb(0xD0, 24, 21, 22)),
-        WarningKind.Critical => new(Color.FromRgb(190, 82, 126), Argb(0xB8, 69, 37, 49), Argb(0xB3, 40, 25, 33), Argb(0xD0, 21, 17, 22)),
-        WarningKind.Fatal => new(Color.FromRgb(120, 126, 146), Argb(0xD0, 12, 13, 16), Argb(0xCC, 7, 8, 11), Argb(0xE6, 3, 4, 6)),
-        WarningKind.Agreement => new(Color.FromRgb(112, 153, 210), Argb(0xB8, 52, 57, 70), Argb(0xB3, 35, 40, 52), Argb(0xD0, 20, 23, 31)),
-        WarningKind.Dax => new(Color.FromRgb(99, 157, 210), Argb(0xB8, 39, 57, 73), Argb(0xB3, 27, 40, 53), Argb(0xD0, 17, 24, 33)),
-        WarningKind.Information => new(Color.FromRgb(99, 157, 210), Argb(0xB8, 43, 57, 72), Argb(0xB3, 30, 40, 51), Argb(0xD0, 18, 24, 31)),
-        _ => new(Color.FromRgb(100, 165, 205), Argb(0xB8, 52, 54, 59), Argb(0xB3, 35, 37, 42), Argb(0xD0, 19, 20, 24))
+        WarningKind.Caution => new(Color.FromRgb(255, 192, 74), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49)),
+        WarningKind.Dangerous or WarningKind.Critical or WarningKind.Fatal => new(Color.FromRgb(240, 105, 105), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49)),
+        _ => new(Color.FromRgb(108, 181, 242), Color.FromRgb(38, 46, 55), Color.FromRgb(26, 32, 39), Color.FromRgb(34, 41, 49))
     };
 
     private static TextBlock Text(string text, double size, Brush foreground, bool bold = false) =>
@@ -54,22 +45,22 @@ internal static class StandardWarningDialog
 
     private static Button Command(string text, bool primary, Brush accent)
     {
-        var neutral = new SolidColorBrush(Color.FromRgb(49, 51, 57));
+        var neutral = new SolidColorBrush(Color.FromRgb(58, 65, 73));
         var button = new Button
         {
             Content = text, Width = 225, MinHeight = 42,
             FontFamily = SystemFonts.MessageFontFamily, FontSize = 15,
             Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(4, 0, 4, 0),
-            Background = neutral, Foreground = White,
-            BorderThickness = new Thickness(primary ? 2 : 1),
-            BorderBrush = primary ? accent : new SolidColorBrush(Color.FromRgb(91, 94, 103)),
+            Background = primary ? accent : neutral,
+            Foreground = primary ? Brushes.Black : White,
+            BorderThickness = new Thickness(0),
             Cursor = Cursors.Hand, FocusVisualStyle = null
         };
         var template = new ControlTemplate(typeof(Button));
         var panel = new FrameworkElementFactory(typeof(Border));
         panel.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
         panel.Name = "ButtonChrome";
-        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(0));
+        panel.SetValue(Border.CornerRadiusProperty, new CornerRadius(7));
         panel.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
         { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
         panel.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
@@ -128,10 +119,11 @@ internal static class StandardWarningDialog
         {
             Owner = owner,
             Title = TallowText.Get("ui.warning.0007") + request.Reason,
-            Width = 660,
-            Height = 545,
-            MinWidth = 560,
-            MinHeight = 470,
+            Width = 620,
+            Height = request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
+                ? 500 : request.Description.Length > 250 ? 430 : 375,
+            MinWidth = 540,
+            MinHeight = 340,
             MaxWidth = SystemParameters.WorkArea.Width * 0.95,
             MaxHeight = SystemParameters.WorkArea.Height * 0.9,
             WindowStyle = WindowStyle.None,
@@ -139,12 +131,12 @@ internal static class StandardWarningDialog
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(24, 25, 29))
+            Background = new SolidColorBrush(Color.FromRgb(26, 32, 39)),
+            FontFamily = SystemFonts.MessageFontFamily
         };
         window.SourceInitialized += (_, _) =>
         {
-            if (WarningGlass.Apply(window, palette.Surface))
-                window.Background = Brushes.Transparent;
+            WarningGlass.Apply(window);
         };
 
         window.PreviewKeyDown += (_, e) =>
@@ -160,8 +152,7 @@ internal static class StandardWarningDialog
         var outer = new Border
         {
             Background = new SolidColorBrush(palette.Surface),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)),
+            BorderThickness = new Thickness(0),
             ClipToBounds = true,
             SnapsToDevicePixels = true
         };
@@ -195,7 +186,8 @@ internal static class StandardWarningDialog
         headerGrid.Children.Add(reason);
         var close = new Button
         {
-            Content = IconAssets.Image(16, 16), Width = 32, Height = 28,
+            Content = new TextBlock { Text = "\uE8BB", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 12, Foreground = White },
+            Width = 44, Height = 38,
             BorderThickness = new Thickness(0), Background = Brushes.Transparent,
             Cursor = Cursors.Hand, FocusVisualStyle = null,
             ToolTip = TallowText.Get("ui.warning.0008")
@@ -281,8 +273,7 @@ internal static class StandardWarningDialog
         var footer = new Border
         {
             Background = new SolidColorBrush(palette.Footer),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-            BorderThickness = new Thickness(0, 1, 0, 0),
+            BorderThickness = new Thickness(0),
             Padding = new Thickness(26, 16, 26, 18),
             Child = footerStack
         };
@@ -457,9 +448,12 @@ internal static class StandardWarningDialog
         int state = YettaWarningWindow.Status(request, profile);
         if (state != 0)
         {
-            var status = IconAssets.Image(state, 32);
-            status.Margin = new Thickness(16, 0, 0, 0);
-            status.VerticalAlignment = VerticalAlignment.Center;
+            var status = new TextBlock
+            {
+                Text = "\uE72E", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                FontSize = 19, Foreground = new SolidColorBrush(palette.Accent),
+                Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center
+            };
             status.ToolTip = state switch
             {
                 26 => TallowText.Get("ui.warning.0028"),

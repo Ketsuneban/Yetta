@@ -1,7 +1,6 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -117,30 +116,4 @@ internal static class IconAssets
         button.Content = stack;
     }
 
-    internal static Cursor? CursorFrom(int number, int hotX, int hotY)
-    {
-        var source = Get(number);
-        if (source is null) return null;
-        // CUR directory with one embedded PNG. Source is a transparent icon.
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(source));
-        using var png = new MemoryStream();
-        encoder.Save(png);
-        byte[] bytes = png.ToArray();
-        using var cur = new MemoryStream();
-        using (var writer = new BinaryWriter(cur, System.Text.Encoding.UTF8, leaveOpen: true))
-        {
-            writer.Write((ushort)0); writer.Write((ushort)2); writer.Write((ushort)1);
-            writer.Write((byte)(source.PixelWidth >= 256 ? 0 : source.PixelWidth));
-            writer.Write((byte)(source.PixelHeight >= 256 ? 0 : source.PixelHeight));
-            writer.Write((byte)0); writer.Write((byte)0);
-            writer.Write((ushort)hotX); writer.Write((ushort)hotY);
-            writer.Write((uint)bytes.Length); writer.Write((uint)22);
-            writer.Write(bytes);
-        }
-        cur.Position = 0;
-        try { return new Cursor(cur); }
-        catch (ArgumentException) { return null; }
-        catch (IOException) { return null; }
-    }
 }

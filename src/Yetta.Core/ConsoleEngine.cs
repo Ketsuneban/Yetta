@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.25-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.3.26-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -62,8 +62,6 @@ public static class ConsoleEngine
                 "recovery         DAX Recovery\n" +
                 TallowText.Get("marvine.console.0010") +
                 TallowText.Get("marvine.console.0011") +
-                TallowText.Get("marvine.console.0012") +
-                TallowText.Get("marvine.console.0013") +
                 TallowText.Get("marvine.console.0014")),
             "version" or "about" => new ConsoleResult("Yetta " + context.Version +
                 TallowText.Get("marvine.console.0015")),
@@ -72,7 +70,7 @@ public static class ConsoleEngine
                 TallowText.Get("marvine.console.0017") + AccessProfiles.DisplayName(context.ActiveProfile) + "\n" +
                 TallowText.Get("marvine.console.0018") +
                 TallowText.Get("marvine.console.0019") +
-                TallowText.Get("marvine.console.0020") + context.Theme),
+                TallowText.Get("marvine.console.0020") + "Windows 11"),
             "access" => new ConsoleResult(AccessProfiles.Description(context.ActiveProfile)),
             "info" => new ConsoleResult(TallowText.Get("marvine.console.0021"), NavigateTo: "info"),
             "guard" => new ConsoleResult(TallowText.Get("marvine.console.0022"), NavigateTo: "guard"),
@@ -83,9 +81,8 @@ public static class ConsoleEngine
             "recovery" => new ConsoleResult(TallowText.Get("marvine.console.0027"), NavigateTo: "recovery"),
             "settings" => new ConsoleResult(TallowText.Get("marvine.console.0028"), NavigateTo: "settings"),
             "sources" => new ConsoleResult(TallowText.Get("marvine.console.0029"), NavigateTo: "sources"),
-            "theme fluent" => new ConsoleResult(TallowText.Get("marvine.console.0030"), SwitchThemeTo: "Fluent"),
-            "theme glass" => new ConsoleResult(TallowText.Get("marvine.console.0031"), SwitchThemeTo: "Glass"),
-            "theme" => new ConsoleResult(TallowText.Get("marvine.console.0032")),
+            "theme fluent" or "theme glass" => new ConsoleResult("Yetta использует оформление Windows 11 автоматически."),
+            "theme" => new ConsoleResult("Yetta использует оформление Windows 11 автоматически."),
             "clear" => new ConsoleResult("", ClearOutput: true),
             _ => new ConsoleResult(TallowText.Get("marvine.console.0033") + command +
                 TallowText.Get("marvine.console.0034"))

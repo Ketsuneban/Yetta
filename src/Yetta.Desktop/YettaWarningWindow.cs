@@ -72,7 +72,7 @@ internal static class YettaWarningWindow
     {
         // Status communicates safety only when a user must decide or acknowledge.
         if (request.Kind is WarningKind.Fatal or WarningKind.Information) return 0;
-        if (activeProfile is "Guest" or "SafeUser" || ConsentDialog.InWindowsSafeMode) return 35;
+        if (activeProfile == "Guest" || ConsentDialog.InWindowsSafeMode) return 35;
         return request.PotentialDamage ? 26 : 27;
     }
 

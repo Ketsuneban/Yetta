@@ -1,10 +1,11 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -17,7 +18,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 25);
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 26);
     private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
@@ -46,7 +47,6 @@ public partial class MainWindow : Window
     private Brush Ink => Resource("TextPrimary");
     private Brush Muted => Resource("TextSecondary");
     private Brush Accent => Resource("AccentBrush");
-    private Brush Line => Resource("OutlineBrush");
     private Brush Surface => Resource("CardBackground");
 
     public MainWindow()
@@ -111,7 +111,7 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavRecovery, 9, TallowText.Get("ui.main.0007"));
         IconAssets.SetNav(NavSettings, 3, TallowText.Get("ui.main.0008"));
         IconAssets.SetNavLogo(NavSources, "external-link.png", TallowText.Get("ui.main.0009"));
-        Cursor = IconAssets.CursorFrom(17, 2, 2) ?? Cursors.Arrow;
+        Cursor = Cursors.Arrow;
     }
 
     private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
@@ -149,7 +149,7 @@ public partial class MainWindow : Window
 
     private void ApplyTheme()
     {
-        bool glass = _settings.Theme == "Glass";
+        const bool glass = false;
         var ui = new Windows.UI.ViewManagement.UISettings();
         static Color Native(Windows.UI.Color c) => Color.FromArgb(c.A, c.R, c.G, c.B);
         static Color Mix(Color a, Color b, double amount) => Color.FromRgb(
@@ -177,20 +177,10 @@ public partial class MainWindow : Window
         SetColor("SelectedBrush", Mix(background, accent, dark ? 0.27 : 0.15));
         GlassDialog.IsGlass = glass;
         ApplyBackdrop();
-        ThemeIndicator.Text = glass ? "Windows Acrylic" : "Windows Mica";
+        ThemeIndicator.Text = "Windows 11";
     }
 
-    private void ApplyBackdrop() => WindowsBackdrop.Configure(this, _settings.Theme == "Glass");
-
-    private void SetTheme(string theme)
-    {
-        if (theme is not ("Fluent" or "Glass")) return;
-        _settings.Theme = theme;
-        ApplyTheme();
-        SavePreferences();
-        Navigate(_page);
-        Notify(TallowText.Get("ui.main.0012"), TallowText.Get("ui.main.0013") + theme + ".");
-    }
+    private void ApplyBackdrop() => WindowsBackdrop.Configure(this, false);
 
     private void SavePreferences()
     {
@@ -319,13 +309,56 @@ public partial class MainWindow : Window
         return new Border
         {
             Background = Surface,
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
+            BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(14),
             Padding = new Thickness(20),
             Margin = new Thickness(0, 0, 0, 14),
             Child = child
         };
+    }
+
+    private Grid SettingsToggleRow(string title, string description, bool initial, Action<bool> changed)
+    {
+        var row = new Grid { Margin = new Thickness(0, 3, 0, 20) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var copy = new StackPanel { Margin = new Thickness(0, 0, 24, 0) };
+        copy.Children.Add(Text(title, 14, heading: true));
+        var detail = Text(description, 12, muted: true);
+        detail.Margin = new Thickness(0, 3, 0, 0);
+        copy.Children.Add(detail);
+        row.Children.Add(copy);
+        var toggle = new ToggleButton
+        {
+            Style = (Style)FindResource("SettingToggle"),
+            IsChecked = initial,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        System.Windows.Automation.AutomationProperties.SetName(toggle, title);
+        toggle.Checked += (_, _) => changed(true);
+        toggle.Unchecked += (_, _) => changed(false);
+        Grid.SetColumn(toggle, 1);
+        row.Children.Add(toggle);
+        return row;
+    }
+
+    private Grid SettingsChoiceRow(string title, string description, ComboBox choice)
+    {
+        var row = new Grid { Margin = new Thickness(0, 3, 0, 20) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var copy = new StackPanel { Margin = new Thickness(0, 0, 24, 0) };
+        copy.Children.Add(Text(title, 14, heading: true));
+        var detail = Text(description, 12, muted: true);
+        detail.Margin = new Thickness(0, 3, 0, 0);
+        copy.Children.Add(detail);
+        row.Children.Add(copy);
+        choice.Width = 220;
+        choice.VerticalAlignment = VerticalAlignment.Center;
+        System.Windows.Automation.AutomationProperties.SetName(choice, title);
+        Grid.SetColumn(choice, 1);
+        row.Children.Add(choice);
+        return row;
     }
 
     private Button ActionButton(string label, Action callback, bool primary = false, bool enabled = true)
@@ -431,11 +464,11 @@ public partial class MainWindow : Window
     {
         _ = YettaWarningWindow.Show(this,
             new WarningRequest(WarningKind.Dax, TallowText.Get("ui.main.0035"),
-                "DAX · Defense & Access eXecutive\\n\\n" +
-                TallowText.Get("ui.main.0036") +
+                "DAX · Defense & Access eXecutive\n\n" +
+                TallowText.Get("ui.main.0036") + "\n\n" +
                 TallowText.Get("ui.main.0037") +
-                TallowText.Get("ui.main.0038") +
-                TallowText.Get("ui.main.0039") +
+                TallowText.Get("ui.main.0038") + "\n\n" +
+                TallowText.Get("ui.main.0039") + "\n\n" +
                 TallowText.Get("ui.main.0040") +
                 TallowText.Get("ui.main.0041"),
                 Subject: "DAX", Publisher: TallowText.Get("ui.main.0042")),
@@ -486,7 +519,7 @@ public partial class MainWindow : Window
             (TallowText.Get("ui.main.0058"), SystemSnapshot.User),
             (TallowText.Get("ui.main.0059"), SystemSnapshot.Machine),
             (TallowText.Get("ui.main.0060"), SystemSnapshot.Uptime.ToString(@"d\.hh\:mm\:ss")),
-            (TallowText.Get("ui.main.0061"), _settings.Theme),
+            (TallowText.Get("ui.main.0061"), "Windows 11"),
             (TallowText.Get("ui.main.0062"), _store.FilePath)
         };
         var deviceCard = new StackPanel();
@@ -499,6 +532,20 @@ public partial class MainWindow : Window
         }
         deviceCard.Children.Add(Text(TallowText.Get("ui.main.0063") +
             (Path.GetDirectoryName(_store.FilePath) ?? TallowText.Get("ui.main.0064")), 12, muted: true));
+        deviceCard.Children.Add(ActionButton("Скопировать сводку", () =>
+        {
+            try
+            {
+                Clipboard.SetText("Yetta " + ReleaseVersion + Environment.NewLine +
+                    "Профиль: " + AccessProfiles.DisplayName(_settings.ActiveProfile) + Environment.NewLine +
+                    string.Join(Environment.NewLine, specs.Select(x => x.Label + ": " + x.Value)));
+                Notify("Информация", "Сводка скопирована в буфер обмена.");
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                ShowYettaNotice("Буфер обмена", "Не удалось скопировать сводку.", WarningKind.Caution);
+            }
+        }));
         ContentPanel.Children.Add(Card(deviceCard));
         AddNotice(TallowText.Get("ui.main.0065"), TallowText.Get("ui.main.0066"));
     }
@@ -569,7 +616,7 @@ public partial class MainWindow : Window
             var description = new StackPanel();
             string code = profile switch
             {
-                "Guest" => "GUEST", "SafeUser" => "sUSER",
+                "Guest" => "GUEST",
                 "User" => "USER", "Administrator" => "ADMIN",
                 _ => "SYS"
             };
@@ -1348,7 +1395,6 @@ public partial class MainWindow : Window
         if (_history.Count > _settings.MarvineHistoryLimit) _history.RemoveAt(0);
         if (_page == "console" && _consoleMode == "Marvine")
             _consoleOutput?.Children.Add(ConsoleLine(message, false));
-        if (response.SwitchThemeTo is string theme) SetTheme(theme);
         if (response.NavigateTo is string page) Navigate(page);
     }
 
@@ -1531,22 +1577,48 @@ public partial class MainWindow : Window
     private void BuildSettings()
     {
         AddIntro(TallowText.Get("ui.main.0155"), TallowText.Get("ui.main.0156"),
-            TallowText.Get("ui.main.0157"));
-        AddSection("Консоль Marvine");
-        var marvineOptions = new StackPanel();
-        var subsy = new CheckBox
-        {
-            Content = "Преобразовывать прогресс и шаги в элементы интерфейса (Subsy)",
-            IsChecked = _settings.MarvineSubsyEnabled,
-            Foreground = Ink,
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-        subsy.Checked += (_, _) => { _settings.MarvineSubsyEnabled = true; SavePreferences(); };
-        subsy.Unchecked += (_, _) => { _settings.MarvineSubsyEnabled = false; SavePreferences(); };
-        marvineOptions.Children.Add(subsy);
-        marvineOptions.Children.Add(Text("Палитра вывода", 12, muted: true));
-        var colorset = new ComboBox { Width = 210, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 7, 0, 12) };
+            "Настройки Yetta и консоли Marvine.");
+
+        AddSection("Поведение приложения", "Связанные параметры собраны в одной панели.");
+        var switches = new StackPanel();
+        switches.Children.Add(SettingsToggleRow(
+            "Автоматические обновления",
+            "Загружать и устанавливать новую версию Yetta после её выхода.",
+            _settings.AutoUpdatesEnabled, enabled =>
+            {
+                _settings.AutoUpdatesEnabled = enabled;
+                SavePreferences();
+                if (enabled) _ = CheckAndInstallUpdateAsync(false);
+            }));
+        switches.Children.Add(SettingsToggleRow(
+            "Звуки уведомлений",
+            "Проигрывать системные сигналы для событий Центра активности.",
+            _settings.NotificationSoundsEnabled, enabled =>
+            {
+                _settings.NotificationSoundsEnabled = enabled;
+                SavePreferences();
+            }));
+        switches.Children.Add(SettingsToggleRow(
+            "Подтверждение внешних ссылок",
+            "Спрашивать перед открытием сайтов из Yetta.",
+            _settings.ConfirmExternalLinks, enabled =>
+            {
+                _settings.ConfirmExternalLinks = enabled;
+                SavePreferences();
+            }));
+        switches.Children.Add(SettingsToggleRow(
+            "Интерактивный вывод Marvine",
+            "Показывать прогресс и шаги команд как элементы интерфейса (Subsy).",
+            _settings.MarvineSubsyEnabled, enabled =>
+            {
+                _settings.MarvineSubsyEnabled = enabled;
+                SavePreferences();
+            }));
+        ContentPanel.Children.Add(Card(switches));
+
+        AddSection("Хранение и вывод");
+        var choices = new StackPanel();
+        var colorset = new ComboBox();
         colorset.Items.Add("EGA");
         colorset.Items.Add("No Color");
         colorset.SelectedItem = _settings.MarvineColorset;
@@ -1555,10 +1627,10 @@ public partial class MainWindow : Window
             _settings.MarvineColorset = colorset.SelectedItem as string ?? "EGA";
             SavePreferences();
         };
-        marvineOptions.Children.Add(colorset);
-        marvineOptions.Children.Add(Text("Хранить команд в истории", 12, muted: true));
-        var historySize = new ComboBox { Width = 210, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 7, 0, 0) };
+        choices.Children.Add(SettingsChoiceRow("Палитра Marvine",
+            "Цветовая схема текста в консоли.", colorset));
+
+        var historySize = new ComboBox();
         foreach (int size in new[] { 100, 500, 1000, 5000, 10000 }) historySize.Items.Add(size);
         historySize.SelectedItem = _settings.MarvineHistoryLimit;
         historySize.SelectionChanged += (_, _) =>
@@ -1567,43 +1639,28 @@ public partial class MainWindow : Window
             _settings.MarvineHistoryLimit = size;
             SavePreferences();
         };
-        marvineOptions.Children.Add(historySize);
-        ContentPanel.Children.Add(Card(marvineOptions));
-        AddSection(TallowText.Get("ui.main.0158"));
-        var modes = new WrapPanel();
-        modes.Children.Add(ActionButton(TallowText.Get("ui.main.0159"),
-            () => SetTheme("Fluent"), primary: _settings.Theme == "Fluent"));
-        modes.Children.Add(ActionButton(TallowText.Get("ui.main.0160"),
-            () => SetTheme("Glass"), primary: _settings.Theme == "Glass"));
-        ContentPanel.Children.Add(modes);
+        choices.Children.Add(SettingsChoiceRow("История команд",
+            "Максимальное число сохранённых команд Marvine.", historySize));
 
-        AddSection(TallowText.Get("ui.main.0161"));
-        var sounds = new CheckBox
-        {
-            Content = TallowText.Get("ui.main.0162"),
-            IsChecked = _settings.NotificationSoundsEnabled,
-            Foreground = Ink,
-            Margin = new Thickness(0, 3, 0, 3)
-        };
-        sounds.Checked += (_, _) => { _settings.NotificationSoundsEnabled = true; SavePreferences(); };
-        sounds.Unchecked += (_, _) => { _settings.NotificationSoundsEnabled = false; SavePreferences(); };
-        ContentPanel.Children.Add(Card(sounds));
-        var retention = new ComboBox { Width = 260, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 6, 0, 4), Foreground = Ink };
+        var retention = new ComboBox();
         foreach (int hours in new[] { 1, 6, 24, 72, 168, 720 })
         {
             var option = new ComboBoxItem
             {
+                Style = (Style)FindResource("AccessComboItem"),
                 Content = hours switch
                 {
-                    1 => TallowText.Get("ui.main.0163"), 6 => TallowText.Get("ui.main.0164"), 24 => TallowText.Get("ui.main.0165"),
-                    72 => TallowText.Get("ui.main.0166"), 168 => TallowText.Get("ui.main.0167"), _ => TallowText.Get("ui.main.0168")
+                    1 => TallowText.Get("ui.main.0163"),
+                    6 => TallowText.Get("ui.main.0164"),
+                    24 => TallowText.Get("ui.main.0165"),
+                    72 => TallowText.Get("ui.main.0166"),
+                    168 => TallowText.Get("ui.main.0167"),
+                    _ => TallowText.Get("ui.main.0168")
                 },
                 Tag = hours
             };
             retention.Items.Add(option);
-            if (hours == _settings.NotificationRetentionHours)
-                retention.SelectedItem = option;
+            if (hours == _settings.NotificationRetentionHours) retention.SelectedItem = option;
         }
         if (retention.SelectedItem is null) retention.SelectedIndex = 2;
         retention.SelectionChanged += (_, _) =>
@@ -1618,35 +1675,27 @@ public partial class MainWindow : Window
                 DaxAudit.Write("activity", "cleanup_failed", ex.GetType().Name);
             }
         };
-        ContentPanel.Children.Add(Card(new StackPanel
+        choices.Children.Add(SettingsChoiceRow("Хранение уведомлений",
+            "Старые события удаляются по истечении срока.", retention));
+        ContentPanel.Children.Add(Card(choices));
+
+        AddSection("Обновления", "Ручная проверка доступна при любом положении переключателя.");
+        var updates = new StackPanel();
+        updates.Children.Add(Text("Установлена версия " + ReleaseVersion, 14, heading: true));
+        var updateDetail = Text("Установщик загружается из GitHub Releases и проверяется по SHA-256 перед запуском.", 12, muted: true);
+        updateDetail.Margin = new Thickness(0, 5, 0, 16);
+        updates.Children.Add(updateDetail);
+        updates.Children.Add(ActionButton("Проверить и обновить", async () =>
         {
-            Children =
-            {
-                Text(TallowText.Get("ui.main.0169"), 12, muted: true),
-                retention
-            }
-        }));
+            await CheckAndInstallUpdateAsync(true);
+        }, true));
+        ContentPanel.Children.Add(Card(updates));
 
-
-        AddSection(TallowText.Get("ui.main.0170"));
-        var confirmation = new CheckBox
-        {
-            Content = TallowText.Get("ui.main.0171"),
-            IsChecked = _settings.ConfirmExternalLinks,
-            Foreground = Ink,
-            Margin = new Thickness(0, 3, 0, 3)
-        };
-        confirmation.Checked += (_, _) => { _settings.ConfirmExternalLinks = true; SavePreferences(); };
-        confirmation.Unchecked += (_, _) => { _settings.ConfirmExternalLinks = false; SavePreferences(); };
-        ContentPanel.Children.Add(Card(confirmation));
-
-        AddSection(TallowText.Get("ui.main.0153"));
-        ContentPanel.Children.Add(Card(Text(
-            _settings.EmbeddedShellConsentGranted
-                ? TallowText.Get("ui.main.0172")
-                : TallowText.Get("ui.main.0173"),
-            12, muted: true)));
-        ContentPanel.Children.Add(ActionButton(TallowText.Get("ui.main.0174"), () =>
+        AddSection("Встроенная оболочка");
+        var shell = new StackPanel();
+        shell.Children.Add(Text(_settings.EmbeddedShellConsentGranted
+            ? TallowText.Get("ui.main.0172") : TallowText.Get("ui.main.0173"), 12, muted: true));
+        var revoke = ActionButton(TallowText.Get("ui.main.0174"), () =>
         {
             _settings.EmbeddedShellConsentGranted = false;
             _processMonitor?.Dispose();
@@ -1655,69 +1704,52 @@ public partial class MainWindow : Window
             _embeddedShell = null;
             SavePreferences();
             Navigate("settings");
-        }, enabled: _settings.EmbeddedShellConsentGranted));
+        }, enabled: _settings.EmbeddedShellConsentGranted);
+        revoke.Margin = new Thickness(0, 14, 0, 0);
+        shell.Children.Add(revoke);
+        ContentPanel.Children.Add(Card(shell));
 
-        AddSection(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0176"));
-        var autoUpdates = new CheckBox
-        {
-            Content = "Автоматически загружать и устанавливать новые версии Yetta",
-            IsChecked = _settings.AutoUpdatesEnabled,
-            Foreground = Ink,
-            Margin = new Thickness(0, 3, 0, 8)
-        };
-        autoUpdates.Checked += (_, _) => { _settings.AutoUpdatesEnabled = true; SavePreferences(); _ = CheckAndInstallUpdateAsync(false); };
-        autoUpdates.Unchecked += (_, _) => { _settings.AutoUpdatesEnabled = false; SavePreferences(); };
-        ContentPanel.Children.Add(Card(autoUpdates));
-        ContentPanel.Children.Add(Card(Text(
-            TallowText.Get("ui.main.0177") + ReleaseVersion +
-            TallowText.Get("ui.main.0178") +
-            TallowText.Get("ui.main.0179") +
-            TallowText.Get("ui.main.0180"),
-            12, muted: true)));
-        ContentPanel.Children.Add(ActionButton(TallowText.Get("ui.main.0181"), async () =>
-        {
-            await CheckAndInstallUpdateAsync(true);
-        }, true));
-
-        AddSection(TallowText.Get("ui.main.0182"), TallowText.Get("ui.main.0183"));
+        AddSection("Окна предупреждений", "Предпросмотр оформления без выполнения действия.");
         var demos = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
         foreach (WarningKind kind in Enum.GetValues<WarningKind>())
         {
             WarningKind choice = kind;
-            var btn = ActionButton(TallowText.Get("ui.main.0184") + kind, () =>
+            demos.Children.Add(ActionButton("Показать · " + kind, () =>
             {
                 _ = YettaWarningWindow.Show(this,
                     new WarningRequest(choice, TallowText.Get("ui.main.0185"),
-                        TallowText.Get("ui.main.0186") +
-                        TallowText.Get("ui.main.0187") +
-                        TallowText.Get("ui.main.0188") +
-                        TallowText.Get("ui.main.0189"),
+                        "Так будет выглядеть предупреждение Yetta. Это только демонстрация.",
                         Subject: "Yetta · UI Test",
                         RequireAcknowledgement: choice is WarningKind.Caution or WarningKind.Dangerous,
                         PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
                         RecoveryNavigation: choice == WarningKind.Fatal
                             ? () => Navigate("recovery") : null),
                     _settings.ActiveProfile, nonModal: true);
-            });
-            demos.Children.Add(btn);
+            }));
         }
         ContentPanel.Children.Add(demos);
 
-        AddSection(TallowText.Get("ui.main.0190"));
-        ContentPanel.Children.Add(Card(Text(
-            TallowText.Get("ui.main.0191") + _store.FilePath +
-            TallowText.Get("ui.main.0192"), 12, muted: true)));
-        ContentPanel.Children.Add(ActionButton(TallowText.Get("ui.main.0193"), () =>
+        AddSection("Локальные данные");
+        var local = new StackPanel();
+        local.Children.Add(Text("Файл настроек: " + _store.FilePath, 12, muted: true));
+        var history = Text("История Marvine хранится локально в пределах выбранного лимита.", 12, muted: true);
+        history.Margin = new Thickness(0, 5, 0, 0);
+        local.Children.Add(history);
+        var dataFolder = ActionButton("Открыть папку данных", () =>
         {
-            if (!ConfirmYettaAction(TallowText.Get("ui.main.0194"),
-                TallowText.Get("ui.main.0195")))
-                return;
-            _settings.Theme = "Fluent";
-            _settings.ConfirmExternalLinks = true;
-            ApplyTheme();
-            SavePreferences();
-            Navigate("settings");
-        }));
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe",
+                    Path.GetDirectoryName(_store.FilePath)!) { UseShellExecute = true });
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                ShowYettaNotice("Локальные данные", "Не удалось открыть папку данных.", WarningKind.Caution);
+            }
+        });
+        dataFolder.Margin = new Thickness(0, 14, 0, 0);
+        local.Children.Add(dataFolder);
+        ContentPanel.Children.Add(Card(local));
     }
 
     private async Task WatchUpdatesAsync()
