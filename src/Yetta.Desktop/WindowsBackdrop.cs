@@ -28,7 +28,9 @@ internal static class WindowsBackdrop
         if (hwnd == IntPtr.Zero) return false;
         try
         {
-            int dark = 1;
+            var foreground = new Windows.UI.ViewManagement.UISettings().GetColorValue(
+                Windows.UI.ViewManagement.UIColorType.Foreground);
+            int dark = foreground.R + foreground.G + foreground.B > 384 ? 1 : 0;
             _ = DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));
             // DWMWA_BORDER_COLOR = 34; DWMWA_COLOR_NONE = 0xFFFFFFFE.
             // Windows 11 draws a native hairline around otherwise borderless
@@ -42,10 +44,10 @@ internal static class WindowsBackdrop
             _ = DwmSetWindowAttribute(hwnd, 33, ref corners, sizeof(int));
             if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
                 return false;
-            int backdrop = glass && !SystemParameters.HighContrast ? 3 : 1;
+            int backdrop = SystemParameters.HighContrast ? 1 : glass ? 3 : 2;
             int result = DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int));
             if (result < 0) return false;
-            if (backdrop == 3)
+            if (backdrop is 2 or 3)
             {
                 var fullFrame = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
                 return DwmExtendFrameIntoClientArea(hwnd, ref fullFrame) >= 0;

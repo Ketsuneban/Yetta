@@ -58,7 +58,7 @@ internal static class StandardWarningDialog
         var button = new Button
         {
             Content = text, Width = 225, MinHeight = 42,
-            FontFamily = new FontFamily("Segoe UI"), FontSize = 15,
+            FontFamily = SystemFonts.MessageFontFamily, FontSize = 15,
             Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(4, 0, 4, 0),
             Background = neutral, Foreground = White,
             BorderThickness = new Thickness(primary ? 2 : 1),

@@ -3,6 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
+    <Style TargetType="{x:Type Window}">
+      <Setter Property="FontFamily" Value="{x:Static SystemFonts.MessageFontFamily}"/>
+    </Style>
     <SolidColorBrush x:Key="WindowBackground" Color="#080D15"/>
     <SolidColorBrush x:Key="SidebarBackground" Color="#101B27"/>
     <SolidColorBrush x:Key="CardBackground" Color="#172737"/>

@@ -7,7 +7,7 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource WindowBackground}"
-        FontFamily="./Assets/#Inter" FontSize="14">
+        FontFamily="{x:Static SystemFonts.MessageFontFamily}" FontSize="14">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" GlassFrameThickness="0"
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
@@ -223,6 +223,8 @@
       </Setter>
     </Style>
     <Style x:Key="CaptionButton" TargetType="{x:Type Button}">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="12"/>
       <Setter Property="Width" Value="46"/>
       <Setter Property="Height" Value="42"/>
       <Setter Property="BorderThickness" Value="0"/>
@@ -266,11 +268,11 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
           <Button x:Name="CaptionMinimize" Style="{StaticResource CaptionButton}" Click="OnWindowMinimize"
-                  ToolTip="{DynamicResource Local.ui.xaml.0002}" Content="─"/>
+                  ToolTip="{DynamicResource Local.ui.xaml.0002}" Content="&#xE921;"/>
           <Button x:Name="CaptionMaximize" Style="{StaticResource CaptionButton}" Click="OnWindowMaximize"
-                  ToolTip="{DynamicResource Local.ui.main.0011}" Content="□"/>
+                  ToolTip="{DynamicResource Local.ui.main.0011}" Content="&#xE922;"/>
           <Button x:Name="CaptionClose" Style="{StaticResource CaptionButton}" Click="OnWindowClose"
-                  ToolTip="{DynamicResource Local.ui.warning.0008}" Content="✕"/>
+                  ToolTip="{DynamicResource Local.ui.warning.0008}" Content="&#xE8BB;"/>
         </StackPanel>
       </Grid>
     </Border>

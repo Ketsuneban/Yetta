@@ -1,4 +1,4 @@
-# Yetta Desktop 0.3.1-preview
+# Yetta Desktop 0.3.21-preview
 
 Первый интерфейсный прототип Yetta на C# / .NET 10 / WPF. Страница [README проекта](../../README.md) содержит актуальные инструкции по загрузке и сборке.
 
@@ -18,10 +18,9 @@
 В Windows PowerShell из корня проекта:
 
 ```powershell
-.\scripts\prepare-fonts.ps1
 dotnet run --project src/Yetta.Desktop/Yetta.Desktop.csproj
 ```
 
 Публикация EXE делается автоматически через `.github/workflows/desktop-build.yml`. Компиляция тестируется на Windows GitHub Actions, ручные тесты UI на Windows 11 всё ещё необходимы.
 
-Файлы программы распространяются под MIT; встроенный оригинальный Inter под SIL OFL. Дополнительные зависимости стороннего UI-кода не используются.
+Файлы программы распространяются под MIT. Интерфейс использует системный шрифт Windows; для уведомлений об обновлении применяется Microsoft.Toolkit.Uwp.Notifications.

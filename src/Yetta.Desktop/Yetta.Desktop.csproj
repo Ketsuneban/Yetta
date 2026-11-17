@@ -7,13 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta</AssemblyName>
     <RootNamespace>Yetta.Desktop</RootNamespace>
-    <Version>0.3.20</Version>
+    <Version>0.3.21</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.2" />
     <ProjectReference Include="../Yetta.Core/Yetta.Core.csproj" />
-    <Resource Include="Assets/Inter.ttf" />
     <Resource Include="Assets/26.png" />
     <Resource Include="Assets/27.png" />
     <Resource Include="Assets/31.png" />
@@ -24,7 +23,6 @@
     <Resource Include="Assets/warning-skull.png" />
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <Resource Include="Assets/icons/*.png" />
-    <EmbeddedResource Include="Assets/OFL-Inter.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../local.json" Link="local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />

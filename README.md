@@ -1,20 +1,20 @@
 # Yetta
 
-**Текущий тестовый релиз: [0.3.20-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.20-preview).**
+**Текущий тестовый релиз: [0.3.21-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.21-preview).**
 
-**Yetta** — открытый инструмент персонализации Windows 11, разрабатываемый поэтапно. **0.3.20-preview** автоматически проверяет GitHub Releases во время работы, показывает загрузку в системном уведомлении Windows 11 и запускает установку после проверки SHA-256. Ручное обновление и отключение автоматического режима доступны в настройках. DAX и полномочия SYSTEM по-прежнему не реализованы.
+**Yetta** — открытый инструмент персонализации Windows 11, разрабатываемый поэтапно. **0.3.21-preview** использует системный шрифт, акцентный цвет и материалы Mica/Acrylic для главного окна, а также системные глифы кнопок управления окном. Автоматические и ручные обновления доступны в настройках. DAX и полномочия SYSTEM по-прежнему не реализованы.
 
 **Сайт:** https://yetta.pages.dev/ · **Исходный код:** https://github.com/Ketsuneban/Yetta · **Связь:** invzum@gmail.com
 
 ## Скачать EXE
 
-**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.20-preview)**
+**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.21-preview)**
 
 На странице релиза откройте **Assets → YettaSetup.exe** для установки или **Yetta.exe** для портативного запуска. Это отдельный исполняемый файл **для Windows 11 x64**, не ZIP. Он публикуется после успешной автоматической сборки Yetta и DAX. Установщик включает оба приложения; для портативного запуска требуется скачать **Yetta.exe**, **Yetta.DAX.exe** и **local.json** в одну папку. Для запуска отдельный .NET Runtime не нужен.
 
 Проверьте хеш файла по `SHA256SUMS.txt`, опубликованному рядом с EXE. Это **не цифровая подпись**. В этой версии подписанного установщика нет. **Если антивирус блокирует файл, не отключайте защиту и не добавляйте его в исключения**: сообщите о проблеме в [Issues](https://github.com/Ketsuneban/Yetta/issues).
 
-## Что работает в 0.3.20-preview
+## Что работает в 0.3.21-preview
 
 | Раздел | Возможности |
 |---|---|
@@ -50,11 +50,10 @@
 ```powershell
 git clone https://github.com/Ketsuneban/Yetta.git
 cd Yetta
-.\scripts\prepare-fonts.ps1
 dotnet run --project src/Yetta.Desktop/Yetta.Desktop.csproj
 ```
 
-Скрипт скачивает только **официальный шрифт Inter** и проверяет точный Git blob SHA-1. Бинарные версии Inter не хранятся в репозитории; текст его открытой лицензии хранится в `src/Yetta.Desktop/Assets/OFL-Inter.txt`. Для проверки логики:
+Интерфейс использует системный шрифт Windows; отдельная загрузка шрифта не требуется. Для проверки логики:
 
 ```powershell
 dotnet run --project tests/Yetta.Core.Smoke/Yetta.Core.Smoke.csproj -c Release
@@ -71,7 +70,6 @@ GitHub Actions публикует **Yetta.exe** и установщик **YettaS
 ## Открытый исходный код и лицензии
 
 - Код и документация **Yetta** — [MIT License](LICENSE), © 2026 Yetta contributors.
-- Встроенный шрифт **Inter** — [SIL Open Font License 1.1](src/Yetta.Desktop/Assets/OFL-Inter.txt), © The Inter Project Authors.
 - **Icons8**: https://icons8.ru/ — указанный источник для иконок. Их использование требует соблюдения соответствующих условий лицензии Icons8.
 - .NET/WPF — официальные программные компоненты Microsoft.
 

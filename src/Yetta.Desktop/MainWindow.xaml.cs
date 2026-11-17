@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using Microsoft.Toolkit.Uwp.Notifications;
 using Yetta.Core;
 
@@ -14,7 +15,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private const string ReleaseVersion = "0.3.20-preview";
+    private const string ReleaseVersion = "0.3.21-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private CancellationTokenSource? _downloadCancel;
@@ -77,13 +78,14 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => UpdateCaptionState();
         Navigate("overview");
         _daxGate = new DaxAgentGate(this);
+        SystemEvents.UserPreferenceChanged += OnWindowsPreferenceChanged;
         ToastNotificationManagerCompat.OnActivated += args =>
         {
             if (args.Argument.Contains("cancel-update", StringComparison.Ordinal))
                 Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
         };
         Loaded += (_, _) => _ = WatchUpdatesAsync();
-        Closed += (_, _) => { _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
+        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; };
     }
 
     private void InitializeIconsAndCursors()
@@ -121,11 +123,13 @@ public partial class MainWindow : Window
     {
         if (CaptionMaximize is null) return;
         bool maximized = WindowState == System.Windows.WindowState.Maximized;
-        CaptionMaximize.Content = maximized ? "❐" : "□";
+        CaptionMaximize.Content = maximized ? "\uE923" : "\uE922";
         CaptionMaximize.ToolTip = maximized ? TallowText.Get("ui.main.0010") : TallowText.Get("ui.main.0011");
     }
 
     private static Brush Resource(string key) => (Brush)Application.Current.Resources[key];
+    private void OnWindowsPreferenceChanged(object sender, UserPreferenceChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(new Action(ApplyTheme));
     private static void SetColor(string key, Color color) =>
         Application.Current.Resources[key] = new SolidColorBrush(color);
     private static void SetBrush(string key, Brush brush) =>
@@ -134,59 +138,37 @@ public partial class MainWindow : Window
     private void ApplyTheme()
     {
         bool glass = _settings.Theme == "Glass";
-        if (glass)
-        {
-            // Distinctive glass treatment throughout the application's Glass theme.
-            // Ambient backdrop, layered translucent panels and softer specular borders.
-            var backdrop = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(36, 45, 75), 0));
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(17, 23, 43), 0.52));
-            backdrop.GradientStops.Add(new GradientStop(Color.FromRgb(41, 28, 69), 1));
-            SetBrush("WindowBackground", backdrop);
-            SetBrush("SidebarBackground", new LinearGradientBrush(
-                Color.FromArgb(230, 32, 44, 71), Color.FromArgb(239, 24, 27, 48), 110));
-            var glassCard = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(182, 95, 119, 155), 0));
-            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(140, 53, 63, 99), 0.46));
-            glassCard.GradientStops.Add(new GradientStop(Color.FromArgb(120, 37, 46, 77), 1));
-            SetBrush("CardBackground", glassCard);
-            SetColor("HoverBackground", Color.FromRgb(57, 62, 91));
-            SetColor("AccentBrush", Color.FromRgb(190, 173, 255));
-            SetColor("AccentForeground", Color.FromRgb(27, 18, 49));
-            SetColor("TextPrimary", Color.FromRgb(242, 243, 255));
-            SetColor("TextSecondary", Color.FromRgb(174, 185, 207));
-            SetColor("OutlineBrush", Colors.Transparent);
-            SetColor("SelectedBrush", Color.FromRgb(57, 48, 88));
-        }
-        else
-        {
-            SetColor("WindowBackground", Color.FromRgb(8, 13, 21));
-            SetColor("SidebarBackground", Color.FromRgb(16, 27, 39));
-            SetBrush("CardBackground", new LinearGradientBrush(
-                Color.FromRgb(26, 43, 55), Color.FromRgb(17, 29, 43), 120));
-            SetColor("HoverBackground", Color.FromRgb(39, 59, 74));
-            SetColor("AccentBrush", Color.FromRgb(120, 232, 208));
-            SetColor("AccentForeground", Color.FromRgb(6, 34, 30));
-            SetColor("TextPrimary", Color.FromRgb(234, 246, 245));
-            SetColor("TextSecondary", Color.FromRgb(146, 168, 173));
-            SetColor("OutlineBrush", Colors.Transparent);
-            SetColor("SelectedBrush", Color.FromRgb(32, 69, 63));
-        }
+        var ui = new Windows.UI.ViewManagement.UISettings();
+        static Color Native(Windows.UI.Color c) => Color.FromArgb(c.A, c.R, c.G, c.B);
+        static Color Mix(Color a, Color b, double amount) => Color.FromRgb(
+            (byte)(a.R * (1 - amount) + b.R * amount),
+            (byte)(a.G * (1 - amount) + b.G * amount),
+            (byte)(a.B * (1 - amount) + b.B * amount));
+        Color background = Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Background));
+        Color foreground = Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground));
+        Color accent = Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Accent));
+        bool dark = background.R + background.G + background.B < 384;
+        Color surface = Mix(background, foreground, dark ? 0.10 : 0.035);
+        SetColor("WindowBackground", background);
+        SetColor("SidebarBackground", Mix(background, foreground, dark ? 0.055 : 0.025));
+        SetColor("CardBackground", surface);
+        SetColor("HoverBackground", Mix(background, foreground, dark ? 0.18 : 0.10));
+        SetColor("AccentBrush", accent);
+        SetColor("AccentForeground", dark ? Colors.Black : Colors.White);
+        SetColor("TextPrimary", foreground);
+        SetColor("TextSecondary", Mix(foreground, background, 0.35));
+        SetColor("OutlineBrush", Mix(background, foreground, 0.20));
+        SetColor("SelectedBrush", Mix(background, accent, dark ? 0.27 : 0.15));
         GlassDialog.IsGlass = glass;
         ApplyBackdrop();
-        ThemeIndicator.Text = glass ? "Liquid Glass" : "Windows 11 Fluent";
+        ThemeIndicator.Text = glass ? "Windows Acrylic" : "Windows Mica";
     }
 
     private void ApplyBackdrop()
     {
         bool enabled = WindowsBackdrop.Configure(this, _settings.Theme == "Glass");
         if (enabled)
-        {
-            // Opaque WPF content otherwise hides the native Acrylic backdrop.
-            SetBrush("WindowBackground", new LinearGradientBrush(
-                Color.FromArgb(125, 24, 32, 58),
-                Color.FromArgb(162, 20, 25, 46), 135));
-        }
+            SetColor("WindowBackground", Color.FromArgb(24, 0, 0, 0));
     }
 
     private void SetTheme(string theme)
@@ -1262,7 +1244,7 @@ public partial class MainWindow : Window
         if (!await _updateGate.WaitAsync(0)) return;
         try
         {
-            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 20), _updateStop.Token);
+            var latest = await YettaUpdater.FindUpdateAsync(new Version(0, 3, 21), _updateStop.Token);
             if (latest is null)
             {
                 if (manual) ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
