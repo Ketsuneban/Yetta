@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Yetta.Desktop;
@@ -11,7 +12,7 @@ internal sealed record ScriptOutput(Guid Run, string Id, string Text, bool IsErr
 /// <summary>Tracks Python processes started explicitly by this Yetta session.</summary>
 internal sealed class MarvineScriptManager : IDisposable
 {
-    private sealed record Script(string Id, string Path, Process Process);
+    private sealed record Script(Guid Run, string Id, string Path, Process Process);
     private readonly Dictionary<string, Script> _scripts = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _sync = new();
 
@@ -50,7 +51,7 @@ internal sealed class MarvineScriptManager : IDisposable
             var run = Guid.NewGuid();
             process.OutputDataReceived += (_, e) => { if (e.Data is not null) onOutput(new(run, id, e.Data)); };
             process.ErrorDataReceived += (_, e) => { if (e.Data is not null) onOutput(new(run, id, e.Data, IsError: true)); };
-            _scripts.Add(id, new Script(id, path, process));
+            _scripts.Add(id, new Script(run, id, path, process));
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             _ = ReportExitAsync(process, run, id, onOutput);
@@ -80,9 +81,10 @@ internal sealed class MarvineScriptManager : IDisposable
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = false,
+            RedirectStandardInput = true,
             StandardOutputEncoding = new UTF8Encoding(false),
             StandardErrorEncoding = new UTF8Encoding(false),
+            StandardInputEncoding = new UTF8Encoding(false),
             CreateNoWindow = true,
             WorkingDirectory = Path.GetDirectoryName(path)!
         };
@@ -94,6 +96,24 @@ internal sealed class MarvineScriptManager : IDisposable
         var process = Process.Start(start) ?? throw new InvalidOperationException("Python не запустился.");
         process.EnableRaisingEvents = true;
         return process;
+    }
+
+    internal async Task AnswerAsync(Guid run, string promptId, object? value, CancellationToken token)
+    {
+        StreamWriter input;
+        lock (_sync)
+        {
+            var script = _scripts.Values.FirstOrDefault(item => item.Run == run);
+            if (script is null || script.Process.HasExited)
+                throw new InvalidOperationException("Скрипт уже завершился.");
+            input = script.Process.StandardInput;
+        }
+        // Serialize exactly one reply to this run's private stdin. Never echo it into Marvine.
+        string line = JsonSerializer.Serialize(new { id = promptId, value });
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(2));
+        await input.WriteLineAsync(line.AsMemory(), timeout.Token);
+        await input.FlushAsync(timeout.Token);
     }
 
     internal bool Stop(string idOrPath)

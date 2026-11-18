@@ -106,7 +106,11 @@ internal static class TallowWarningDispatcher
             FontSize = 14, TextWrapping = TextWrapping.Wrap, MinHeight = 90,
             Foreground = Brushes.White
         };
-        root.Children.Add(_queueLabel);
+        root.Children.Add(new EdgeScrollViewer
+        {
+            Content = _queueLabel, MaxHeight = 108, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Background = window.Background
+        });
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         _previous = MakeButton(TallowText.Get("tallow.queue.0003"), () => { _selection--; RefreshQueue(); });
         _next = MakeButton(TallowText.Get("tallow.queue.0004"), () => { _selection++; RefreshQueue(); });

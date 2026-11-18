@@ -111,15 +111,31 @@ public partial class MainWindow
         return string.Join("\n\n", results);
     }
 
-    private async Task ShowAuditAsync(StackPanel rows)
+    private void BuildAuditSearch(StackPanel rows)
     {
-        try
+        ContentPanel.Children.Add(Text("Поиск по категории, результату или описанию", 12, muted: true));
+        var filter = SearchField("Поиск в журнале DAX");
+        ContentPanel.Children.Add(filter);
+        IReadOnlyList<DaxAudit.Entry> entries = [];
+        bool loading = false;
+        string? failure = null;
+        var refresh = ActionButton("Обновить журнал", () => { });
+        ContentPanel.Children.Add(refresh);
+        void Render()
         {
-            var entries = await Task.Run(() => DaxAudit.Recent(100));
             rows.Children.Clear();
-            if (entries.Count == 0)
-                rows.Children.Add(Text("Пока нет записей.", 13, muted: true));
-            foreach (var entry in entries)
+            if (loading || failure is not null)
+            {
+                rows.Children.Add(Text(failure ?? "Чтение журнала…", 13, muted: true));
+                return;
+            }
+            var query = filter.Text.Trim();
+            var visible = entries.Where(entry => entry.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.Result.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.Summary.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+            if (visible.Length == 0)
+                rows.Children.Add(Text(entries.Count == 0 ? "Пока нет записей." : "Ничего не найдено.", 13, muted: true));
+            foreach (var entry in visible)
             {
                 var item = new StackPanel();
                 item.Children.Add(Text($"{entry.Utc.ToLocalTime():dd.MM HH:mm:ss}  ·  {entry.Actor ?? "Yetta"}  ·  {entry.Category}", 11, muted: true));
@@ -128,10 +144,28 @@ public partial class MainWindow
                 rows.Children.Add(Card(item));
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+
+        async Task LoadAsync()
         {
-            rows.Children.Clear();
-            rows.Children.Add(Text("Журнал недоступен.", 13, muted: true));
+            if (loading) return;
+            loading = true;
+            failure = null;
+            refresh.IsEnabled = false;
+            Render();
+            try { entries = await Task.Run(() => DaxAudit.Recent(100)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failure = "Журнал недоступен.";
+            }
+            finally
+            {
+                loading = false;
+                refresh.IsEnabled = true;
+                Render();
+            }
         }
+        filter.TextChanged += (_, _) => Render();
+        refresh.Click += async (_, _) => await LoadAsync();
+        _ = LoadAsync();
     }
 }

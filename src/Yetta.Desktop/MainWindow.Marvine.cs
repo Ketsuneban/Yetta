@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Yetta.Core;
 
@@ -15,11 +16,15 @@ public partial class MainWindow
         internal string Message { get; set; } = message;
         internal ScriptOutput? Script { get; } = script;
         internal SubsyFrame? Frame { get; set; }
+        internal PromptState? Prompt { get; init; }
+        internal Func<UIElement>? Render { get; init; }
+        internal bool AwaitsReply => Prompt is { Result: null };
     }
 
-    private sealed record SubsyView(TextBlock Name, TextBlock Value, ProgressBar Bar);
+    private sealed record SubsyView(TextBlock Name, TextBlock Value, ProgressBar Bar,
+        System.Windows.Shapes.Path Ring, RotateTransform Rotation);
 
-    private static readonly Brush ConsoleSurface = new SolidColorBrush(Color.FromRgb(13, 19, 27));
+    private static readonly Brush ConsoleSurface = new SolidColorBrush(Color.FromRgb(23, 23, 23));
     private static readonly Brush ConsoleMuted = new SolidColorBrush(Color.FromRgb(170, 189, 207));
     private static readonly FontFamily ConsoleFont = new("Cascadia Mono, Consolas");
     private readonly List<ConsoleEntry> _history = [];
@@ -49,12 +54,14 @@ public partial class MainWindow
         var display = new StackPanel { Margin = new Thickness(14, 11, 12, 4) };
         if (_history.Count == 0)
             display.Children.Add(LiteralConsoleLine("Marvine готова. Введи /help или выбери команду ниже."));
-        foreach (var entry in _history.TakeLast(400))
-            display.Children.Add(RenderConsoleEntry(entry));
+        var pinned = _history.Where(entry => entry.AwaitsReply).ToHashSet();
+        var last = _history.TakeLast(400).ToHashSet();
+        foreach (var entry in _history.Where(entry => pinned.Contains(entry) || last.Contains(entry)))
+            display.Children.Add(RenderTaggedEntry(entry));
         _consoleOutput = display;
-        var scroll = new ScrollViewer
+        var scroll = new EdgeScrollViewer
         {
-            Focusable = false, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Background = ConsoleSurface, Focusable = false, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = display
         };
         _consoleScroll = scroll;
@@ -88,7 +95,7 @@ public partial class MainWindow
         body.Children.Add(row);
 
         var shortcuts = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
-        foreach (string command in new[] { "/help", "/dax status", "/subsy demo", "clear" })
+        foreach (string command in new[] { "/help", "/dax status", "/subsy demo", "/subsy gallery", "clear" })
         {
             var chip = ActionButton(command, () =>
             {
@@ -105,6 +112,13 @@ public partial class MainWindow
             chip.Margin = new Thickness(0, 0, 6, 4);
             shortcuts.Children.Add(chip);
         }
+        shortcuts.Children.Add(SubsyButton("К запросу", () =>
+        {
+            var next = display.Children.OfType<FrameworkElement>()
+                .FirstOrDefault(item => item.Tag is ConsoleEntry { AwaitsReply: true });
+            if (next is not null) next.BringIntoView();
+            else _consoleScroll?.ScrollToEnd();
+        }));
         body.Children.Add(shortcuts);
         var hint = new TextBlock
         {
@@ -129,6 +143,10 @@ public partial class MainWindow
 
     private UIElement RenderConsoleEntry(ConsoleEntry entry)
     {
+        if (entry.Prompt is { } prompt)
+            return RenderPrompt(prompt);
+        if (entry.Render is { } render)
+            return render();
         if (entry.Command.Length > 0)
             return LiteralConsoleLine("› " + entry.Command, Brushes.White);
         if (entry.Script is not { } script)
@@ -144,23 +162,43 @@ public partial class MainWindow
             Height = 5, Foreground = new SolidColorBrush(Color.FromRgb(120, 222, 213)),
             Background = new SolidColorBrush(Color.FromRgb(59, 72, 87)), BorderThickness = new Thickness(0)
         };
-        var view = new SubsyView(name, value, bar);
+        var rotation = new RotateTransform();
+        var ring = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M 14,7 A 7,7 0 1 1 7,0"),
+            Width = 16, Height = 16, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed,
+            Stroke = bar.Foreground, StrokeThickness = 2, StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round, RenderTransformOrigin = new Point(.5, .5),
+            RenderTransform = rotation, Margin = new Thickness(0, 0, 9, 6)
+        };
+        var details = new StackPanel { Orientation = Orientation.Horizontal, Children = { ring, value } };
+        var view = new SubsyView(name, value, bar, ring, rotation);
         _subsyViews[entry] = view;
         RefreshSubsyView(view, script.Id, entry.Frame);
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(30, 42, 55)),
-            CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10),
-            Margin = new Thickness(0, 1, 0, 9),
-            Child = new StackPanel { Children = { name, value, bar } }
-        };
+        return SubsyCard(new StackPanel { Children = { name, details, bar } });
+    }
+
+    private UIElement RenderTaggedEntry(ConsoleEntry entry)
+    {
+        var element = RenderConsoleEntry(entry);
+        if (element is FrameworkElement taggable) taggable.Tag = entry;
+        return element;
     }
 
     private static void RefreshSubsyView(SubsyView view, string id, SubsyFrame frame)
     {
         view.Name.Text = id + (frame.Label.Length == 0 ? "" : "  ·  " + frame.Label);
-        view.Value.Text = frame.Finished ? "Завершено" : frame.IsStep
+        view.Value.Text = frame.Failed ? "Прервано" : frame.Finished ? "Завершено" : frame.IsBusy ? "Выполняется…" : frame.IsStep
             ? "Шаг " + frame.Current + " из " + frame.Total : frame.Current + "%";
+        Visibility ringVisibility = frame.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+        if (view.Ring.Visibility != ringVisibility)
+        {
+            view.Ring.Visibility = ringVisibility;
+            view.Rotation.BeginAnimation(RotateTransform.AngleProperty, frame.IsBusy && UiMotion.AnimationsEnabled
+                ? new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(800)) { RepeatBehavior = RepeatBehavior.Forever }
+                : null);
+        }
+        view.Bar.Visibility = frame.IsBusy ? Visibility.Collapsed : Visibility.Visible;
         view.Bar.Maximum = frame.Total;
         view.Bar.Value = frame.Current;
     }
@@ -170,20 +208,28 @@ public partial class MainWindow
         _history.Add(entry);
         while (_history.Count > _settings.MarvineHistoryLimit)
         {
-            var oldest = _history[0];
+            int position = _history.FindIndex(item => !item.AwaitsReply);
+            if (position < 0) break;
+            var oldest = _history[position];
             _subsyViews.Remove(oldest);
             if (oldest.Script is { } script &&
                 _activeSubsy.TryGetValue(script.Run, out var active) && ReferenceEquals(active, oldest))
                 _activeSubsy.Remove(script.Run);
-            _history.RemoveAt(0);
+            _history.RemoveAt(position);
         }
 
         if (_page != "console" || _consoleMode != "Marvine" || _consoleOutput is not { } display) return;
         bool follow = _consoleScroll is { } scroll && scroll.ScrollableHeight - scroll.VerticalOffset <= 24;
-        display.Children.Add(RenderConsoleEntry(entry));
+        display.Children.Add(RenderTaggedEntry(entry));
         int limit = Math.Min(400, _settings.MarvineHistoryLimit);
-        while (display.Children.Count > limit) display.Children.RemoveAt(0);
-        if (follow || entry.Command.Length > 0) _consoleScroll?.ScrollToEnd();
+        while (display.Children.Count > limit)
+        {
+            var first = display.Children.OfType<FrameworkElement>().FirstOrDefault(item =>
+                item.Tag is not ConsoleEntry { AwaitsReply: true } && !ReferenceEquals(item.Tag, entry));
+            if (first is null) break;
+            display.Children.Remove(first);
+        }
+        if (follow || entry.Command.Length > 0 || entry.AwaitsReply) _consoleScroll?.ScrollToEnd();
     }
 
     private void EnqueueScriptOutput(ScriptOutput output)
@@ -220,7 +266,12 @@ public partial class MainWindow
 
     private void ShowScriptOutput(ScriptOutput output)
     {
-        if (output.Exited) _activeSubsy.Remove(output.Run);
+        if (output.Exited)
+        {
+            FinishScriptPrompt(output.Run);
+            EndSubsyActivity(output.Run, output.Id, output.Text, output.IsError);
+        }
+        if (_settings.MarvineSubsyEnabled && !output.IsError && !output.Exited && ShowScriptPrompt(output)) return;
         if (_settings.MarvineSubsyEnabled && !output.IsError && !output.Exited &&
             SubsyFrame.Parse(output.Text) is { } frame)
         {
@@ -242,10 +293,21 @@ public partial class MainWindow
         AddConsoleEntry(new ConsoleEntry("", output.Text, output));
     }
 
+    private void EndSubsyActivity(Guid run, string id, string label, bool failed = false)
+    {
+        if (!_activeSubsy.Remove(run, out var active) || active.Frame is not { } previous) return;
+        active.Frame = previous with { IsBusy = false, Finished = true, Failed = failed, Label = label };
+        if (_subsyViews.TryGetValue(active, out var view)) RefreshSubsyView(view, id, active.Frame);
+    }
+
     private async Task<string> PreviewSubsyAsync()
     {
         if (!_settings.MarvineSubsyEnabled) return "[ℹ] Включи Subsy командой /marvine subsy enable.";
         var run = Guid.NewGuid();
+        ShowScriptOutput(new(run, "Демо Subsy", "@subsy busy Запуск"));
+        await Task.Delay(300, _updateStop.Token);
+        ShowScriptOutput(new(run, "Демо Subsy", "[####------] 40% Подготовка"));
+        await Task.Delay(280, _updateStop.Token);
         for (int stage = 1; stage <= 3; stage++)
         {
             ShowScriptOutput(new(run, "Демо Subsy", "@subsy step " + stage + "/3 " +

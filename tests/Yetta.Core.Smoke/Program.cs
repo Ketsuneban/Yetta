@@ -14,6 +14,21 @@ Assert(SubsyFrame.Parse("@subsy done Всё готово") is { Finished: true, 
     "Subsy finishes the current task");
 Assert(SubsyFrame.Parse("release 5/11") is null && SubsyFrame.Parse("@subsy progress 101") is null &&
     SubsyFrame.Parse("@subsy step 3/2") is null, "ordinary and invalid output stays text");
+Assert(SubsyFrame.Parse("[####------] 40% Подготовка") is { Current: 40, Label: "Подготовка" },
+    "legacy progress becomes a Subsy frame");
+Assert(SubsyFrame.Parse("|") is { IsBusy: true } &&
+    SubsyFrame.Parse("5/12 — Идёт загрузка") is { IsStep: true, Current: 5, Total: 12 },
+    "spinner and labelled step formats work");
+const string promptPrefix = SubsyPrompt.Prefix;
+Assert(SubsyPrompt.Parse(promptPrefix + """{"id":"files","type":"multi","label":"Выбор","options":["a","b"],"limit":1}""")
+    is { Kind: SubsyPromptKind.Multi, Limit: 1, Options.Length: 2 }, "Subsy accepts a bounded checkbox prompt");
+Assert(SubsyPrompt.Parse(promptPrefix + """{"id":"x","type":"multi","label":"Выбор","options":["a"],"limit":2}""")
+    is null, "Subsy rejects a limit above option count");
+Assert(SubsyPrompt.Parse(promptPrefix + """{"id":"secret","type":"password","label":"Пароль"}""") is
+    { Kind: SubsyPromptKind.Password, Reveal: false }, "Subsy masks passwords by default");
+Assert(SubsyPrompt.Parse("[y/n/a/h]") is null &&
+    SubsyPrompt.Parse(promptPrefix + """{"id":"x","type":"0","label":"Не тот тип"}""") is null,
+    "ordinary terminal text and unknown prompt types cannot create an input");
 var daxStatus = new DaxStatus(DaxState.Notice, "0.3.28", true, false);
 Assert(DaxStatus.Parse(daxStatus.Serialize()) == daxStatus, "Tallow receives all DAX status fields");
 Assert(DaxStatus.Parse("READY").State == DaxState.Incompatible &&

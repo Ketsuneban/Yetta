@@ -32,12 +32,18 @@ internal static class StandardWarningDialog
         WarningKind.Information => new(Color.FromRgb(99, 192, 238), Color.FromRgb(44, 62, 73), Color.FromRgb(33, 45, 53), Color.FromRgb(20, 27, 31)),
         WarningKind.Caution => new(Color.FromRgb(255, 193, 91), Color.FromRgb(82, 65, 43), Color.FromRgb(58, 47, 36), Color.FromRgb(29, 25, 22)),
         WarningKind.Dangerous => new(Color.FromRgb(246, 126, 122), Color.FromRgb(92, 48, 49), Color.FromRgb(60, 37, 39), Color.FromRgb(30, 22, 23)),
-        WarningKind.Critical => new(Color.FromRgb(246, 105, 143), Color.FromRgb(101, 43, 60), Color.FromRgb(62, 31, 44), Color.FromRgb(28, 19, 25)),
-        WarningKind.Fatal => new(Color.FromRgb(220, 147, 176), Color.FromRgb(68, 44, 62), Color.FromRgb(43, 31, 42), Color.FromRgb(22, 18, 23)),
-        WarningKind.Agreement => new(Color.FromRgb(135, 178, 249), Color.FromRgb(51, 61, 86), Color.FromRgb(36, 44, 63), Color.FromRgb(22, 27, 38)),
-        WarningKind.Dax => new(Color.FromRgb(113, 213, 213), Color.FromRgb(36, 70, 77), Color.FromRgb(28, 48, 54), Color.FromRgb(19, 30, 34)),
+        WarningKind.Critical => new(Color.FromRgb(255, 131, 131), Color.FromRgb(90, 26, 27), Color.FromRgb(52, 17, 19), Color.FromRgb(29, 11, 12)),
+        WarningKind.Fatal => new(Color.FromRgb(222, 222, 222), Color.FromRgb(24, 24, 24), Color.FromRgb(11, 11, 11), Color.FromRgb(3, 3, 3)),
+        WarningKind.Agreement => new(Color.FromRgb(208, 208, 208), Color.FromRgb(54, 54, 54), Color.FromRgb(39, 39, 39), Color.FromRgb(22, 22, 22)),
+        WarningKind.Dax => new(Color.FromRgb(135, 184, 255), Color.FromRgb(24, 48, 85), Color.FromRgb(16, 32, 57), Color.FromRgb(9, 19, 35)),
         _ => new(Color.FromRgb(100, 185, 239), Color.FromRgb(55, 55, 55), Color.FromRgb(43, 43, 43), Color.FromRgb(20, 20, 20))
     };
+
+    internal static void PlayWarningSound()
+    {
+        try { System.Media.SystemSounds.Hand.Play(); }
+        catch (InvalidOperationException) { }
+    }
 
     private static TextBlock Text(string text, double size, Brush foreground, bool bold = false) =>
         new()
@@ -148,11 +154,7 @@ internal static class StandardWarningDialog
         {
             if (e.Key == Key.Escape) e.Handled = true;
         };
-        if (fatal)
-        {
-            try { System.Media.SystemSounds.Hand.Play(); }
-            catch (InvalidOperationException) { }
-        }
+        window.Loaded += (_, _) => PlayWarningSound();
 
         var outer = new Border
         {
@@ -291,9 +293,9 @@ internal static class StandardWarningDialog
         more.Margin = new Thickness(0, 27, 0, 12);
         Grid.SetRow(more, 2);
         body.Children.Add(more);
-        var explanation = new ScrollViewer
+        var explanation = new EdgeScrollViewer
         {
-            Content = bodyText,
+            Content = bodyText, Background = new SolidColorBrush(palette.Surface),
             Visibility = expanded ? Visibility.Visible : Visibility.Collapsed,
             VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,

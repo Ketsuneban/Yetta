@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.28-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.4.0-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -21,7 +21,7 @@ public static class ConsoleEngine
         if (command is "/help" or "/help 1" or "/help 2" or "/help 3")
         {
             int page = command.Length > 6 && int.TryParse(command[6..], out int requested) ? requested : 1;
-            return new ConsoleResult(HelpPage(page, context.ActiveProfile));
+            return new ConsoleResult(HelpPage(page, context.ActiveProfile), Request: "HELP_PAGE", Argument: page.ToString());
         }
         if (command.StartsWith("/help ", StringComparison.Ordinal))
             return new ConsoleResult("[⚠] Marvine: страницы справки: /help 1, /help 2, /help 3.");
@@ -33,6 +33,8 @@ public static class ConsoleEngine
             return new ConsoleResult("Открываю диагностику DAX.", NavigateTo: "recovery");
         if (command == "/subsy demo")
             return new ConsoleResult("", Request: "SUBSY_DEMO");
+        if (command == "/subsy gallery")
+            return new ConsoleResult("", Request: "SUBSY_GALLERY");
         if (command.StartsWith("/yetta download ", StringComparison.Ordinal))
             return new ConsoleResult("", Request: "DOWNLOAD", Argument: raw[16..].Trim());
         if (command is "/tty info" or "/tty update")
@@ -101,12 +103,12 @@ public static class ConsoleEngine
         string[] commands = ["/help", "/yetta version", "/yetta update", "/yetta download ",
             "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable",
             "/marvine colorset EGA", "/marvine colorset No Color", "/script list",
-            "/script run ", "/script stop ", "/dax status", "/dax diagnostics", "/subsy demo",
+            "/script run ", "/script stop ", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
             "/snob help", "clear", "status", "settings"];
         return commands.Where(item => item.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Take(6).ToArray();
     }
 
-    private static string HelpPage(int page, string profile)
+    public static string HelpPage(int page, string profile)
     {
         if (page is < 1 or > 3) return "[⚠] Marvine: доступные страницы справки: 1–3.";
         return page switch
@@ -120,11 +122,12 @@ public static class ConsoleEngine
                 "Напиши /help 2 для следующей страницы.",
             2 => "[⌘] Marvine: команды · страница 2/3\n" +
                 "[Зелёный] /marvine subsy enable|disable — подсистема интерфейса\n" +
-                "[Зелёный] /subsy demo — пример обновляемой полосы\n" +
+                "[Зелёный] /subsy demo|gallery — прогресс и все виды форм\n" +
                 "[Зелёный] /marvine colorset EGA|No Color — цвета сообщений\n" +
                 "[Зелёный] /script list — список Python-скриптов\n" +
-                "[Жёлтый] /script run <путь> — администратор Windows и DAX [A]\n" +
-                "[Зелёный] /script stop <ID|путь> — остановить скрипт\n" +
+                (profile == "Administrator" ? "[Жёлтый]" : "[Красный]") +
+                " /script run <путь> — администратор Windows и DAX\n" +
+                (profile == "Guest" ? "[Красный]" : "[Зелёный]") + " /script stop <ID|путь> — остановить скрипт\n" +
                 "Напиши /help 3 для следующей страницы.",
             _ => "[⌘] Marvine: команды · страница 3/3\n" +
                 "[Серый] /snob — повышение прав появится вместе с DAX [A]\n" +

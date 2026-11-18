@@ -18,7 +18,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow : Window
 {
-    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 3, 28);
+    private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 4, 0);
     private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        PreviewKeyDown += OnMainShortcut;
         SidebarVersion.Text = "YETTA " + ReleaseVersion + " · WINDOWS 11";
         FooterVersion.Text = ReleaseVersion;
         _settings = _store.Load();
@@ -793,28 +794,40 @@ public partial class MainWindow : Window
             AddNotice(TallowText.Get("ui.main.0101"), TallowText.Get("ui.main.0102"));
             return;
         }
-        foreach (var group in _notifications.GroupBy(note => note.Source).OrderBy(group => group.Key))
+        var rows = new StackPanel();
+        ContentPanel.Children.Add(Text("Поиск по источнику и тексту", 12, muted: true));
+        var filter = SearchField("Поиск в Центре активности");
+        ContentPanel.Children.Add(filter);
+        ContentPanel.Children.Add(rows);
+        void Render()
         {
-            AddSection(group.Key + " · " + group.Count() + TallowText.Get("ui.main.0103"));
-            foreach (var note in group.Reverse())
+            var query = filter.Text.Trim();
+            rows.Children.Clear();
+            var filtered = _notifications.Where(note =>
+                note.Source.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                note.Message.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .OrderByDescending(note => note.Time).Take(150).ToArray();
+            if (filtered.Length == 0)
+                rows.Children.Add(Text("Ничего не найдено.", 13, muted: true));
+            foreach (var note in filtered)
             {
                 var panel = new StackPanel();
-                panel.Children.Add(Text(note.Time.ToString(TallowText.Get("ui.main.0104")), 12, heading: true));
+                panel.Children.Add(Text(note.Source + "  ·  " + note.Time.ToString("dd.MM HH:mm"), 12, heading: true));
                 panel.Children.Add(Text(note.Message, 12, muted: true));
-                ContentPanel.Children.Add(Card(panel));
+                rows.Children.Add(Card(panel));
             }
         }
+        filter.TextChanged += (_, _) => Render();
+        Render();
     }
 
     private void BuildLogs()
     {
         AddIntro(TallowText.Get("ui.main.0105"), TallowText.Get("ui.main.0106"),
             TallowText.Get("ui.main.0107"));
-        ContentPanel.Children.Add(Card(Text(TallowText.Get("ui.main.0108") + DaxAudit.FilePath, 11, muted: true)));
         var rows = new StackPanel();
-        ContentPanel.Children.Add(ActionButton("Обновить журнал", async () => await ShowAuditAsync(rows)));
+        BuildAuditSearch(rows);
         ContentPanel.Children.Add(rows);
-        _ = ShowAuditAsync(rows);
     }
 
     private void BuildRecovery()
@@ -1005,8 +1018,9 @@ public partial class MainWindow : Window
 
             var display = new StackPanel();
             _consoleOutput = display;
-            var scrolling = new ScrollViewer
+            var scrolling = new EdgeScrollViewer
             {
+                Background = workspace.Background,
                 Focusable = false, FocusVisualStyle = null,
                 BorderThickness = new Thickness(0), VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = display
@@ -1247,9 +1261,14 @@ public partial class MainWindow : Window
                 _settings.MarvineSubsyEnabled, _settings.MarvineColorset));
         if (response.ClearOutput)
         {
-            _history.Clear();
+            _history.RemoveAll(entry => !entry.AwaitsReply);
             _activeSubsy.Clear();
-            _consoleOutput?.Children.Clear();
+            _subsyViews.Clear();
+            if (_consoleOutput is { } display)
+            {
+                display.Children.Clear();
+                foreach (var entry in _history) display.Children.Add(RenderTaggedEntry(entry));
+            }
             return;
         }
 
@@ -1306,22 +1325,44 @@ public partial class MainWindow : Window
     {
         switch (request)
         {
+            case "HELP_PAGE":
+            {
+                int page = int.TryParse(argument, out int start) ? Math.Clamp(start, 1, 3) : 1;
+                if (!_settings.MarvineSubsyEnabled) return ConsoleEngine.HelpPage(page, _settings.ActiveProfile);
+                string profile = _settings.ActiveProfile;
+                AddConsoleEntry(new ConsoleEntry("", "Справка Marvine")
+                {
+                    Render = () => SubsyCard(BuildPager(3,
+                        index => ConsoleLine(ConsoleEngine.HelpPage(index + 1, profile), false), initial: page - 1))
+                });
+                return "";
+            }
             case "SUBSY_DEMO":
                 return await PreviewSubsyAsync();
+            case "SUBSY_GALLERY":
+                return await PreviewSubsyGalleryAsync();
             case "DAX_STATUS":
                 return DaxStatusText(await DaxAgentGate.GetStatusAsync(_updateStop.Token));
             case "VERSION":
             {
-                var releases = await YettaUpdater.ListReleasesAsync(_updateStop.Token);
-                return "[⌘] Yetta: установлена " + ReleaseVersion +
-                    (releases.Count == 0 ? "\n[⚠] GitHub: подходящие релизы не найдены."
-                    : "\n[ℹ] Доступные релизы:\n" +
-                      string.Join("\n", releases.Select(item => item.Tag + " · ID " +
-                          (item.Id == 0 ? item.Tag : item.Id.ToString()))));
+                var run = Guid.NewGuid();
+                bool visual = _settings.MarvineSubsyEnabled;
+                if (visual) ShowScriptOutput(new(run, "Обновления", "@subsy busy Запрос релизов GitHub"));
+                IReadOnlyList<UpdateRelease> releases;
+                try { releases = await YettaUpdater.ListReleasesAsync(_updateStop.Token); }
+                catch
+                {
+                    if (visual) EndSubsyActivity(run, "Обновления", "Не удалось получить список релизов", failed: true);
+                    throw;
+                }
+                if (visual) EndSubsyActivity(run, "Обновления", "Список получен");
+                string title = "Установлена " + ReleaseVersion + (releases.Count == 0
+                    ? " · релизы не найдены" : " · последняя " + releases[0].Tag);
+                return PageMarvineResult(title, releases.Select(item => item.Tag + " · ID " +
+                    (item.Id == 0 ? item.Tag : item.Id.ToString())).ToArray());
             }
             case "UPDATE":
-                await CheckAndInstallUpdateAsync(true);
-                return "[ℹ] Yetta: проверка обновления завершена.";
+                return await RunMarvineUpdateAsync();
             case "DOWNLOAD":
             {
                 UpdateRelease? release;
@@ -1336,16 +1377,35 @@ public partial class MainWindow : Window
                     "Будет загружен и запущен установщик релиза " + release.Tag + "."))
                     return "[ℹ] Marvine: установка отменена.";
                 if (!await _updateGate.WaitAsync(0)) return "[♨] Marvine: другое обновление уже выполняется.";
-                try { await InstallReleaseAsync(release); }
+                var run = Guid.NewGuid();
+                bool visual = _settings.MarvineSubsyEnabled;
+                if (visual) ShowScriptOutput(new(run, "Обновления", "@subsy busy Подготовка " + release.Tag));
+                int shown = -1;
+                try
+                {
+                    await InstallReleaseAsync(release, consoleProgress: visual ? value =>
+                    {
+                        int percent = (int)Math.Round(value * 100);
+                        if (percent <= shown) return;
+                        shown = percent;
+                        ShowScriptOutput(new(run, "Обновления", $"@subsy progress {percent} {release.Tag}"));
+                    } : null);
+                    if (visual) EndSubsyActivity(run, "Обновления", "Установщик проверен и открыт");
+                }
+                catch
+                {
+                    if (visual) EndSubsyActivity(run, "Обновления", "Загрузка или установка прервана", failed: true);
+                    throw;
+                }
                 finally { _updateGate.Release(); }
                 return "[♨] Marvine: установка запущена.";
             }
             case "TTY_INFO":
-                return ConfirmYettaAction("Показать ключ TTY", "Ключ появится в истории текущей консоли. Продолжить?")
+                return await ConfirmInlineAsync("Показать ключ TTY", "Ключ появится в истории текущей консоли. Продолжить?")
                     ? "[☄] DAX TTY: " + TtyKeyStore.Current()
                     : "[ℹ] Marvine: показ ключа отменён.";
             case "TTY_UPDATE":
-                return ConfirmYettaAction("Обновить ключ TTY", "Старый ключ перестанет работать. Продолжить?")
+                return await ConfirmInlineAsync("Обновить ключ TTY", "Старый ключ перестанет работать. Продолжить?")
                     ? "[✔] DAX TTY: ключ обновлён. Новый ключ: " + TtyKeyStore.Rotate()
                     : "[ℹ] Marvine: обновление ключа отменено.";
             case "SUBSY":
@@ -1360,10 +1420,9 @@ public partial class MainWindow : Window
             case "SCRIPT_LIST":
             {
                 var scripts = _scripts.List();
-                return scripts.Count == 0 ? "[ℹ] Marvine: загруженных Python-скриптов нет."
-                    : "[⌘] Marvine: Python-скрипты\n" + string.Join("\n",
-                        scripts.Select(item => item.Id + " · " + item.Path +
-                            " · " + (item.Running ? "запущен" : "завершён")));
+                return PageMarvineResult(scripts.Count == 0 ? "Python-скриптов пока нет" : "Python-скрипты",
+                    scripts.Select(item => item.Id + " · " + item.Path +
+                        " · " + (item.Running ? "запущен" : "завершён")).ToArray());
             }
             case "SCRIPT_RUN":
             {
@@ -1380,7 +1439,7 @@ public partial class MainWindow : Window
                     DaxAudit.Write("script", "denied", "DAX refused script authorization.");
                     return "[✖] DAX: запуск отклонён модулем.";
                 }
-                string? id = PromptScriptId();
+                string? id = await PromptInlineIdAsync();
                 if (id is null) return "[ℹ] Marvine: запуск отменён.";
                 string? interpreter = ResolvePythonExecutable();
                 if (interpreter is null) return "[ℹ] Marvine: выбор Python отменён.";
@@ -1657,19 +1716,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CheckAndInstallUpdateAsync(bool manual)
+    private async Task<string> CheckAndInstallUpdateAsync(bool manual, Action<double>? consoleProgress = null)
     {
-        if (!await _updateGate.WaitAsync(0)) return;
+        if (!await _updateGate.WaitAsync(0)) return "Другая проверка или загрузка уже выполняется";
         try
         {
             var latest = await YettaUpdater.FindUpdateAsync(CurrentVersion, _updateStop.Token);
             if (latest is null)
             {
-                if (manual) ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
-                return;
+                if (manual && consoleProgress is null)
+                    ShowYettaNotice(TallowText.Get("ui.main.0175"), TallowText.Get("ui.main.0196"));
+                return "Установлена последняя версия";
             }
-            if (!manual && latest.Version == _dismissedAutoVersion) return;
-            if (!manual && !_settings.AutoUpdatesEnabled) return;
+            if (!manual && latest.Version == _dismissedAutoVersion) return "Обновление отложено";
+            if (!manual && !_settings.AutoUpdatesEnabled) return "Автообновления выключены";
             if (manual && !ConsentDialog.Confirm(this,
                 TallowText.Get("ui.main.0197") + latest.Version + "?",
                 TallowText.Get("ui.main.0198") +
@@ -1678,18 +1738,20 @@ public partial class MainWindow : Window
                 TallowText.Get("ui.main.0201") +
                 TallowText.Get("ui.main.0202"),
                 YettaWarningLevel.Consent))
-                return;
+                return "Установка отменена";
 
-            await InstallReleaseAsync(latest, automatic: !manual);
+            await InstallReleaseAsync(latest, automatic: !manual, consoleProgress: consoleProgress);
+            return "Установщик подготовлен";
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
             System.ComponentModel.Win32Exception or TaskCanceledException or
             System.Text.Json.JsonException or System.Xml.XmlException)
         {
-            if (ex is OperationCanceledException && !manual) return;
+            if (ex is OperationCanceledException && !manual) return "Загрузка отменена";
             string message = FriendlyMarvineError(ex);
             DaxAudit.Write("update", "check_failed", ex.GetType().Name);
+            if (consoleProgress is not null) throw;
             if (manual)
                 ShowYettaNotice(TallowText.Get("ui.main.0203"), message, WarningKind.Caution);
             else if (DateTimeOffset.UtcNow >= _nextAutoUpdateErrorNotice)
@@ -1697,11 +1759,12 @@ public partial class MainWindow : Window
                 _nextAutoUpdateErrorNotice = DateTimeOffset.UtcNow.AddHours(6);
                 Notify("Обновления Yetta", message);
             }
+            return message;
         }
         finally { _downloadCancel = null; _downloadingVersion = null; _updateGate.Release(); }
     }
 
-    private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false)
+    private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false, Action<double>? consoleProgress = null)
     {
             using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
             _downloadCancel = downloadCancel;
@@ -1717,6 +1780,7 @@ public partial class MainWindow : Window
             string shownStatus = "Скачивание…";
             bool toastShown = false;
             bool toastUpdating = true;
+            bool downloadActive = true;
             try
             {
                 toast.Show(notification =>
@@ -1755,6 +1819,8 @@ public partial class MainWindow : Window
             }
             var progress = new Progress<double>(value =>
             {
+                if (!downloadActive) return;
+                consoleProgress?.Invoke(value);
                 UpdateToast(value, value >= 0.99 && value < 1 ? "Проверка файла…" :
                     value >= 1 ? "Загрузка завершена" : "Скачивание…");
             });
@@ -1783,6 +1849,7 @@ public partial class MainWindow : Window
             }
             finally
             {
+                downloadActive = false;
                 _downloadCancel = null;
                 _downloadingVersion = null;
                 if (toastShown)

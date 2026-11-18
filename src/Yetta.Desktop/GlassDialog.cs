@@ -75,7 +75,7 @@ internal static class GlassDialog
         Grid.SetRow(header, 0);
         container.Children.Add(header);
 
-        var content = new ScrollViewer
+        var content = new EdgeScrollViewer
         {
             Content = scrollableBody,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
