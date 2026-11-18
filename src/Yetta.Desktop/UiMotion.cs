@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -75,7 +74,7 @@ internal static class UiMotion
             {
                 if (button.ActualWidth <= 0 || button.ActualHeight <= 0) return;
                 button.ApplyTemplate();
-                double radius = Chrome()?.CornerRadius.TopLeft ?? 11;
+                double radius = Chrome()?.CornerRadius.TopLeft ?? 7;
                 button.Clip = new RectangleGeometry(
                     new Rect(0, 0, button.ActualWidth, button.ActualHeight), radius, radius);
             }
@@ -93,23 +92,6 @@ internal static class UiMotion
         button.MouseLeave += (_, _) => Feedback(1, 150);
         button.PreviewMouseLeftButtonDown += (_, _) => Feedback(0.72, 75);
         button.PreviewMouseLeftButtonUp += (_, _) => Feedback(0.88, 120);
-    }
-
-    internal static void MoveToggle(ToggleButton toggle, bool enabled, bool animate = true)
-    {
-        toggle.ApplyTemplate();
-        if (toggle.Template?.FindName("Thumb", toggle) is not FrameworkElement thumb ||
-            thumb.RenderTransform is not TranslateTransform transform) return;
-        transform.BeginAnimation(TranslateTransform.XProperty, null);
-        double destination = enabled ? 20 : 0;
-        if (!animate || !Enabled) { transform.X = destination; return; }
-        transform.BeginAnimation(TranslateTransform.XProperty,
-            new DoubleAnimation(transform.X, destination, In(170))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-                FillBehavior = FillBehavior.Stop
-            });
-        transform.X = destination;
     }
 
     private static void AnimateOpacity(UIElement element, double value, int millis)

@@ -188,9 +188,9 @@ internal static class StandardWarningDialog
         }
         window.Closing += (_, args) =>
         {
-            if (finishing) return;
+            if (finishing || !UiMotion.AnimationsEnabled) return;
             args.Cancel = true;
-            Finish(false);
+            window.Dispatcher.BeginInvoke(new Action(() => { if (window.IsVisible) Finish(false); }));
         };
 
         // TOP ZONE: event icon, reason and the close button.
@@ -284,8 +284,7 @@ internal static class StandardWarningDialog
 
         var bodyText = Text(request.Description, 13.5, Muted);
         bodyText.LineHeight = 22;
-        bool expanded = request.Kind is WarningKind.Dangerous or WarningKind.Critical or
-            WarningKind.Fatal or WarningKind.Agreement or WarningKind.Dax;
+        bool expanded = !string.IsNullOrWhiteSpace(request.Description);
         var more = Text(expanded ? "Свернуть подробности" : "Подробнее", 15,
             new SolidColorBrush(palette.Accent));
         more.Cursor = Cursors.Hand;
@@ -590,6 +589,7 @@ internal static class StandardWarningDialog
         RefreshGate();
 
         window.Content = outer;
+        if (deny is not null) window.Loaded += (_, _) => deny.Focus();
         if (fatal) window.Topmost = true;
         UiMotion.AnimateOpen(outer);
 

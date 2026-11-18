@@ -6,6 +6,28 @@ static void Assert(bool condition, string description)
     Console.WriteLine("PASS " + description);
 }
 var defaults = new AppSettings();
+Assert(SubsyFrame.Parse("@subsy progress 42 Индексация") is { Current: 42, Total: 100, Label: "Индексация" },
+    "Subsy displays an explicit progress update");
+Assert(SubsyFrame.Parse("@subsy step 4/100 Проверка") is { Current: 4, Total: 100, IsStep: true },
+    "Subsy distinguishes steps from percents");
+Assert(SubsyFrame.Parse("@subsy done Всё готово") is { Finished: true, Label: "Всё готово" },
+    "Subsy finishes the current task");
+Assert(SubsyFrame.Parse("release 5/11") is null && SubsyFrame.Parse("@subsy progress 101") is null &&
+    SubsyFrame.Parse("@subsy step 3/2") is null, "ordinary and invalid output stays text");
+var daxStatus = new DaxStatus(DaxState.Notice, "0.3.28", true, false);
+Assert(DaxStatus.Parse(daxStatus.Serialize()) == daxStatus, "Tallow receives all DAX status fields");
+Assert(DaxStatus.Parse("READY").State == DaxState.Incompatible &&
+    DaxStatus.Parse("DAX/2|0|0.3.28|1|1").State == DaxState.Incompatible,
+    "unrecognized or malformed DAX replies cannot become ready");
+Assert(await DaxProtocol.ReadFrameAsync(new StringReader("TALLOW_STATUS_V2\r\n"), default) ==
+    DaxProtocol.StatusRequest, "DAX reads a terminated frame");
+Assert(await DaxProtocol.ReadFrameAsync(new StringReader("partial"), default) is null, "DAX rejects an incomplete frame");
+try
+{
+    _ = await DaxProtocol.ReadFrameAsync(new StringReader(new string('x', 1000)), default);
+    throw new Exception("Oversized DAX message was accepted.");
+}
+catch (InvalidDataException) { Console.WriteLine("PASS bounded DAX frame"); }
 Assert(defaults.ActiveProfile == "Guest" && defaults.InstalledProfiles.SequenceEqual(["Guest"]),
     "Guest is the only initially installed profile");
 Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults), "Guest blocks external terminal");

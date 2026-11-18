@@ -1,6 +1,6 @@
 ; Yetta preview installer. Distribution uses Inno Setup as a build tool;
 ; the application source itself is written for Yetta.
-#define MyAppVersion "0.3.27-preview"
+#define MyAppVersion "0.3.28-preview"
 
 [Setup]
 AppId={{FAAE9E3E-7B5F-494F-9CC1-2CE4D2F33C9F}
@@ -24,7 +24,7 @@ WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
 UninstallDisplayIcon={app}\Yetta.exe
-VersionInfoVersion=0.3.27
+VersionInfoVersion=0.3.28
 
 [Files]
 Source: "..\artifacts\Yetta-win-x64\Yetta.exe"; DestDir: "{app}"; Flags: ignoreversion

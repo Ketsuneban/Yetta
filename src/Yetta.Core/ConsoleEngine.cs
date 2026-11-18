@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.3.27-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.3.28-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -27,6 +27,12 @@ public static class ConsoleEngine
             return new ConsoleResult("[⚠] Marvine: страницы справки: /help 1, /help 2, /help 3.");
         if (command is "/yetta version" or "/yetta update")
             return new ConsoleResult("", Request: command[7..].ToUpperInvariant());
+        if (command == "/dax status")
+            return new ConsoleResult("", Request: "DAX_STATUS");
+        if (command == "/dax diagnostics")
+            return new ConsoleResult("Открываю диагностику DAX.", NavigateTo: "recovery");
+        if (command == "/subsy demo")
+            return new ConsoleResult("", Request: "SUBSY_DEMO");
         if (command.StartsWith("/yetta download ", StringComparison.Ordinal))
             return new ConsoleResult("", Request: "DOWNLOAD", Argument: raw[16..].Trim());
         if (command is "/tty info" or "/tty update")
@@ -95,7 +101,8 @@ public static class ConsoleEngine
         string[] commands = ["/help", "/yetta version", "/yetta update", "/yetta download ",
             "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable",
             "/marvine colorset EGA", "/marvine colorset No Color", "/script list",
-            "/script run ", "/script stop ", "/snob help", "clear", "status", "settings"];
+            "/script run ", "/script stop ", "/dax status", "/dax diagnostics", "/subsy demo",
+            "/snob help", "clear", "status", "settings"];
         return commands.Where(item => item.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Take(6).ToArray();
     }
 
@@ -113,6 +120,7 @@ public static class ConsoleEngine
                 "Напиши /help 2 для следующей страницы.",
             2 => "[⌘] Marvine: команды · страница 2/3\n" +
                 "[Зелёный] /marvine subsy enable|disable — подсистема интерфейса\n" +
+                "[Зелёный] /subsy demo — пример обновляемой полосы\n" +
                 "[Зелёный] /marvine colorset EGA|No Color — цвета сообщений\n" +
                 "[Зелёный] /script list — список Python-скриптов\n" +
                 "[Жёлтый] /script run <путь> — администратор Windows и DAX [A]\n" +
@@ -120,6 +128,8 @@ public static class ConsoleEngine
                 "Напиши /help 3 для следующей страницы.",
             _ => "[⌘] Marvine: команды · страница 3/3\n" +
                 "[Серый] /snob — повышение прав появится вместе с DAX [A]\n" +
+                "[Зелёный] /dax status — состояние локального DAX\n" +
+                "[Зелёный] /dax diagnostics — экран диагностики\n" +
                 "[Зелёный] clear, status, info, settings, guard, logs\n" +
                 "Зелёный — доступно; красный — нет прав; жёлтый — частично; серый — в разработке."
         };

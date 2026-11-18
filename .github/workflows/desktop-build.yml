@@ -97,6 +97,10 @@ jobs:
           Copy-Item "artifacts/Yetta-win-x64/Yetta.exe" "artifacts/release/Yetta.exe"
           Copy-Item "artifacts/Yetta-win-x64/Yetta.DAX.exe" "artifacts/release/Yetta.DAX.exe"
           Copy-Item "artifacts/Yetta-win-x64/local.json" "artifacts/release/local.json"
+          foreach ($name in @("Yetta.DAX.exe", "local.json")) {
+            $hash = (Get-FileHash "artifacts/release/$name" -Algorithm SHA256).Hash.ToLowerInvariant()
+            "SHA256  $name  $hash" | Add-Content "artifacts/Yetta-win-x64/SHA256SUMS.txt" -Encoding ascii
+          }
           Copy-Item "artifacts/Yetta-win-x64/SHA256SUMS.txt" "artifacts/release/SHA256SUMS.txt"
           Copy-Item $setup "artifacts/release/YettaSetup.exe"
           Copy-Item "artifacts/setup/INSTALLER-SHA256.txt" "artifacts/release/INSTALLER-SHA256.txt"
@@ -104,7 +108,7 @@ jobs:
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.3.27-preview-win-x64-QA
+          name: Yetta-0.3.28-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -122,7 +126,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.3.27-preview-win-x64-QA
+          name: Yetta-0.3.28-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh

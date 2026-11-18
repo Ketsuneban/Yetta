@@ -42,7 +42,7 @@
           <ControlTemplate TargetType="Button">
             <Border x:Name="Shell" Background="{TemplateBinding Background}"
                     BorderBrush="Transparent" BorderThickness="0"
-                    CornerRadius="12" Padding="{TemplateBinding Padding}">
+                    CornerRadius="7" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="Center"/>
             </Border>
@@ -71,7 +71,7 @@
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonChrome" Background="{TemplateBinding Background}"
                     BorderBrush="Transparent" BorderThickness="0"
-                    CornerRadius="11" Padding="{TemplateBinding Padding}">
+                    CornerRadius="7" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -148,7 +148,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type ComboBoxItem}">
             <Border x:Name="ItemSurface" Background="{TemplateBinding Background}"
-                    CornerRadius="9" Margin="4,2" Padding="{TemplateBinding Padding}">
+                    CornerRadius="5" Margin="4,2" Padding="{TemplateBinding Padding}">
               <ContentPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -185,7 +185,7 @@
                   <ControlTemplate TargetType="{x:Type ToggleButton}">
                     <Border x:Name="ComboSurface" Background="{DynamicResource SidebarBackground}"
                             BorderBrush="Transparent" BorderThickness="0"
-                            CornerRadius="12" Padding="14,0">
+                            CornerRadius="7" Padding="14,0">
                       <Grid>
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*"/>
@@ -217,7 +217,7 @@
                         Margin="0,5,0,10" Padding="5" MaxHeight="300"
                         Background="{DynamicResource SidebarBackground}"
                         BorderBrush="Transparent" BorderThickness="0"
-                        CornerRadius="13">
+                        CornerRadius="8">
                   <Border.Effect>
                     <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="6" Opacity="0.3"/>
                   </Border.Effect>
@@ -243,13 +243,13 @@
             <Grid Width="48" Height="28">
               <Border x:Name="Track" CornerRadius="14" Background="{DynamicResource HoverBackground}"/>
               <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="{DynamicResource TextPrimary}"
-                       HorizontalAlignment="Left" Margin="4,0,0,0">
-                <Ellipse.RenderTransform><TranslateTransform X="0"/></Ellipse.RenderTransform>
-              </Ellipse>
+                       HorizontalAlignment="Left" Margin="4,0,0,0"/>
             </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
                 <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="Thumb" Property="Margin" Value="0,0,4,0"/>
                 <Setter TargetName="Thumb" Property="Fill" Value="{DynamicResource AccentForeground}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
@@ -333,7 +333,7 @@
         </StackPanel>
         <ScrollViewer Focusable="False" FocusVisualStyle="{x:Null}" BorderThickness="0" Background="Transparent" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly"><StackPanel>
           <StackPanel Orientation="Horizontal" Margin="5,0,0,46">
-            <Border Width="44" Height="44" CornerRadius="13"
+            <Border Width="44" Height="44" CornerRadius="8"
                     Background="{DynamicResource SelectedBrush}">
               <Image Source="/Assets/yetta-logo.png" Width="40" Height="40" Stretch="Uniform"/>
             </Border>
@@ -377,7 +377,7 @@
                        Foreground="{DynamicResource TextSecondary}"/>
           </StackPanel>
           <Border Grid.Column="1" VerticalAlignment="Center"
-                  Background="{DynamicResource SelectedBrush}" CornerRadius="10" Padding="12,8">
+                  Background="{DynamicResource SelectedBrush}" CornerRadius="6" Padding="12,8">
             <TextBlock x:Name="ThemeIndicator" Text="{DynamicResource Local.ui.xaml.0021}" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
           </Border>
         </Grid>

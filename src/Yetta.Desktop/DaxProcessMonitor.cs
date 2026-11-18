@@ -41,6 +41,7 @@ internal sealed class DaxProcessMonitor : IDisposable
     private readonly int _rootPid;
     private readonly HashSet<int> _known = [];
     private readonly Action<string> _report;
+    private bool _checking;
     private bool _disposed;
 
     internal DaxProcessMonitor(int rootPid, Action<string> report)
@@ -50,7 +51,7 @@ internal sealed class DaxProcessMonitor : IDisposable
         _known.Add(rootPid);
         DaxAudit.Write("process", "started", "PowerShell process in Yetta: PID " + rootPid);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-        _timer.Tick += (_, _) => Scan();
+        _timer.Tick += async (_, _) => await ScanAsync();
         _timer.Start();
     }
 
@@ -68,9 +69,33 @@ internal sealed class DaxProcessMonitor : IDisposable
         finally { _ = CloseHandle(handle); }
     }
 
-    private void Scan()
+    private async Task ScanAsync()
     {
-        if (_disposed) return;
+        if (_disposed || _checking) return;
+        _checking = true;
+        try
+        {
+            var tree = await Task.Run(ReadTree);
+            if (_disposed) return;
+            foreach (var (pid, name) in tree)
+            {
+                if (!_known.Add(pid) || pid == _rootPid) continue;
+                DaxAudit.Write("process", "started", "Yetta child PID " + pid + ": " + name);
+                _report(TallowText.Get("dax.monitor.0001") + name + " (PID " + pid + ")");
+            }
+            foreach (int pid in _known.ToArray())
+            {
+                if (pid == _rootPid || tree.ContainsKey(pid)) continue;
+                _known.Remove(pid);
+                DaxAudit.Write("process", "unobserved", "Yetta child PID " + pid);
+            }
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { }
+        finally { _checking = false; }
+    }
+
+    private Dictionary<int, string> ReadTree()
+    {
         var snapshots = Process.GetProcesses();
         try
         {
@@ -91,26 +116,15 @@ internal sealed class DaxProcessMonitor : IDisposable
                 if (!advanced) break;
             }
 
-            foreach (int pid in tree)
+            var observed = new Dictionary<int, string>();
+            foreach (var process in snapshots)
             {
-                if (!_known.Add(pid) || pid == _rootPid) continue;
-                var p = snapshots.FirstOrDefault(x => x.Id == pid);
-                string name = p?.ProcessName ?? "process";
-                DaxAudit.Write("process", "started", "Yetta child PID " + pid + ": " + name);
-                _report(TallowText.Get("dax.monitor.0001") + name + " (PID " + pid + ")");
+                if (!tree.Contains(process.Id)) continue;
+                try { observed[process.Id] = process.ProcessName; }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { }
             }
-
-            foreach (int pid in _known.ToList())
-            {
-                if (pid != _rootPid && !tree.Contains(pid))
-                {
-                    _known.Remove(pid);
-                    DaxAudit.Write("process", "exited", "Yetta child PID " + pid);
-                }
-            }
+            return observed;
         }
-        catch (Win32Exception) { }
-        catch (InvalidOperationException) { }
         finally
         {
             foreach (var p in snapshots) p.Dispose();

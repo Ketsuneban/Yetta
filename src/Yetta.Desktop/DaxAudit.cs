@@ -10,6 +10,8 @@ namespace Yetta.Desktop;
 internal static class DaxAudit
 {
     private static readonly object Gate = new();
+    private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
+    internal sealed record Entry(DateTimeOffset Utc, string Category, string Result, string Summary, string? Actor);
     internal static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Yetta", "DAX", "audit.jsonl");
@@ -24,11 +26,30 @@ internal static class DaxAudit
             lock (Gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                var row = new { utc = DateTimeOffset.UtcNow, category, result, summary };
+                var row = new { utc = DateTimeOffset.UtcNow, actor = "Tallow", category, result, summary };
                 File.AppendAllText(FilePath, JsonSerializer.Serialize(row) + Environment.NewLine);
             }
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    internal static IReadOnlyList<Entry> Recent(int limit)
+    {
+        if (!File.Exists(FilePath)) return [];
+        var entries = new Queue<Entry>();
+        foreach (string line in File.ReadLines(FilePath))
+        {
+            if (line.Length > 16_384) continue;
+            try
+            {
+                if (JsonSerializer.Deserialize<Entry>(line, ReadOptions) is not
+                    { Category: not null, Result: not null, Summary: not null } entry) continue;
+                if (entries.Count == limit) entries.Dequeue();
+                entries.Enqueue(entry);
+            }
+            catch (JsonException) { }
+        }
+        return entries.Reverse().ToArray();
     }
 }

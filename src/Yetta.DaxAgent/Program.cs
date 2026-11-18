@@ -16,7 +16,6 @@ namespace Yetta.DaxAgent;
 internal static class Program
 {
     private const string MutexName = "Local\\YettaDaxAgent_0_3";
-    internal const string PipeName = "Yetta-DAX-Local-v1";
     [STAThread]
     private static void Main()
     {
@@ -45,7 +44,7 @@ internal sealed class TrayAgent : ApplicationContext
     private readonly CancellationTokenSource _stop = new();
     private readonly TallowTextUpdates _textUpdates = new();
     private readonly Dictionary<AgentState, Icon> _icons = new();
-    private AgentState _state = AgentState.Healthy;
+    private volatile AgentState _state = AgentState.Healthy;
     private bool _shuttingDown;
     private string _lastReport = TallowText.Get("dax.tray.0001");
 
@@ -200,30 +199,30 @@ internal sealed class TrayAgent : ApplicationContext
         {
             bool interfaceRunning = processes.Any(p => !p.HasExited);
             bool installed = File.Exists(AppPath);
-            string report = TallowText.Get("dax.tray.0018") +
-                TallowText.Get("dax.tray.0019") + (interfaceRunning ? TallowText.Get("dax.tray.0020") : installed ? TallowText.Get("dax.tray.0021") : TallowText.Get("dax.tray.0022")) + ".\\n" +
-                TallowText.Get("dax.tray.0023") +
-                TallowText.Get("dax.tray.0024") +
-                TallowText.Get("dax.tray.0025") + processes.Length + ".\\n" +
-                TallowText.Get("dax.tray.0026");
-            return report;
+            string desktop = interfaceRunning ? "запущена" : installed ? "установлена" : "не найдена";
+            bool catalog = File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"));
+            return $"Yetta: {desktop}.\nПроцессов Yetta: {processes.Length}.\n" +
+                $"Каталог local.json: {(catalog ? "на месте" : "не найден")}.";
         }
         finally { foreach (var p in processes) p.Dispose(); }
     }
 
     private async Task RunCheckAsync()
     {
-        if (_state == AgentState.Disabled) return;
+        if (_state is AgentState.Disabled or AgentState.Working) return;
         SetState(AgentState.Working);
-        await Task.Yield();
         try
         {
-            _lastReport = CheckComponents();
-            SetState(File.Exists(AppPath) ? AgentState.Healthy : AgentState.Notice);
-            ShowBalloon(TallowText.Get("dax.tray.0027"), _lastReport.Replace(TallowText.Get("dax.tray.0028"), " "));
+            string report = await Task.Run(CheckComponents);
+            if (_state != AgentState.Working || _shuttingDown) return;
+            _lastReport = report;
+            SetState(File.Exists(AppPath) && File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"))
+                ? AgentState.Healthy : AgentState.Notice);
+            ShowBalloon(TallowText.Get("dax.tray.0027"), _lastReport.Replace('\n', ' '));
         }
         catch (Exception ex)
         {
+            if (_state != AgentState.Working || _shuttingDown) return;
             _lastReport = TallowText.Get("dax.tray.0029") + ex.GetType().Name;
             SetState(AgentState.Notice);
             ShowBalloon(TallowText.Get("dax.tray.0030"), _lastReport, ToolTipIcon.Warning);
@@ -232,12 +231,12 @@ internal sealed class TrayAgent : ApplicationContext
 
     private async Task RestartAsync()
     {
+        if (_state == AgentState.Working) return;
         SetState(AgentState.Working);
-        await Task.Delay(350);
-        // No privileged DAX services are installed yet; restart tray coordinator only.
-        _lastReport = TallowText.Get("dax.tray.0031");
-        SetState(AgentState.Healthy);
-        ShowBalloon(TallowText.Get("ui.main.0030"), _lastReport);
+        await Task.Yield();
+        if (_shuttingDown || _state != AgentState.Working) return;
+        SetState(AgentState.Notice);
+        await RunCheckAsync();
     }
 
     private void Disable()
@@ -268,40 +267,63 @@ internal sealed class TrayAgent : ApplicationContext
         {
             try
             {
-                using var server = new NamedPipeServerStream(Program.PipeName, PipeDirection.InOut, 1,
+                using var server = new NamedPipeServerStream(DaxProtocol.PipeName, PipeDirection.InOut, 1,
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await server.WaitForConnectionAsync(token);
                 using var reader = new StreamReader(server, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
                 using var writer = new StreamWriter(server, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
-                var line = await reader.ReadLineAsync(token);
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+                deadline.CancelAfter(TimeSpan.FromSeconds(2));
+                var line = await DaxProtocol.ReadFrameAsync(reader, deadline.Token);
+                if (line is null) continue;
                 var result = line switch
                 {
+                    DaxProtocol.StatusRequest => ReadStatus().Serialize(),
                     "PING" => _state == AgentState.Disabled ? "DISABLED" : _state == AgentState.Working ? "WORKING" : "READY",
                     "CHECK" => "CHECKING",
                     "RESTART" => "RESTARTING",
                     "ENABLE" => "ENABLED",
                     "DISABLE" => "DISABLED",
                     "STATE" => _state.ToString().ToUpperInvariant(),
-                    "AUTHORIZE_SCRIPT" => _state == AgentState.Healthy && CanAuthorizeAdminScript()
+                    "AUTHORIZE_SCRIPT" => ReadStatus().State == DaxState.Ready && CanAuthorizeAdminScript()
                         ? "AUTHORIZED" : "DENIED",
                     "STOP_FOR_UPDATE" => "STOPPING",
                     _ => "UNKNOWN"
                 };
-                await writer.WriteLineAsync(result);
+                await writer.WriteLineAsync(result.AsMemory(), deadline.Token);
                 if (line == "CHECK") _ui.Post(async _ => await RunCheckAsync(), null);
                 if (line == "RESTART") _ui.Post(async _ => await RestartAsync(), null);
                 if (line == "ENABLE") _ui.Post(_ => Enable(), null);
                 if (line == "DISABLE") _ui.Post(_ => Disable(), null);
                 if (line == "STOP_FOR_UPDATE") _ui.Post(_ => ExitAgent(), null);
             }
-            catch (OperationCanceledException) { break; }
-            catch (IOException) { await Task.Delay(250, token).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) when (ex is IOException or InvalidDataException) { }
             catch (Exception ex)
             {
                 Debug.WriteLine("DAX pipe: " + ex.GetType().Name);
                 try { await Task.Delay(500, token); } catch (OperationCanceledException) { break; }
             }
         }
+    }
+
+    private static readonly string AgentVersion = typeof(TrayAgent).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+
+    private DaxStatus ReadStatus()
+    {
+        bool desktop = File.Exists(AppPath);
+        bool catalog = File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"));
+        var state = _state switch
+        {
+            AgentState.Healthy => desktop && catalog ? DaxState.Ready : DaxState.Notice,
+            AgentState.Working => DaxState.Working,
+            AgentState.Disabled => DaxState.Disabled,
+            AgentState.Notice => DaxState.Notice,
+            AgentState.Threat => DaxState.Threat,
+            _ => DaxState.Fatal
+        };
+        return new(state, AgentVersion, desktop, catalog);
     }
 
     protected override void Dispose(bool disposing)

@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 
 namespace Yetta.Desktop;
 
+internal sealed record ScriptOutput(Guid Run, string Id, string Text, bool IsError = false, bool Exited = false);
+
 /// <summary>Tracks Python processes started explicitly by this Yetta session.</summary>
 internal sealed class MarvineScriptManager : IDisposable
 {
@@ -19,7 +21,7 @@ internal sealed class MarvineScriptManager : IDisposable
             return _scripts.Values.Select(item => (item.Id, item.Path, !item.Process.HasExited)).ToArray();
     }
 
-    internal void Start(string id, string path, string interpreterPath, Action<string> onOutput)
+    internal void Start(string id, string path, string interpreterPath, Action<ScriptOutput> onOutput)
     {
         if (!Regex.IsMatch(id, @"\A[A-Za-z0-9]{1,16}\z", RegexOptions.CultureInvariant))
             throw new ArgumentException("ID: от 1 до 16 латинских букв или цифр.", nameof(id));
@@ -45,17 +47,25 @@ internal sealed class MarvineScriptManager : IDisposable
                     throw new InvalidOperationException("Достигнут предел одновременно запущенных скриптов (100).");
             }
             var process = StartPython(path, interpreterPath);
-            process.OutputDataReceived += (_, e) => { if (e.Data is not null) onOutput("[▪] " + id + ": " + e.Data); };
-            process.ErrorDataReceived += (_, e) => { if (e.Data is not null) onOutput("[⚠] " + id + ": " + e.Data); };
-            process.Exited += (_, _) =>
-            {
-                try { onOutput("[ℹ] " + id + ": скрипт завершён, код " + process.ExitCode + "."); }
-                catch (InvalidOperationException) { }
-            };
+            var run = Guid.NewGuid();
+            process.OutputDataReceived += (_, e) => { if (e.Data is not null) onOutput(new(run, id, e.Data)); };
+            process.ErrorDataReceived += (_, e) => { if (e.Data is not null) onOutput(new(run, id, e.Data, IsError: true)); };
             _scripts.Add(id, new Script(id, path, process));
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+            _ = ReportExitAsync(process, run, id, onOutput);
         }
+    }
+
+    private static async Task ReportExitAsync(Process process, Guid run, string id, Action<ScriptOutput> report)
+    {
+        try
+        {
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            int code = process.ExitCode;
+            report(new(run, id, "Скрипт завершён. Код выхода: " + code, IsError: code != 0, Exited: true));
+        }
+        catch (InvalidOperationException) { }
     }
 
     private static Process StartPython(string path, string interpreterPath)
