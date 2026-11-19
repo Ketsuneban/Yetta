@@ -120,6 +120,7 @@ public partial class MainWindow
             if (state == expected)
             {
                 SavePreferences();
+                DaxAudit.Write("access", "administrator_" + state.ToString().ToLowerInvariant(), "DAX подтвердил изменение профиля.");
                 return true;
             }
             ShowDaxNotice("DAX не подтвердил изменение", "Проверь состояние Administrator в DAX Guard.");

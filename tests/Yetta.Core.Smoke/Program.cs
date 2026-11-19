@@ -56,6 +56,16 @@ Assert(AccessProfiles.Install(defaults,"User"),"User installs logical standard p
 Assert(AccessProfiles.Apply(defaults,"User"),"User can be applied");
 Assert(AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"User permits non-elevated Terminal");
 Assert(!AccessProfiles.Install(defaults,"Administrator"),"Administrator cannot be falsely installed");
+var adminCache = new AppSettings { InstalledProfiles = ["Guest", "Administrator"], ActiveProfile = "Administrator" };
+AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Unavailable);
+Assert(adminCache.ActiveProfile == "Guest" && !adminCache.InstalledProfiles.Contains("Administrator"),
+    "unverified Administrator preferences are ignored");
+AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Inactive);
+Assert(!AccessProfiles.Apply(adminCache, "Administrator"), "local preferences cannot activate the installed grant");
+AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Active);
+Assert(adminCache.ActiveProfile == "Administrator", "confirmed service state activates Administrator");
+AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Revoked);
+Assert(adminCache.ActiveProfile == "Guest", "revocation removes the active profile immediately");
 Assert(!AccessProfiles.Install(defaults,"System"),"System cannot be falsely installed");
 Assert(!AccessProfiles.CanLaunchElevatedShell(defaults),"elevated shell not enabled");
 Assert(!AccessProfiles.Apply(defaults,"System"),"non-installed level cannot be applied");

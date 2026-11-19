@@ -523,9 +523,11 @@ public partial class MainWindow : Window
             ? TallowText.Get("ui.main.0050")
             : TallowText.Get("ui.main.0051"), 13, heading: true));
         capabilities.Children.Add(Text(
-            TallowText.Get("ui.main.0052"), 12, muted: true));
+            "Интерфейс использует токен текущего процесса Windows. Состояние Administrator подтверждает служба DAX.",
+            12, muted: true));
         capabilities.Children.Add(Text(
-            TallowText.Get("ui.main.0053"), 12, muted: true));
+            "Встроенная оболочка PowerShell доступна при уровне «Пользователь».",
+            12, muted: true));
         ContentPanel.Children.Add(Card(capabilities));
 
         AddSection(TallowText.Get("ui.main.0054"));
