@@ -101,8 +101,8 @@ static class Program
         if (!parsedIdentity.Verified || !parsedIdentity.Publisher.Contains("Example Publisher")) throw new Exception("Verified signer missing");
         var invalidIdentity = PublisherInspector.Parse("""{"Status":"HashMismatch","Signer":"Untrusted Claim","Message":"Changed"}""");
         if (invalidIdentity.Verified || invalidIdentity.Publisher.Contains("Untrusted Claim")) throw new Exception("Broken signature trusted its publisher");
-        string unsignedFile = Path.Combine(Path.GetTempPath(), "Yetta signature's test; " + Guid.NewGuid() + ".txt");
-        File.WriteAllText(unsignedFile, "Unsigned test data");
+        string unsignedFile = Path.Combine(Path.GetTempPath(), "Yetta signature's test; " + Guid.NewGuid() + ".ps1");
+        File.WriteAllText(unsignedFile, "# Unsigned PowerShell script; verification never executes this file");
         try
         {
             var unsigned = PublisherInspector.InspectAsync(unsignedFile, default).GetAwaiter().GetResult();
