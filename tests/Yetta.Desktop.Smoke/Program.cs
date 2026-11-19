@@ -79,7 +79,7 @@ static class Program
                     root.Measure(size); root.Arrange(new Rect(size)); root.UpdateLayout();
                     var elements = Descendants(root).ToArray();
                     var labels = elements.OfType<TextBlock>().ToArray();
-                    var publisher = labels.Single(x => x.Text == "Издатель: Tallow");
+                    var publisher = labels.Single(x => x.Text.StartsWith("Издатель:", StringComparison.Ordinal));
                     var subject = labels.Single(x => x.Text == "DAX");
                     if (publisher.Parent != subject.Parent) throw new Exception("Publisher must be directly below cause name.");
                     var details = labels.Single(x => x.Text == "Техническая причина теста");
@@ -92,6 +92,50 @@ static class Program
                     using var output = File.Create("artifacts/ui-preview/" + kind + ".png"); encoder.Save(output);
                 }, renderOnly: true);
         }
+        foreach (int stateIcon in new[] { 1, 2, 3 })
+            if (IconAssets.Asset("States/" + stateIcon + ".png", 38).Source is null) throw new Exception("Missing state icon");
+        if (YettaWarningWindow.State(new WarningRequest(WarningKind.Information, "i", "info", PotentialDamage: true), true) != WarningState.None ||
+            YettaWarningWindow.State(new WarningRequest(WarningKind.Standard, "s", "decision"), false) != WarningState.Safe)
+            throw new Exception("Badge policy confused information or Guest with Windows safe mode.");
+        var parsedIdentity = PublisherInspector.Parse("""{"Status":"Valid","Signer":"Example Publisher","Thumbprint":"AB","Message":"OK"}""");
+        if (!parsedIdentity.Verified || !parsedIdentity.Publisher.Contains("Example Publisher")) throw new Exception("Verified signer missing");
+        var invalidIdentity = PublisherInspector.Parse("""{"Status":"HashMismatch","Signer":"Untrusted Claim","Message":"Changed"}""");
+        if (invalidIdentity.Verified || invalidIdentity.Publisher.Contains("Untrusted Claim")) throw new Exception("Broken signature trusted its publisher");
+        string unsignedFile = Path.Combine(Path.GetTempPath(), "Yetta signature's test; " + Guid.NewGuid() + ".ps1");
+        File.WriteAllText(unsignedFile, "# Unsigned PowerShell script; verification never executes this file");
+        try
+        {
+            var unsigned = PublisherInspector.InspectAsync(unsignedFile, default).GetAwaiter().GetResult();
+            if (unsigned.Verified || unsigned.Status != "Файл не подписан") throw new Exception("Unsigned file verification failed: " + unsigned.Status + " " + unsigned.Technical);
+            var folder = PublisherInspector.InspectAsync(Path.GetTempPath(), default).GetAwaiter().GetResult();
+            if (folder.Verified || !folder.Publisher.StartsWith("Владелец:")) throw new Exception("Directory owner is not a publisher");
+            string signedFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+            var signed = PublisherInspector.InspectAsync(signedFile, default).GetAwaiter().GetResult();
+            if (!signed.Verified || !signed.Publisher.Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Windows signature query failed: " + signed.Status + " " + signed.Technical);
+        }
+        finally { File.Delete(unsignedFile); }
+        // Actual layout: output growth follows, manual wheel up pauses, wheel down to the bottom resumes.
+        var lines = new StackPanel();
+        for (int i = 0; i < 100; i++) lines.Children.Add(new TextBlock { Text = "Line " + i, Height = 20 });
+        var scroll = new EdgeScrollViewer { Content = lines, Height = 160, Width = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        owner.Content = scroll; owner.Width = 340; owner.Height = 220;
+        using (var follow = new ConsoleFollowController(scroll))
+        {
+            void Pump() { owner.UpdateLayout(); owner.Dispatcher.Invoke(DispatcherPriority.ApplicationIdle, new Action(() => { })); owner.UpdateLayout(); }
+            Pump(); follow.ContentChanged(); Pump();
+            if (scroll.VerticalOffset < scroll.ScrollableHeight - 1) throw new Exception("Console did not follow initial output");
+            var mouse = new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, 120) { RoutedEvent = UIElement.PreviewMouseWheelEvent };
+            scroll.RaiseEvent(mouse); Pump();
+            if (follow.Following) throw new Exception("Wheel up failed to pause following");
+            double offset = scroll.VerticalOffset;
+            lines.Children.Add(new TextBlock { Height = 100, Text = "More output" }); Pump();
+            if (Math.Abs(offset - scroll.VerticalOffset) > 1) throw new Exception("New output moved a manually positioned console");
+            scroll.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, -12000) { RoutedEvent = UIElement.PreviewMouseWheelEvent }); Pump();
+            lines.Children.Add(new TextBlock { Height = 80, Text = "Last output" }); Pump();
+            if (!follow.Following || scroll.VerticalOffset < scroll.ScrollableHeight - 1) throw new Exception("Following did not resume at bottom");
+        }
+        Console.WriteLine("PASS Authenticode, owner metadata, semantic badges and sticky console scrolling");
         owner.Close();
         Console.WriteLine("PASS selectable output, bound toast progress and rendered warning layouts");
     }

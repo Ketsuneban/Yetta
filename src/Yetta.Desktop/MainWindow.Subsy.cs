@@ -366,7 +366,7 @@ public partial class MainWindow
             return Task.CompletedTask;
         }, "Marvine");
         AddConsoleEntry(new ConsoleEntry("", request.Label) { Prompt = state });
-        _consoleScroll?.ScrollToEnd();
+        _consoleFollow?.ContentChanged();
         try { return await completion.Task.WaitAsync(_updateStop.Token); }
         finally
         {

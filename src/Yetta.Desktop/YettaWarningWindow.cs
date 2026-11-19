@@ -34,12 +34,11 @@ internal static class YettaWarningWindow
     internal static int ObjectIcon(WarningRequest request) => WarningCauseResolver.Icon(request);
 
     /// <summary>Status square for the main zone; 0 means "no square".</summary>
-    internal static int Status(WarningRequest request, string activeProfile)
+    internal static WarningState State(WarningRequest request, bool windowsSafeMode)
     {
-        // Status communicates safety only when a user must decide or acknowledge.
-        if (request.Kind is WarningKind.Fatal or WarningKind.Information) return 0;
-        if (activeProfile == "Guest" || ConsentDialog.InWindowsSafeMode) return 35;
-        return request.PotentialDamage ? 26 : 27;
+        bool decision = request.Kind is WarningKind.Standard or WarningKind.Caution or WarningKind.Dangerous or WarningKind.Critical or WarningKind.Agreement ||
+            request.Kind is WarningKind.Dax or WarningKind.Fatal && (request.PotentialDamage || request.RequireAcknowledgement || request.RequireTty);
+        return WarningStatePolicy.Resolve(decision, request.PotentialDamage || request.Kind is WarningKind.Dangerous or WarningKind.Critical, windowsSafeMode);
     }
 
     /// <summary>Header icon: what the warning is about, not how severe it is.</summary>

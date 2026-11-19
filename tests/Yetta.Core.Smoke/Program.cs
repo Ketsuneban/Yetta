@@ -81,7 +81,7 @@ try
 finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
 var c=new ConsoleContext("Glass","Guest");
-Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("recovery"),"Marvine help");
+Assert(ConsoleEngine.Execute(" HELP ",c).Request == "HELP_PAGE","Marvine help");
 Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo is null,"theme switching disabled");
 Assert(ConsoleEngine.Execute("guard",c).NavigateTo=="guard","guard navigation");
 Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
@@ -224,3 +224,18 @@ Assert(CommandCompletion.Get("/test warn C").All(x => x.Label.StartsWith("C")), 
 Assert(CommandCompletion.Get("/test warn Caution").Any(x => x.Label == "Tallow"), "cause choices follow a complete type");
 Assert(CommandCompletion.Get("/test warn Caution Yetta check:true ").All(x => !x.Label.StartsWith("check:")), "used flags are not offered twice");
 Assert(CommandCompletion.Get("/test warn Caution Yetta tty:").Select(x => x.Label).SequenceEqual(["tty:true", "tty:false"]), "boolean flag gets exact alternatives");
+
+Assert(ConsoleEngine.Execute("yetta upd", c).Request == "UPDATE" && ConsoleEngine.Execute("/yetta update", c).Request == "UPDATE", "slash optional and update alias");
+Assert(ConsoleEngine.Execute("yetta ver", c).Request == "VERSION" && ConsoleEngine.Execute("yetta dl v0.4.2-preview", c).Argument == "v0.4.2-preview", "version and download aliases");
+Assert(ConsoleEngine.Execute("marv colors dracula", c) is { Request: "COLORSET", Argument: "dracula" }, "Dracula colorset command and aliases");
+Assert(ConsoleEngine.Execute("/clear", c).ClearOutput && ConsoleEngine.Execute("clear", c).ClearOutput, "plain commands also accept slash");
+Assert(WarningTestCommand.TryParse("test warn Standard \"C:\\My Files\\Tallow.py\" \"yetta upd must remain text\"", out var aliasTest) &&
+    aliasTest?.Text == "yetta upd must remain text" && aliasTest.Cause == @"C:\My Files\Tallow.py", "aliases never rewrite paths or warning text");
+Assert(CommandCompletion.Get("test").Select(x => x.Label).SequenceEqual(["warn"]), "slashless completion follows same grammar");
+var dracula = new AppSettings { MarvineColorset = "dracula" }; dracula.Normalize();
+Assert(dracula.MarvineColorset == "dracula", "Dracula persists in settings");
+Assert(WarningStatePolicy.Resolve(true, false, true) == WarningState.SafeMode && WarningStatePolicy.Resolve(true, true, true) == WarningState.SafeMode,
+    "Windows safe mode takes priority");
+Assert(WarningStatePolicy.Resolve(true, true, false) == WarningState.Danger && WarningStatePolicy.Resolve(true, false, false) == WarningState.Safe,
+    "decision states distinguish danger from safety");
+Assert(WarningStatePolicy.Resolve(false, true, true) == WarningState.None, "informational events have no state");

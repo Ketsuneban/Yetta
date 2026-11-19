@@ -6,11 +6,11 @@ public static class CommandCompletion
     private static readonly string[] Commands = ["/help", "/help 1", "/help 2", "/help 3", "/test warn",
         "/yetta version", "/yetta update", "/yetta download", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
         "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable", "/marvine colorset EGA",
-        "/marvine colorset No Color", "/script list", "/script run", "/script stop", "/snob help", "clear", "status", "info", "settings", "guard", "logs"];
+        "/marvine colorset No Color", "/marvine colorset dracula", "/script list", "/script run", "/script stop", "/snob help", "clear", "status", "info", "settings", "guard", "logs"];
 
     public static IReadOnlyList<CommandSuggestion> Get(string input)
     {
-        string raw = input.TrimStart();
+        string raw = CommandAliases.Normalize(input.TrimStart());
         var tokens = CommandTokens.Read(raw, out _);
         bool space = raw.Length > 0 && char.IsWhiteSpace(raw[^1]);
         if (tokens.Count >= 2 && tokens[0].Value.Equals("/test", StringComparison.OrdinalIgnoreCase) &&

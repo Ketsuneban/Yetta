@@ -9,7 +9,7 @@
     <RootNamespace>Yetta.Desktop</RootNamespace>
     <Company>Tallow</Company>
     <Authors>Tallow</Authors>
-    <Version>0.4.2</Version>
+    <Version>0.4.3</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -26,6 +26,7 @@
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <Resource Include="Assets/icons/*.png" />
     <Resource Include="Assets/Causes/*.png" />
+    <Resource Include="Assets/States/*.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../local.json" Link="local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />

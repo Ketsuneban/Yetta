@@ -24,8 +24,10 @@ public partial class MainWindow
     private sealed record SubsyView(TextBlock Name, TextBlock Value, ProgressBar Bar,
         System.Windows.Shapes.Path Ring, RotateTransform Rotation);
 
-    private static readonly Brush ConsoleSurface = new SolidColorBrush(Color.FromRgb(23, 23, 23));
-    private static readonly Brush ConsoleMuted = new SolidColorBrush(Color.FromRgb(170, 189, 207));
+    private Brush ConsoleSurface => _settings.MarvineColorset == "dracula" ? Hex("#282A36") : new SolidColorBrush(Color.FromRgb(23, 23, 23));
+    private Brush ConsoleMuted => _settings.MarvineColorset == "dracula" ? Hex("#F8F8F2") : new SolidColorBrush(Color.FromRgb(170, 189, 207));
+    private static Brush Hex(string value) => new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
+    private ConsoleFollowController? _consoleFollow;
     private static readonly FontFamily ConsoleFont = new("Cascadia Mono, Consolas");
     private readonly List<ConsoleEntry> _history = [];
     private readonly Dictionary<Guid, ConsoleEntry> _activeSubsy = [];
@@ -74,9 +76,11 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = display
         };
         _consoleScroll = scroll;
+        _consoleFollow?.Dispose();
+        _consoleFollow = new ConsoleFollowController(scroll);
         UpdateConsoleHeight();
         body.Children.Add(new Border { CornerRadius = new CornerRadius(6), Background = ConsoleSurface, Child = scroll });
-        scroll.Loaded += (_, _) => scroll.ScrollToEnd();
+        scroll.Loaded += (_, _) => _consoleFollow?.ContentChanged();
 
         var row = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
         var send = ActionButton("Выполнить", RunMarvine, true);
@@ -89,7 +93,7 @@ public partial class MainWindow
             Background = new SolidColorBrush(Color.FromRgb(31, 40, 52)), CornerRadius = new CornerRadius(6),
             Child = new TextBlock
             {
-                Text = "›", FontSize = 22, Foreground = new SolidColorBrush(Color.FromRgb(120, 222, 213)),
+                Text = "/", FontSize = 22, Foreground = new SolidColorBrush(Color.FromRgb(120, 222, 213)),
                 VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center
             },
             Width = 26, Margin = new Thickness(0, 0, 3, 0)
@@ -100,6 +104,12 @@ public partial class MainWindow
         input.IsReadOnly = _marvineCommandRunning;
         System.Windows.Automation.AutomationProperties.SetName(input, "Команда Marvine");
         _consoleInput = input;
+        if (_settings.MarvineColorset == "dracula")
+        {
+            input.Background = Hex("#44475A"); input.Foreground = Hex("#F8F8F2");
+            prompt.Background = Hex("#44475A");
+            if (prompt.Child is TextBlock marker) marker.Foreground = Hex("#BD93F9");
+        }
         row.Children.Add(input);
         body.Children.Add(row);
 
@@ -123,7 +133,7 @@ public partial class MainWindow
             if (suggestions.Count > 5)
                 shortcuts.Children.Add(SubsyButton(showAll ? "Свернуть варианты" : "Все варианты (" + suggestions.Count + ")", () =>
                 { showAll = !showAll; RefreshSuggestions(); }));
-            var args = CommandTokens.Read(input.Text, out _);
+            var args = CommandTokens.Read(CommandAliases.Normalize(input.Text), out _);
             if (args.Count == 3 && args[0].Value == "/test" && args[1].Value == "warn" && WarningTestCommand.Kinds.Contains(args[2].Value, StringComparer.OrdinalIgnoreCase))
             {
                 shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
@@ -138,7 +148,11 @@ public partial class MainWindow
                 }));
             }
         }
-        input.TextChanged += (_, _) => { showAll = false; RefreshSuggestions(); };
+        input.TextChanged += (_, _) =>
+        {
+            if (prompt.Child is TextBlock marker) marker.Text = input.Text.TrimStart().StartsWith('/') ? "" : "/";
+            showAll = false; RefreshSuggestions();
+        };
         RefreshSuggestions();
         body.Children.Add(shortcuts);
         body.Children.Add(new TextBlock
@@ -148,7 +162,7 @@ public partial class MainWindow
         });
     }
 
-    private static TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()
+    private TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()
     {
         Text = value, Foreground = foreground ?? ConsoleMuted, FontFamily = ConsoleFont,
         FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 7)
@@ -161,12 +175,12 @@ public partial class MainWindow
         if (entry.Render is { } render)
             return render();
         if (entry.Command.Length > 0)
-            return SelectableConsole.Wrap(LiteralConsoleLine("› " + entry.Command, Brushes.White));
+            return SelectableConsole.Wrap(LiteralConsoleLine("/ " + entry.Command.TrimStart('/'), _settings.MarvineColorset == "dracula" ? Hex("#8BE9FD") : Brushes.White));
         if (entry.Script is not { } script)
             return SelectableConsole.Wrap(ConsoleLine(entry.Message, false));
         if (entry.Frame is null || !_settings.MarvineSubsyEnabled)
             return SelectableConsole.Wrap(LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
-                script.IsError ? Brushes.LightSalmon : ConsoleMuted));
+                script.IsError ? (_settings.MarvineColorset == "dracula" ? Hex("#FF5555") : Brushes.LightSalmon) : ConsoleMuted));
 
         var name = new TextBlock { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap };
         var value = LiteralConsoleLine("", ConsoleMuted);
@@ -232,7 +246,6 @@ public partial class MainWindow
         }
 
         if (_page != "console" || _consoleMode != "Marvine" || _consoleOutput is not { } display) return;
-        bool follow = _consoleScroll is { } scroll && scroll.ScrollableHeight - scroll.VerticalOffset <= 24;
         display.Children.Add(RenderTaggedEntry(entry));
         int limit = Math.Min(400, _settings.MarvineHistoryLimit);
         while (display.Children.Count > limit)
@@ -242,7 +255,7 @@ public partial class MainWindow
             if (first is null) break;
             display.Children.Remove(first);
         }
-        if (follow || entry.Command.Length > 0 || entry.AwaitsReply) _consoleScroll?.ScrollToEnd();
+        _consoleFollow?.ContentChanged();
     }
 
     private void EnqueueScriptOutput(ScriptOutput output)

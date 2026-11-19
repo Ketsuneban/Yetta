@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.4.2-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.4.3-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -17,6 +17,7 @@ public static class ConsoleEngine
         string raw = (input ?? string.Empty).Trim();
         if (raw.Length > 4096)
             return new ConsoleResult("[⚠] Marvine: команда слишком длинная (максимум 4096 символов).");
+        raw = CommandAliases.Normalize(raw);
         string command = raw.ToLowerInvariant();
         if (command == "/test warn" || command.StartsWith("/test warn ", StringComparison.Ordinal))
             return WarningTestCommand.TryParse(raw, out _)
@@ -45,8 +46,8 @@ public static class ConsoleEngine
             return new ConsoleResult("", Request: command[5..].ToUpperInvariant() == "INFO" ? "TTY_INFO" : "TTY_UPDATE");
         if (command is "/marvine subsy enable" or "/marvine subsy disable")
             return new ConsoleResult("", Request: "SUBSY", Argument: command.EndsWith("enable", StringComparison.Ordinal) ? "enable" : "disable");
-        if (command is "/marvine colorset ega" or "/marvine colorset no color")
-            return new ConsoleResult("", Request: "COLORSET", Argument: command.EndsWith("ega", StringComparison.Ordinal) ? "EGA" : "No Color");
+        if (command is "/marvine colorset ega" or "/marvine colorset no color" or "/marvine colorset dracula")
+            return new ConsoleResult("", Request: "COLORSET", Argument: command.EndsWith("dracula", StringComparison.Ordinal) ? "dracula" : command.EndsWith("ega", StringComparison.Ordinal) ? "EGA" : "No Color");
         if (command is "/script list")
             return new ConsoleResult("", Request: "SCRIPT_LIST");
         if (command.StartsWith("/script run ", StringComparison.Ordinal))
