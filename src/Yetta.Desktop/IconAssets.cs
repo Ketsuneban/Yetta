@@ -57,7 +57,7 @@ internal static class IconAssets
         {
             var image = new BitmapImage();
             image.BeginInit();
-            image.UriSource = new Uri("pack://application:,,,/Assets/" + asset);
+            image.UriSource = new Uri("pack://application:,,,/" + typeof(IconAssets).Assembly.GetName().Name + ";component/Assets/" + asset);
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.EndInit();
             image.Freeze();
