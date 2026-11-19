@@ -26,6 +26,9 @@ internal static class ShellIcon
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr hIcon);
 
+    [DllImport("shell32.dll", EntryPoint = "ExtractIconExW", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string file, int index, IntPtr large, IntPtr small, uint count);
+
     internal static BitmapSource? Load(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
@@ -33,6 +36,7 @@ internal static class ShellIcon
         IntPtr icon = IntPtr.Zero;
         try
         {
+            if (ExtractIconEx(path, -1, IntPtr.Zero, IntPtr.Zero, 0) == 0) return null;
             int size = BufferSize;
             buffer = Marshal.AllocHGlobal(size);
             if (SHGetFileInfo(path, 0, buffer, (uint)size, ShgfiIcon | ShgfiLargeIcon) == IntPtr.Zero) return null;

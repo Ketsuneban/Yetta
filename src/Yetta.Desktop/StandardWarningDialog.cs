@@ -104,20 +104,7 @@ internal static class StandardWarningDialog
         return null;
     }
 
-    private static Image CauseIcon(WarningRequest request, double size)
-    {
-        if (request.Kind == WarningKind.Fatal) return IconAssets.Image(48, size);
-        if (request.Kind == WarningKind.Agreement) return IconAssets.YettaLogo(size);
-        if (request.Kind == WarningKind.Dax) return IconAssets.DaxLogo(size);
-        if (request.CauseIconId is >= 1 and <= 50) return IconAssets.Image(request.CauseIconId.Value, size);
-        if (request.SourcePath is { Length: > 0 } path && ShellIcon.Load(path) is { } shell)
-        {
-            var image = new Image { Source = shell, Width = size, Height = size, Stretch = Stretch.Uniform, SnapsToDevicePixels = true };
-            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-            return image;
-        }
-        return IconAssets.Image(YettaWarningWindow.HeaderIcon(request), size);
-    }
+    private static Image CauseIcon(WarningRequest request, double size) => WarningCauseResolver.Render(request, size);
 
     internal static bool Show(Window owner, WarningRequest request, string profile, bool nonModal,
         Action<Window>? onWindowCreated = null)
@@ -131,8 +118,9 @@ internal static class StandardWarningDialog
             Owner = owner,
             Title = TallowText.Get("ui.warning.0007") + request.Reason,
             Width = 620,
-            Height = request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
-                ? 540 : request.Description.Length > 250 ? 490 : 460,
+            Height = request.IsPreview ? 500 + (request.RequirePassword ? 85 : 0) + (request.RequireTty ? 105 : 0) + (request.RequireAcknowledgement ? 40 : 0)
+                : request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
+                    ? 540 : request.Description.Length > 250 ? 490 : 460,
             MinWidth = 540,
             MinHeight = 430,
             MaxWidth = SystemParameters.WorkArea.Width * 0.95,
@@ -324,9 +312,17 @@ internal static class StandardWarningDialog
             Child = footerStack
         };
         bool oneAction = request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
-        bool needsKey = !fatal && !oneAction &&
+        bool needsKey = request.IsPreview ? request.RequireTty : !fatal && !oneAction &&
             (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
-        bool needsCheck = !fatal && request.RequireAcknowledgement;
+        bool needsCheck = (request.IsPreview || !fatal) && request.RequireAcknowledgement;
+        PasswordBox? confirmationPassword = null;
+        if (request.IsPreview && request.RequirePassword)
+        {
+            footerStack.Children.Add(Text("Демонстрационный пароль: test (не пароль Windows)", 12.5, Muted));
+            confirmationPassword = new PasswordBox { MaxLength = 128, Height = 36,
+                Margin = new Thickness(0, 6, 0, 12), PasswordChar = '•' };
+            footerStack.Children.Add(confirmationPassword);
+        }
 
         CheckBox? checkbox = null;
         TextBlock? checkboxLabel = null;
@@ -514,7 +510,7 @@ internal static class StandardWarningDialog
                     catch (Exception e) when (e is Win32Exception or InvalidDataException) { keyValid = false; }
                 }
             }
-            allow.IsEnabled = approved && keyValid;
+            allow.IsEnabled = approved && keyValid && (confirmationPassword is null || confirmationPassword.Password == "test");
             if (keyFeedback is null || tty is null) return;
             if (tty.Password.Length == 0)
             {
@@ -544,6 +540,8 @@ internal static class StandardWarningDialog
                 ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        if (confirmationPassword is not null)
+            confirmationPassword.PasswordChanged += (_, _) => RefreshGate();
         if (checkbox is not null)
         {
             CheckBox box = checkbox;

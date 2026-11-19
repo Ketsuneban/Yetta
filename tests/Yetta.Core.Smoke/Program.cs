@@ -190,3 +190,25 @@ finally
 }
 
 Console.WriteLine("All Yetta Core smoke tests passed.");
+
+// Warning cause taxonomy is independent from severity and application association.
+Assert(WarningCause.Icon(WarningCauseType.File, new(@"C:\work\task.PY")) == 1, "Python file is not its interpreter");
+Assert(WarningCause.Icon(WarningCauseType.File, new("run.bat")) == 5, "launch script is executable");
+Assert(WarningCause.Icon(WarningCauseType.File, new("photo.png")) == 13, "media cause");
+Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsImportant: true)) == 2, "personal important file");
+Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsProtected: true, IsImportant: true)) == 4, "protection overrides importance");
+Assert(WarningCause.Icon(WarningCauseType.File, new("system.ini", IsProtected: true, IsWindowsConfiguration: true)) == 14, "Windows configuration keeps its specific cause");
+Assert(WarningCause.Icon(WarningCauseType.File, new("remote.py", IsCloudOnly: true)) == 8, "cloud placeholder overrides extension");
+Assert(WarningCause.Icon(WarningCauseType.File, new("folder.zip", IsDirectory: true)) == 9, "folder overrides extension");
+Assert(WarningCause.Icon(WarningCauseType.Application, new("x.py")) == 11, "application without icon has its own fallback");
+Assert(WarningCause.Icon(WarningCauseType.Tallow) == 6 && WarningCause.Icon(WarningCauseType.Windows) == 7 &&
+    WarningCause.Icon(WarningCauseType.Yetta) == 15 && WarningCause.Icon(WarningCauseType.Dax) == 16, "component cause mapping");
+Assert(WarningCause.Icon(WarningCauseType.File, new("backup.7z")) == 10 &&
+    WarningCause.Icon(WarningCauseType.File, new("README")) == 12, "archive and extensionless fallback");
+const string preview = "/test warn Critical \"C:\\My Files\\demo.py\" pass:true tty:false check:true \"Тест с пробелами\"";
+Assert(WarningTestCommand.TryParse(preview, out var parsed) && parsed is { Password: true, Tty: false, Check: true } &&
+    parsed.Cause == @"C:\My Files\demo.py", "warning parser preserves quoted Windows paths and flags");
+Assert(!WarningTestCommand.TryParse(preview.Replace("pass:true", "pass:maybe"), out _) &&
+    !WarningTestCommand.TryParse(preview + " extra", out _) &&
+    !WarningTestCommand.TryParse(preview.Replace("Critical", "99"), out _), "invalid previews cannot open windows");
+Assert(ConsoleEngine.Execute(preview, c).Request == "TEST_WARN", "Marvine dispatches warning preview");

@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.4.0-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.4.1-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -18,6 +18,10 @@ public static class ConsoleEngine
         if (raw.Length > 4096)
             return new ConsoleResult("[⚠] Marvine: команда слишком длинная (максимум 4096 символов).");
         string command = raw.ToLowerInvariant();
+        if (command == "/test warn" || command.StartsWith("/test warn ", StringComparison.Ordinal))
+            return WarningTestCommand.TryParse(raw, out _)
+                ? new ConsoleResult("", Request: "TEST_WARN", Argument: raw)
+                : new ConsoleResult(WarningTestCommand.Usage);
         if (command is "/help" or "/help 1" or "/help 2" or "/help 3")
         {
             int page = command.Length > 6 && int.TryParse(command[6..], out int requested) ? requested : 1;
@@ -104,7 +108,7 @@ public static class ConsoleEngine
             "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable",
             "/marvine colorset EGA", "/marvine colorset No Color", "/script list",
             "/script run ", "/script stop ", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
-            "/snob help", "clear", "status", "settings"];
+            "/test warn ", "/snob help", "clear", "status", "settings"];
         return commands.Where(item => item.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Take(6).ToArray();
     }
 
@@ -133,6 +137,7 @@ public static class ConsoleEngine
                 "[Серый] /snob — повышение прав появится вместе с DAX [A]\n" +
                 "[Зелёный] /dax status — состояние локального DAX\n" +
                 "[Зелёный] /dax diagnostics — экран диагностики\n" +
+                "[Зелёный] " + WarningTestCommand.Usage + "\n" +
                 "[Зелёный] clear, status, info, settings, guard, logs\n" +
                 "Зелёный — доступно; красный — нет прав; жёлтый — частично; серый — в разработке."
         };

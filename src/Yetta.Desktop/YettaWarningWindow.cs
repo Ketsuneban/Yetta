@@ -1,3 +1,4 @@
+using Yetta.Core;
 using System.IO;
 using System.Windows;
 
@@ -17,7 +18,9 @@ internal sealed record WarningRequest(
     bool PotentialDamage = false,
     Action? RecoveryNavigation = null,
     int? HeaderIconId = null,
-    int? CauseIconId = null);
+    WarningCauseType CauseType = WarningCauseType.Auto,
+    bool IsPreview = false,
+    bool RequirePassword = false);
 
 /// <summary>
 /// Central policy dispatch for all seven Yetta warnings. UI styling never grants
@@ -25,47 +28,8 @@ internal sealed record WarningRequest(
 /// </summary>
 internal static class YettaWarningWindow
 {
-    /// <summary>Cause icon for the main zone, following the numbered icon set.</summary>
-    internal static int ObjectIcon(WarningRequest request)
-    {
-        if (request.Kind == WarningKind.Fatal) return 48;
-        if (request.CauseIconId is >= 1 and <= 50) return request.CauseIconId.Value;
-        var path = request.SourcePath;
-        if (string.IsNullOrWhiteSpace(path))
-            return string.IsNullOrWhiteSpace(request.Publisher) ? 46 : 45;
-        try
-        {
-            if (Directory.Exists(path)) return 43;
-            var full = Path.GetFullPath(path);
-            if (File.Exists(full))
-            {
-                var attributes = File.GetAttributes(full);
-                if (attributes.HasFlag(FileAttributes.System) && attributes.HasFlag(FileAttributes.ReadOnly)) return 40;
-                if (IsUnderWindows(full)) return 42;
-            }
-            else if (IsUnderWindows(full))
-            {
-                return 42;
-            }
-        }
-        catch (Exception e) when (e is ArgumentException or NotSupportedException
-            or PathTooLongException or IOException or UnauthorizedAccessException)
-        {
-            // Fall through to the extension table.
-        }
-        return Extension(path) switch
-        {
-            ".py" => 37,
-            ".txt" or ".doc" or ".docx" or ".odt" or ".rtf" or ".pdf" or ".md" or ".log" or ".csv" => 39,
-            ".exe" or ".com" or ".bat" or ".cmd" or ".ps1" or ".msi" or ".vbs" or ".jar" or ".scr" => 41,
-            ".sys" or ".dll" or ".ini" or ".cfg" or ".reg" or ".drv" or ".ocx" => 42,
-            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" or ".bz2" or ".xz" or ".iso" => 44,
-            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".svg" or ".ico"
-                or ".mp4" or ".mkv" or ".avi" or ".mov" or ".mp3" or ".wav" => 47,
-            ".lnk" => 38,
-            _ => 46
-        };
-    }
+    /// <summary>Cause and severity are independent, including fatal and DAX warnings.</summary>
+    internal static int ObjectIcon(WarningRequest request) => WarningCauseResolver.Icon(request);
 
     /// <summary>Status square for the main zone; 0 means "no square".</summary>
     internal static int Status(WarningRequest request, string activeProfile)
