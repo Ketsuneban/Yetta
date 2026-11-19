@@ -138,7 +138,7 @@ public partial class MainWindow
             foreach (var entry in visible)
             {
                 var item = new StackPanel();
-                item.Children.Add(Text($"{entry.Utc.ToLocalTime():dd.MM HH:mm:ss}  ·  {entry.Actor ?? "Yetta"}  ·  {entry.Category}", 11, muted: true));
+                item.Children.Add(Text($"{entry.Utc.ToLocalTime():dd.MM HH:mm:ss}  ·  {(entry.Actor?.Equals("TALLOW", StringComparison.OrdinalIgnoreCase) == true ? "Tallow" : entry.Actor ?? "Yetta")}  ·  {entry.Category}", 11, muted: true));
                 item.Children.Add(Text(entry.Result, 13, heading: true));
                 item.Children.Add(Text(entry.Summary, 12));
                 rows.Children.Add(Card(item));

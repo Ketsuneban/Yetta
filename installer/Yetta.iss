@@ -1,13 +1,13 @@
 ; Yetta preview installer. Distribution uses Inno Setup as a build tool;
 ; the application source itself is written for Yetta.
-#define MyAppVersion "0.4.1-preview"
+#define MyAppVersion "0.4.2-preview"
 
 [Setup]
 AppId={{FAAE9E3E-7B5F-494F-9CC1-2CE4D2F33C9F}
 AppName=Yetta
 AppVersion={#MyAppVersion}
 AppVerName=Yetta {#MyAppVersion}
-AppPublisher=Yetta contributors
+AppPublisher=Tallow
 AppPublisherURL=https://github.com/Ketsuneban/Yetta
 AppSupportURL=https://github.com/Ketsuneban/Yetta/issues
 AppUpdatesURL=https://github.com/Ketsuneban/Yetta/releases
@@ -18,13 +18,14 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 OutputDir=..\artifacts\setup
 OutputBaseFilename=YettaSetup
-Compression=lzma2
-SolidCompression=yes
+Compression=lzma2/fast
+SolidCompression=no
 WizardStyle=modern
-CloseApplications=force
+CloseApplications=yes
+CloseApplicationsFilter=Yetta.exe,Yetta.DAX.exe
 RestartApplications=no
 UninstallDisplayIcon={app}\Yetta.exe
-VersionInfoVersion=0.4.1
+VersionInfoVersion=0.4.2
 
 [Files]
 Source: "..\artifacts\Yetta-win-x64\Yetta.exe"; DestDir: "{app}"; Flags: ignoreversion

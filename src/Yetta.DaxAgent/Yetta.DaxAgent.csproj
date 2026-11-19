@@ -7,7 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Yetta.DAX</AssemblyName>
     <RootNamespace>Yetta.DaxAgent</RootNamespace>
-    <Version>0.4.1</Version>
+    <Company>Tallow</Company>
+    <Authors>Tallow</Authors>
+    <Version>0.4.2</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>

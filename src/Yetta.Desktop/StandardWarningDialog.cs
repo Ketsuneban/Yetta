@@ -107,7 +107,7 @@ internal static class StandardWarningDialog
     private static Image CauseIcon(WarningRequest request, double size) => WarningCauseResolver.Render(request, size);
 
     internal static bool Show(Window owner, WarningRequest request, string profile, bool nonModal,
-        Action<Window>? onWindowCreated = null)
+        Action<Window>? onWindowCreated = null, bool renderOnly = false)
     {
         // UAC is not being imitated functionally: this is an ordinary Yetta window.
         // Real Windows privilege prompts, if needed, are still exclusively OS-owned.
@@ -117,10 +117,10 @@ internal static class StandardWarningDialog
         {
             Owner = owner,
             Title = TallowText.Get("ui.warning.0007") + request.Reason,
-            Width = 620,
-            Height = request.IsPreview ? 500 + (request.RequirePassword ? 85 : 0) + (request.RequireTty ? 105 : 0) + (request.RequireAcknowledgement ? 40 : 0)
+            Width = 720,
+            Height = request.IsPreview ? 560 + (request.RequirePassword ? 75 : 0) + (request.RequireTty ? 95 : 0) + (request.RequireAcknowledgement ? 40 : 0)
                 : request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
-                    ? 540 : request.Description.Length > 250 ? 490 : 460,
+                    ? 650 : request.Description.Length > 250 ? 600 : 540,
             MinWidth = 540,
             MinHeight = 430,
             MaxWidth = SystemParameters.WorkArea.Width * 0.95,
@@ -193,7 +193,8 @@ internal static class StandardWarningDialog
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var heading = new StackPanel();
-        var caption = Text("Контроль действий Yetta", 12, White);
+        var component = WarningCauseResolver.Type(request) switch { WarningCauseType.Dax => "DAX", WarningCauseType.Tallow => "Tallow", _ => "Yetta" };
+        var caption = Text("Контроль действий " + component, 12, White);
         caption.Margin = new Thickness(0, 0, 0, 22);
         heading.Children.Add(caption);
         heading.Children.Add(Text(request.Reason, 23, White, bold: true));
@@ -221,83 +222,71 @@ internal static class StandardWarningDialog
         Grid.SetRow(header, 0);
         grid.Children.Add(header);
 
-        // MAIN ZONE: the object, its publisher/path and the scrollable text.
-        var body = new Grid { Margin = new Thickness(30, 24, 30, 18) };
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        // The description is always visible; technical evidence is a separate, collapsed section.
+        var body = new Grid { Margin = new Thickness(26, 20, 26, 18) };
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var subject = new Grid();
+        var subject = new Grid { Margin = new Thickness(0, 0, 0, 16) };
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var cause = CauseIcon(request, 44);
-        cause.Margin = new Thickness(0, 0, 16, 0);
+        var cause = CauseIcon(request, 48);
+        cause.Margin = new Thickness(0, 0, 15, 0);
+        if (!string.IsNullOrWhiteSpace(request.SourcePath))
+        {
+            cause.Cursor = Cursors.Hand;
+            cause.ToolTip = "Показать причину в Проводнике";
+            cause.MouseLeftButtonUp += (_, _) => WarningFileNavigation.Reveal(request.SourcePath);
+        }
         subject.Children.Add(cause);
-        var details = new StackPanel { Margin = new Thickness(0), VerticalAlignment = VerticalAlignment.Center };
-        var name = Text(request.Subject, 19, White, bold: true);
-        name.Cursor = Cursors.Hand;
-        name.ToolTip = TallowText.Get("ui.warning.0009");
-        name.MouseLeftButtonUp += (_, _) =>
+        var identity = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        string displayName = WarningCauseResolver.Type(request) switch
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(
-                    "https://www.google.com/search?q=" + Uri.EscapeDataString(request.Subject))
-                { UseShellExecute = true });
-            }
-            catch (Win32Exception) { }
-            catch (InvalidOperationException) { }
+            WarningCauseType.Tallow => "Tallow", WarningCauseType.Yetta => "Yetta", WarningCauseType.Dax => "DAX",
+            WarningCauseType.Windows => "Windows", _ => request.Subject
         };
-        details.Children.Add(name);
-        var publisherText = request.Publisher;
-        if (string.IsNullOrWhiteSpace(publisherText)) publisherText = TallowText.Get("ui.warning.0010");
-        var publisher = Text("Издатель: " + publisherText, 13, Muted);
-        publisher.Margin = new Thickness(0, 25, 0, 0);
-        publisher.Cursor = request.SourcePath is null ? Cursors.Arrow : Cursors.Hand;
-        publisher.ToolTip = TallowText.Get("ui.warning.0011");
-        publisher.MouseLeftButtonUp += (_, _) =>
-        {
-            try
-            {
-                if (request.SourcePath is { } path && File.Exists(path))
-                    Process.Start(new ProcessStartInfo("explorer.exe", "/select,\"" + path + "\"")
-                    { UseShellExecute = true });
-            }
-            catch (Win32Exception) { }
-        };
-        Grid.SetColumn(details, 1);
-        subject.Children.Add(details);
-        Grid.SetRow(subject, 0);
+        identity.Children.Add(Text(displayName, 19, White, bold: true));
+        string publisherText = WarningCauseResolver.Type(request) is
+            WarningCauseType.Yetta or WarningCauseType.Dax or WarningCauseType.Tallow ? "Tallow" : request.Publisher ?? "Неизвестный издатель";
+        var publisher = Text("Издатель: " + publisherText, 12, Muted);
+        publisher.Margin = new Thickness(0, 4, 0, 0);
+        identity.Children.Add(publisher);
+        Grid.SetColumn(identity, 1);
+        subject.Children.Add(identity);
         body.Children.Add(subject);
-        Grid.SetRow(publisher, 1);
-        body.Children.Add(publisher);
-
-        var bodyText = Text(request.Description, 13.5, Muted);
-        bodyText.LineHeight = 22;
-        bool expanded = !string.IsNullOrWhiteSpace(request.Description);
-        var more = Text(expanded ? "Свернуть подробности" : "Подробнее", 15,
-            new SolidColorBrush(palette.Accent));
+        var content = new StackPanel();
+        var description = Text(request.Description, 14, White);
+        description.LineHeight = 23;
+        description.Margin = new Thickness(0, 0, 0, 14);
+        content.Children.Add(description);
+        var more = Text("Подробнее", 13, new SolidColorBrush(palette.Accent));
         more.Cursor = Cursors.Hand;
-        more.Margin = new Thickness(0, 27, 0, 12);
-        Grid.SetRow(more, 2);
-        body.Children.Add(more);
-        var explanation = new EdgeScrollViewer
+        more.Margin = new Thickness(0, 0, 0, 10);
+        content.Children.Add(more);
+        var evidence = new StackPanel { Visibility = Visibility.Collapsed };
+        evidence.Children.Add(Text(request.TechnicalDetails ?? "Тип: " + request.Kind +
+            " · Источник: " + WarningCauseResolver.Type(request), 12, Muted));
+        var paths = (request.RelatedPaths ?? Array.Empty<string>()).Concat(request.SourcePath is { Length: > 0 } source ? new[] { source } : Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in paths)
         {
-            Content = bodyText, Background = new SolidColorBrush(palette.Surface),
-            Visibility = expanded ? Visibility.Visible : Visibility.Collapsed,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(0, 0, 8, 0),
-            Focusable = false
-        };
+            var link = Text(path, 12, new SolidColorBrush(palette.Accent));
+            link.TextWrapping = TextWrapping.Wrap;
+            link.Margin = new Thickness(0, 8, 0, 0);
+            link.Cursor = Cursors.Hand;
+            link.ToolTip = "Показать в Проводнике";
+            link.MouseLeftButtonUp += (_, _) => WarningFileNavigation.Reveal(path);
+            evidence.Children.Add(link);
+        }
+        content.Children.Add(evidence);
         more.MouseLeftButtonUp += (_, _) =>
         {
-            expanded = !expanded;
+            bool expanded = evidence.Visibility != Visibility.Visible;
+            evidence.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
             more.Text = expanded ? "Свернуть подробности" : "Подробнее";
-            explanation.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-            if (expanded) FadeIn(explanation);
         };
-        Grid.SetRow(explanation, 3);
+        var explanation = new EdgeScrollViewer { Content = content, Background = new SolidColorBrush(palette.Surface),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Padding = new Thickness(0, 0, 8, 0) };
+        Grid.SetRow(explanation, 1);
         body.Children.Add(explanation);
         Grid.SetRow(body, 1);
         grid.Children.Add(body);
@@ -311,15 +300,16 @@ internal static class StandardWarningDialog
             Padding = new Thickness(26, 16, 26, 18),
             Child = footerStack
         };
-        bool oneAction = request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement;
+        bool oneAction = !request.IsPreview && (request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement);
         bool needsKey = request.IsPreview ? request.RequireTty : !fatal && !oneAction &&
             (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         bool needsCheck = (request.IsPreview || !fatal) && request.RequireAcknowledgement;
         PasswordBox? confirmationPassword = null;
         if (request.IsPreview && request.RequirePassword)
         {
-            footerStack.Children.Add(Text("Демонстрационный пароль: test (не пароль Windows)", 12.5, Muted));
-            confirmationPassword = new PasswordBox { MaxLength = 128, Height = 36,
+            footerStack.Children.Add(Text("Пароль подтверждения · для теста: test", 12.5, Muted));
+            confirmationPassword = new PasswordBox { MaxLength = 128, Height = 42,
+                Style = (Style)Application.Current.FindResource("WarningPassword"),
                 Margin = new Thickness(0, 6, 0, 12), PasswordChar = '•' };
             footerStack.Children.Add(confirmationPassword);
         }
@@ -337,6 +327,7 @@ internal static class StandardWarningDialog
             var box = new CheckBox
             {
                 Content = checkboxLabel,
+                Style = (Style)Application.Current.FindResource("WarningCheck"),
                 Foreground = White, FontSize = 12.5,
                 IsChecked = false,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -376,7 +367,8 @@ internal static class StandardWarningDialog
             var inputLayer = new Grid();
             var password = new PasswordBox
             {
-                MaxLength = 64, Height = 36, PasswordChar = '•',
+                MaxLength = 64, Height = 42, PasswordChar = '•',
+                Style = (Style)Application.Current.FindResource("WarningPassword"),
                 Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
                 Foreground = White, CaretBrush = White,
                 BorderThickness = new Thickness(1), BorderBrush = Muted,
@@ -386,7 +378,8 @@ internal static class StandardWarningDialog
             };
             var plain = new TextBox
             {
-                MaxLength = 64, Height = 36, Visibility = Visibility.Collapsed,
+                MaxLength = 64, Height = 42, Visibility = Visibility.Collapsed,
+                Style = (Style)Application.Current.FindResource("WarningTextInput"),
                 Background = password.Background, Foreground = White, CaretBrush = White,
                 BorderThickness = new Thickness(1), BorderBrush = Muted,
                 Padding = new Thickness(10, 0, 10, 0),
@@ -454,7 +447,7 @@ internal static class StandardWarningDialog
         buttonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         buttonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var controls = new Grid();
-        string action = request.Kind switch
+        string action = request.IsPreview ? "Разрешить" : request.Kind switch
         {
             WarningKind.Information => TallowText.Get("ui.warning.0017"),
             WarningKind.Fatal => TallowText.Get("ui.warning.0018"),
@@ -474,7 +467,7 @@ internal static class StandardWarningDialog
         else
         {
             // Match the Windows layout: continue on the left, decline on the right.
-            deny = Command(TallowText.Get("ui.warning.0021"), true, new SolidColorBrush(palette.Accent));
+            deny = Command(request.IsPreview ? "Запретить" : TallowText.Get("ui.warning.0021"), true, new SolidColorBrush(palette.Accent));
             deny.IsCancel = false; // Escape must never dismiss warnings.
             deny.HorizontalAlignment = HorizontalAlignment.Stretch;
             deny.Width = double.NaN;
@@ -552,31 +545,6 @@ internal static class StandardWarningDialog
         {
             tty.PasswordChanged += (_, _) => { UpdatePlaceholder(); RefreshGate(); };
         }
-        if (checkbox is not null && checkboxLabel is not null && keyPanel is not null && tty is not null)
-        {
-            // Variant 3: the agreement text flies into the box and the TTY key
-            // field takes its place; clearing the check reverses the transition.
-            CheckBox box = checkbox;
-            TextBlock label = checkboxLabel;
-            StackPanel panel = keyPanel;
-            PasswordBox key = tty;
-            panel.Visibility = Visibility.Collapsed;
-            panel.Opacity = 1;
-            box.Checked += (_, _) =>
-            {
-                FlyInto(label, into: true);
-                panel.Visibility = Visibility.Visible;
-                FadeIn(panel);
-                key.Focus();
-            };
-            box.Unchecked += (_, _) =>
-            {
-                panel.Visibility = Visibility.Collapsed;
-                label.Visibility = Visibility.Visible;
-                label.Opacity = 1;
-                label.RenderTransform = Transform.Identity;
-            };
-        }
         allow.Click += (_, _) =>
         {
             RefreshGate();
@@ -594,6 +562,7 @@ internal static class StandardWarningDialog
         UiMotion.AnimateOpen(outer);
 
         onWindowCreated?.Invoke(window);
+        if (renderOnly) return false;
         DaxAudit.Write("warning", "shown", request.Kind + ": " + request.Reason);
         if (nonModal)
         {

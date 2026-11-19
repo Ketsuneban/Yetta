@@ -54,6 +54,13 @@ jobs:
         run: dotnet build src/Yetta.Desktop/Yetta.Desktop.csproj --configuration Release --no-restore -warnaserror
       - name: Verify desktop scroll template
         run: dotnet run --project tests/Yetta.Desktop.Smoke/Yetta.Desktop.Smoke.csproj --configuration Release
+      - name: Upload warning layout previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yetta-warning-previews
+          path: artifacts/ui-preview/
+          if-no-files-found: error
+          retention-days: 7
       - name: Publish portable single-file executable
         shell: pwsh
         run: |
@@ -110,7 +117,7 @@ jobs:
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.4.1-preview-win-x64-QA
+          name: Yetta-0.4.2-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -128,7 +135,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.4.1-preview-win-x64-QA
+          name: Yetta-0.4.2-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh

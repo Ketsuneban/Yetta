@@ -32,7 +32,7 @@
 ## Marvine
 
 ```text
-/test warn <Standard|Information|Caution|Dangerous|Critical|Fatal|Agreement|Dax> <причина> pass:true/false tty:true/false check:true/false "текст"
+/test warn <Standard|Information|Caution|Dangerous|Critical|Fatal|Agreement|Dax> <причина> [pass:true/false] [tty:true/false] [check:true/false] ["текст"]
 ```
 
 Причина: Yetta, DAX, Tallow, Windows, путь к файлу/папке или HTTP(S) URL. Пути с пробелами заключаются в двойные кавычки. Для приложения используйте `"app:C:\Path With Spaces\Application.exe"`. Обычный путь всегда обозначает конкретный файл, даже если это .exe или .py.
@@ -44,3 +44,6 @@
 ```
 
 `pass:true` включает поле с демонстрационным паролем **test**, подписанным в окне; пароль Windows не запрашивается. `tty:true` требует действующий локальный TTY. `check:true` включает галочку. В тестах флаги задают поля точно, включая Critical и Fatal; правила настоящих предупреждений не ослабляются. Тест ничего не запускает и не восстанавливает; Fatal сохраняет приоритет в очереди. Закрытие окна и отклонение не означают согласие. Пароли и введённый TTY не попадают в историю Marvine.
+
+
+С версии 0.4.2 параметры pass, tty, check необязательны и допускаются в любом порядке; по умолчанию все false. Без текста используется тестовое описание. Без причины используется Yetta. Например: `/test warn Standard Yetta` или `/test warn Caution "C:\Work\script.py" check:true`. Все тестовые окна имеют кнопки «Разрешить» и «Запретить».
