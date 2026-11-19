@@ -249,3 +249,17 @@ Assert(WarningStatePolicy.Resolve(true, false, true) == WarningState.SafeMode &&
 Assert(WarningStatePolicy.Resolve(true, true, false) == WarningState.Danger && WarningStatePolicy.Resolve(true, false, false) == WarningState.Safe,
     "decision states distinguish danger from safety");
 Assert(WarningStatePolicy.Resolve(false, true, true) == WarningState.None, "informational events have no state");
+
+Assert(ConsoleEngine.Execute("scr   run", c).Request == "SCRIPT_RUN", "script picker through spaced alias");
+Assert(ConsoleEngine.Execute("script", c).Message.Contains("script run") && ConsoleEngine.Execute("/help 4", c).Message.Contains("wallpaper"), "discoverable script and Windows help");
+Assert(ConsoleEngine.Execute(@"script   run   ""C:\My  Scripts\A.py""", c).Argument == @"""C:\My  Scripts\A.py""", "preserve quoted filename bytes");
+Assert(ConsoleEngine.Execute("/win mouse-speed", c) is { Preference.Key: "mouse-speed", SettingValue: null }, "read existing setting");
+Assert(ConsoleEngine.Execute("WIN mouse-speed 20", c) is { Preference.Key: "mouse-speed", SettingValue: 20 }, "bounded personal setting");
+Assert(ConsoleEngine.Execute("win mouse-speed 21", c).Preference is null && ConsoleEngine.Execute("win key-delay -1", c).Preference is null, "reject invalid ranges");
+Assert(ConsoleEngine.Execute("win animations off", c).SettingValue == 0 && ConsoleEngine.Execute("win animations yes", c).Preference is null, "strict toggle values");
+Assert(ConsoleEngine.Execute("win wallpaper \"C:\\Pictures\\A B.png\"", c).Argument == @"C:\Pictures\A B.png" &&
+       ConsoleEngine.Execute("win wallpaper \"unfinished", c).Request is null, "wallpaper path and incomplete quote");
+Assert(WindowsCommands.Pages.All(p => ConsoleEngine.Execute("win open " + p.Key, c).Argument == p.Value) &&
+       ConsoleEngine.Execute("win open https://example.com", c).Request is null, "only catalogued Windows pages");
+Assert(CommandCompletion.Get("win open").Count == WindowsCommands.Pages.Count && CommandCompletion.Get("win animations").Count == 2 &&
+       CommandCompletion.Get("/w").Any(x => x.Label == "/win"), "Windows pages, switches and partial root completion");

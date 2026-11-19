@@ -11,6 +11,21 @@ internal sealed class ConsoleFollowController : IDisposable
     private readonly ScrollViewer _view;
     private bool _following = true, _scheduled, _disposed;
     internal bool Following => _following;
+    internal double Offset => _view.VerticalOffset;
+    internal event Action<bool>? FollowingChanged;
+
+    private void SetFollowing(bool value)
+    {
+        if (value == _following) return;
+        _following = value;
+        FollowingChanged?.Invoke(value);
+    }
+
+    internal void Resume()
+    {
+        SetFollowing(true);
+        ContentChanged();
+    }
     internal ConsoleFollowController(ScrollViewer view)
     {
         _view = view;
@@ -26,18 +41,19 @@ internal sealed class ConsoleFollowController : IDisposable
         double lines = SystemParameters.WheelScrollLines;
         double step = lines < 0 ? _view.ViewportHeight : Math.Max(1, lines) * 18;
         double next = Math.Clamp(_view.VerticalOffset - e.Delta / 120.0 * step, 0, _view.ScrollableHeight);
-        _following = next >= _view.ScrollableHeight - .5;
+        SetFollowing(next >= _view.ScrollableHeight - .5);
         _view.ScrollToVerticalOffset(next);
         e.Handled = true;
     }
     private void MouseDown(object sender, MouseButtonEventArgs e)
     {
         for (DependencyObject? item = e.OriginalSource as DependencyObject; item is not null && item != _view; item = item is Visual ? VisualTreeHelper.GetParent(item) : LogicalTreeHelper.GetParent(item))
-            if (item is ScrollBar) { _following = false; break; }
+            if (item is ScrollBar) { SetFollowing(false); break; }
     }
     private void Changed(object sender, ScrollChangedEventArgs e)
     {
-        if (!_following && e.ExtentHeightChange == 0 && _view.VerticalOffset >= _view.ScrollableHeight - .5) _following = true;
+        if (!ReferenceEquals(e.OriginalSource, _view)) return;
+        if (!_following && _view.VerticalOffset >= _view.ScrollableHeight - .5) SetFollowing(true);
         if (_following) ContentChanged();
     }
     internal void ContentChanged()
@@ -52,10 +68,10 @@ internal sealed class ConsoleFollowController : IDisposable
     }
     internal void PauseAt(double offset)
     {
-        _following = false;
+        SetFollowing(false);
         _view.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
-            if (!_disposed) { _following = false; _view.ScrollToVerticalOffset(offset); }
+            if (!_disposed) { SetFollowing(false); _view.ScrollToVerticalOffset(offset); }
         }));
     }
     public void Dispose()

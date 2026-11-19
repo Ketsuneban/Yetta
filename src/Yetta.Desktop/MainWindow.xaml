@@ -395,6 +395,7 @@
         </local:EdgeScrollViewer.Resources>
         <StackPanel x:Name="ContentPanel"/>
       </local:EdgeScrollViewer>
+      <Border x:Name="ConsoleHost" Grid.Row="1" Margin="24,8,24,16" Padding="14" CornerRadius="12" Visibility="Collapsed"/>
       <Border Grid.Row="2">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"><Run Text="{DynamicResource Local.ui.xaml.0027}"/><Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink"><Run Text="{DynamicResource Local.ui.xaml.0028}"/></Hyperlink></TextBlock>

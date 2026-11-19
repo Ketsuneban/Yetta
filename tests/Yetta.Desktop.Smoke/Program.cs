@@ -17,6 +17,95 @@ static class Program
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
             foreach (var child in Descendants(VisualTreeHelper.GetChild(root, i))) yield return child;
     }
+    private static void VerifyMarvineLayout()
+    {
+        var window = new MainWindow();
+        var nav = (Button)window.FindName("NavConsole");
+        nav.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var host = (Border)window.FindName("ConsoleHost");
+        var root = (FrameworkElement)host.Child;
+        void Layout(int width, int height)
+        {
+            var size = new Size(width, height);
+            root.Measure(size);
+            root.Arrange(new Rect(size));
+            root.UpdateLayout();
+        }
+        Layout(560, 390);
+        var input = Descendants(root).OfType<TextBox>().Single();
+        input.Text = "/test warn";
+        var expand = Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text.StartsWith("Все варианты") == true);
+        expand.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        foreach (var (width, height) in new[] { (560, 390), (850, 570) })
+        {
+            Layout(width, height);
+            var viewer = Descendants(root).OfType<EdgeScrollViewer>().Single();
+            var origin = input.TranslatePoint(new Point(0, 0), root);
+            if (origin.Y <= 0 || origin.Y + input.ActualHeight > height || input.ActualWidth < 120 ||
+                viewer.ActualHeight < 90 || root.DesiredSize.Height > height)
+                throw new Exception("Expanded completions displaced the command input or transcript.");
+        }
+        input.Text = "script";
+        var send = Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Выполнить");
+        send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Layout(700, 430);
+        var output = Descendants(root).OfType<RichTextBox>().Single();
+        output.SelectAll();
+        if (!output.Selection.Text.Contains("script stop")) throw new Exception("Script help unavailable from console.");
+        input.Text = "win mouse-speed";
+        ((Button)window.FindName("NavInfo")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        nav.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        root = (FrameworkElement)host.Child;
+        Layout(700, 430);
+        if (Descendants(root).OfType<TextBox>().Single().Text != "win mouse-speed")
+            throw new Exception("Returning to Marvine lost the draft.");
+        var bitmap = new RenderTargetBitmap(700, 430, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(root);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create("artifacts/ui-preview/Marvine.png");
+        png.Save(file);
+        window.Close();
+        Console.WriteLine("PASS Marvine at two sizes, expanded options, script help, selection and draft");
+    }
+
+    private static void VerifyWindowsPreferences()
+    {
+        foreach (var pref in WindowsCommands.Preferences)
+        {
+            int before = WindowsPersonalization.Read(pref.Key);
+            int next = before == pref.Minimum ? pref.Maximum : pref.Minimum;
+            try
+            {
+                WindowsPersonalization.Write(pref.Key, next);
+                if (WindowsPersonalization.Read(pref.Key) != next) throw new Exception("Setting readback: " + pref.Key);
+            }
+            finally { WindowsPersonalization.Write(pref.Key, before); }
+        }
+        Console.WriteLine("PASS Windows user preferences: change, read back and restore");
+    }
+
+    private static void VerifyPython()
+    {
+        var python = Environment.GetEnvironmentVariable("YETTA_SMOKE_PYTHON");
+        if (string.IsNullOrEmpty(python)) return;
+        var folder = Directory.CreateTempSubdirectory("Marvine Python ");
+        try
+        {
+            var file = Path.Combine(folder.FullName, "Проба с пробелами.py");
+            File.WriteAllText(file, "import sys\nprint('Привет', flush=True)\nprint('stderr', file=sys.stderr)");
+            using var scripts = new MarvineScriptManager();
+            var lines = new System.Collections.Concurrent.ConcurrentQueue<ScriptOutput>();
+            using var exit = new ManualResetEventSlim();
+            scripts.Start("probe", file, python, line => { lines.Enqueue(line); if (line.Exited) exit.Set(); });
+            if (!exit.Wait(TimeSpan.FromSeconds(15)) || !lines.Any(l => l.Text == "Привет") ||
+                !lines.Any(l => l.IsError && l.Text == "stderr") || !lines.Any(l => l.Exited && !l.IsError) ||
+                scripts.List().Single().Running) throw new Exception("Python run, output or exit failed.");
+        }
+        finally { folder.Delete(true); }
+        Console.WriteLine("PASS real Python process, Unicode path, both output streams, exit and list");
+    }
+
     [STAThread]
     private static void Main()
     {
@@ -58,14 +147,25 @@ static class Program
         Console.WriteLine("PASS all warning severities preserve causes and all 16 assets load");
         if (viewer.Template.FindName("ViewportVisual", viewer) is not FrameworkElement { OpacityMask: LinearGradientBrush })
             throw new Exception("Sharp content must fade before the blurred edge is composited.");
-        var selectable = SelectableConsole.Wrap(new TextBlock { Text = "Первый вывод\nВторой вывод" });
-        if (!new TextRange(selectable.Document.ContentStart, selectable.Document.ContentEnd).Text.Contains("Второй вывод"))
-            throw new Exception("Selectable output lost its text.");
+        var transcript = new ConsoleTranscript(3);
+        var form = new TextBox { Text = "pending" };
+        transcript.Append(form, () => true);
+        foreach (string word in new[] { "old", "first", "second" }) transcript.Append(new TextBlock { Text = word });
+        var box = transcript.Children.OfType<RichTextBox>().Single();
+        box.SelectAll();
+        if (!box.Selection.Text.Contains("first") || !box.Selection.Text.Contains("second") ||
+            box.Selection.Text.Contains("old") || !transcript.Children.Contains(form))
+            throw new Exception("Cross-entry selection, trimming or form retention failed");
+        transcript.Reset();
+        if (transcript.Children.Count != 0) throw new Exception("Clear must also reset the grouped document.");
+        VerifyWindowsPreferences();
+        VerifyPython();
         if (!UpdateNotification.Template.Contains("value=\"{value}\"") || !UpdateNotification.Template.Contains("status=\"{status}\""))
             throw new Exception("Toast progress must use data bindings.");
         var owner = new Window { Width = 100, Height = 100, Left = -10000, Top = -10000, ShowInTaskbar = false };
         owner.Show();
         Directory.CreateDirectory("artifacts/ui-preview");
+        VerifyMarvineLayout();
         foreach (var kind in new[] { WarningKind.Standard, WarningKind.Critical, WarningKind.Dax })
         {
             bool fields = kind == WarningKind.Critical;

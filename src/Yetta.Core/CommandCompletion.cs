@@ -3,10 +3,13 @@ namespace Yetta.Core;
 public sealed record CommandSuggestion(string Label, string Command);
 public static class CommandCompletion
 {
-    private static readonly string[] Commands = ["/help", "/help 1", "/help 2", "/help 3", "/test warn",
+    private static readonly string[] Commands = ["/help", "/win", "/script", "/yetta", "/test", "/help 4", "/help 1", "/help 2", "/help 3", "/test warn",
         "/yetta version", "/yetta update", "/yetta download", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
         "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable", "/marvine colorset EGA",
-        "/marvine colorset No Color", "/marvine colorset dracula", "/script list", "/script run", "/script stop", "/snob help", "clear", "status", "info", "settings", "guard", "logs"];
+        "/marvine colorset No Color", "/marvine colorset dracula", "/script list", "/script run", "/script stop", "/snob help", "clear", "status", "info", "settings", "guard", "logs", "activity", "overview", "recovery", "sources", "access", "version", "theme",
+        "/win help", "/win wallpaper", .. WindowsCommands.Pages.Keys.Select(page => "/win open " + page),
+        .. WindowsCommands.Preferences.SelectMany(p => p.Toggle
+            ? new[] { "/win " + p.Key + " on", "/win " + p.Key + " off" } : new[] { "/win " + p.Key })];
 
     public static IReadOnlyList<CommandSuggestion> Get(string input)
     {
@@ -48,6 +51,13 @@ public static class CommandCompletion
         if ((exact || next.Length > 0) && basis.Length > 0)
             return next.Select(c => c[prefixText.Length..].Split(' ')[0]).Distinct(StringComparer.OrdinalIgnoreCase)
                 .Select(v => new CommandSuggestion(v, prefixText + v + " ")).ToArray();
+        if (tokens.Count <= 1 && !space)
+        {
+            string typed = raw.TrimStart('/');
+            return Commands.Select(c => c.Split(' ')[0]).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(c => c.TrimStart('/').StartsWith(typed, StringComparison.OrdinalIgnoreCase))
+                .Select(c => new CommandSuggestion(c, c + " ")).ToArray();
+        }
         int lastSpace = raw.LastIndexOf(' ');
         string before = lastSpace < 0 ? "" : raw[..(lastSpace + 1)];
         string fragment = raw[(lastSpace + 1)..];
