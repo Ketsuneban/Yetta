@@ -1,0 +1,10 @@
+DAX Administrator
+
+This optional package installs the DAX Administrator service in Program Files.
+Windows assigns access to the administrator account that approves this installation.
+When Windows asks for credentials of a different account, this package grants access
+to that administrator account.
+
+The service manages the Administrator profile for that account. In Yetta, DAX Guard
+can enable, disable or revoke it. Revocation requires running this setup again before
+the profile can be used. Remove the package through Windows Installed apps.

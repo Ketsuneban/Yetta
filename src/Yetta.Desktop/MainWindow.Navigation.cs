@@ -44,6 +44,7 @@ public partial class MainWindow
             ("recovery", "DAX Recovery · Диагностика"), ("settings", TallowText.Get("ui.main.0008")),
             ("sources", TallowText.Get("ui.main.0009"))
         ];
+        if (AdministratorActive) pages = [.. pages, ("developers", "Для разработчиков")];
         var window = new Window
         {
             Owner = this, Title = "Перейти в раздел Yetta", Width = 480, Height = 410,

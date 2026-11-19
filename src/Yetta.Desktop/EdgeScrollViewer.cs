@@ -7,6 +7,17 @@ namespace Yetta.Desktop;
 
 public sealed class EdgeScrollViewer : ScrollViewer
 {
+    public static readonly DependencyProperty EdgePreviewHeightProperty = DependencyProperty.Register(
+        nameof(EdgePreviewHeight), typeof(double), typeof(EdgeScrollViewer),
+        new PropertyMetadata(28d, (element, _) => ((EdgeScrollViewer)element).Refresh()),
+        value => value is double height && double.IsFinite(height) && height >= 0);
+
+    public double EdgePreviewHeight
+    {
+        get => (double)GetValue(EdgePreviewHeightProperty);
+        set => SetValue(EdgePreviewHeightProperty, value);
+    }
+
     private FrameworkElement? _viewport;
     private Rectangle? _top, _bottom;
 
@@ -24,7 +35,7 @@ public sealed class EdgeScrollViewer : ScrollViewer
     protected override void OnScrollChanged(ScrollChangedEventArgs e)
     {
         base.OnScrollChanged(e);
-        Refresh();
+        if (e.OriginalSource == this) Refresh();
     }
 
     private void ViewportResized(object sender, SizeChangedEventArgs e) => Refresh();
@@ -32,8 +43,8 @@ public sealed class EdgeScrollViewer : ScrollViewer
     private void Refresh()
     {
         if (_viewport is not { ActualWidth: > 0, ActualHeight: > 0 } viewport) return;
-        double height = Math.Min(28, viewport.ActualHeight / 4);
-        bool enabled = !SystemParameters.HighContrast && ScrollableHeight > 0.01;
+        double height = Math.Min(EdgePreviewHeight, viewport.ActualHeight / 4);
+        bool enabled = height > 0 && !SystemParameters.HighContrast && ScrollableHeight > 0.01;
         bool topVisible = enabled && VerticalOffset > 0.01;
         bool bottomVisible = enabled && ScrollableHeight - VerticalOffset > 0.01;
         var mask = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };

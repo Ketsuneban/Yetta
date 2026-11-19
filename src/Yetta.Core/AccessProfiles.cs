@@ -11,23 +11,25 @@ public static class AccessProfiles
     public static bool CanInstallLogicalProfile(string profile) =>
         profile is "Guest" or "User";
 
-    // The desktop supplies this only after checking its real Windows token.
-    // The returned profile remains a UI preference, not a Windows privilege.
-    public static bool InstallAdministrator(AppSettings settings, bool verifiedWindowsAdministrator)
+    public static void SyncAdministrator(AppSettings settings, DaxAdministratorState state)
     {
-        if (!verifiedWindowsAdministrator) return false;
         settings.Normalize();
-        if (!settings.InstalledProfiles.Contains("Administrator", StringComparer.Ordinal))
+        bool installed = state is DaxAdministratorState.Active or DaxAdministratorState.Inactive;
+        if (installed && !settings.InstalledProfiles.Contains("Administrator"))
             settings.InstalledProfiles.Add("Administrator");
-        settings.Normalize();
-        return true;
+        if (!installed) settings.InstalledProfiles.Remove("Administrator");
+        if (state == DaxAdministratorState.Active)
+            settings.ActiveProfile = "Administrator";
+        else if (settings.ActiveProfile == "Administrator")
+            settings.ActiveProfile = settings.InstalledProfiles.Contains("User") ? "User" : "Guest";
     }
 
     public static bool Install(AppSettings settings, string profile)
     {
         settings.Normalize();
         if (!CanInstallLogicalProfile(profile)) return false;
-        if (!settings.InstalledProfiles.Contains(profile, StringComparer.Ordinal))
+        if (!CanInstallLogicalProfile(profile) ||
+            !settings.InstalledProfiles.Contains(profile, StringComparer.Ordinal))
             settings.InstalledProfiles.Add(profile);
         settings.Normalize();
         return true;
@@ -36,7 +38,8 @@ public static class AccessProfiles
     public static bool Apply(AppSettings settings, string profile)
     {
         settings.Normalize();
-        if (!settings.InstalledProfiles.Contains(profile, StringComparer.Ordinal))
+        if (!CanInstallLogicalProfile(profile) ||
+            !settings.InstalledProfiles.Contains(profile, StringComparer.Ordinal))
             return false;
         settings.ActiveProfile = profile;
         return true;
@@ -53,7 +56,7 @@ public static class AccessProfiles
     public static string Description(string profile) => profile switch
     {
         "User" => TallowText.Get("core.access.0006"),
-        "Administrator" => TallowText.Get("core.access.0007"),
+        "Administrator" => "Профиль управляется службой DAX и доступен после подтверждения Windows.",
         "System" => TallowText.Get("core.access.0008"),
         _ => TallowText.Get("core.access.0009")
     };
@@ -66,5 +69,4 @@ public static class AccessProfiles
 
     public static bool CanLaunchElevatedShell(AppSettings settings) => false;
 
-    public static bool HasPrivilegedBroker => false;
 }
