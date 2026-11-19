@@ -1140,6 +1140,8 @@ public partial class MainWindow : Window
                     TallowText.Get("ui.main.0151") +
                     TallowText.Get("ui.main.0152") + command,
                     Subject: TallowText.Get("ui.main.0153"),
+                    SourcePath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe"),
+                    CauseType: WarningCauseType.Application,
                     RequireAcknowledgement: true,
                     RequireTty: level == WarningKind.Critical,
                     PotentialDamage: true),
@@ -1325,6 +1327,8 @@ public partial class MainWindow : Window
     {
         switch (request)
         {
+            case "TEST_WARN":
+                return ShowWarningTest(argument ?? "");
             case "HELP_PAGE":
             {
                 int page = int.TryParse(argument, out int start) ? Math.Clamp(start, 1, 3) : 1;
@@ -1661,26 +1665,6 @@ public partial class MainWindow : Window
         revoke.Margin = new Thickness(0, 14, 0, 0);
         shell.Children.Add(revoke);
         ContentPanel.Children.Add(Card(shell));
-
-        AddSection("Окна предупреждений", "Предпросмотр оформления без выполнения действия.");
-        var demos = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
-        foreach (WarningKind kind in Enum.GetValues<WarningKind>())
-        {
-            WarningKind choice = kind;
-            demos.Children.Add(ActionButton("Показать · " + kind, () =>
-            {
-                _ = YettaWarningWindow.Show(this,
-                    new WarningRequest(choice, TallowText.Get("ui.main.0185"),
-                        "Так будет выглядеть предупреждение Yetta. Это только демонстрация.",
-                        Subject: "Yetta · UI Test",
-                        RequireAcknowledgement: choice is WarningKind.Caution or WarningKind.Dangerous,
-                        PotentialDamage: choice is WarningKind.Dangerous or WarningKind.Critical,
-                        RecoveryNavigation: choice == WarningKind.Fatal
-                            ? () => Navigate("recovery") : null),
-                    _settings.ActiveProfile, nonModal: true);
-            }));
-        }
-        ContentPanel.Children.Add(demos);
 
         AddSection("Локальные данные");
         var local = new StackPanel();
