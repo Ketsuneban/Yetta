@@ -56,6 +56,7 @@ public partial class MainWindow : Window
         SidebarVersion.Text = "YETTA " + ReleaseVersion + " · WINDOWS 11";
         FooterVersion.Text = ReleaseVersion;
         _settings = _store.Load();
+        AccessProfiles.SyncAdministrator(_settings, DaxAdministratorState.Unavailable);
         LoadMarvineCommandHistory();
         try
         {
@@ -76,7 +77,8 @@ public partial class MainWindow : Window
             ["activity"] = NavActivity,
             ["recovery"] = NavRecovery,
             ["settings"] = NavSettings,
-            ["sources"] = NavSources
+            ["sources"] = NavSources,
+            ["developers"] = NavDevelopers
         };
         ApplyTheme();
         InitializeIconsAndCursors();
@@ -98,6 +100,8 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
         };
         Loaded += (_, _) => _ = WatchUpdatesAsync();
+        Loaded += (_, _) => _ = WatchAdministratorAsync();
+        Activated += (_, _) => _ = RefreshAdministratorAsync();
         Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; _scripts.Dispose(); };
     }
 
@@ -114,6 +118,7 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavOverview, 7, TallowText.Get("ui.main.0001"));
         IconAssets.SetNav(NavInfo, 2, TallowText.Get("ui.main.0002"));
         IconAssets.SetNav(NavConsole, 1, TallowText.Get("ui.main.0003"));
+        IconAssets.SetNav(NavDevelopers, 1, "Для разработчиков");
         IconAssets.SetNavLogo(NavGuard, "dax-logo.png", TallowText.Get("ui.main.0004"));
         IconAssets.SetNav(NavLogs, 8, TallowText.Get("ui.main.0005"));
         IconAssets.SetNav(NavActivity, 31, TallowText.Get("ui.main.0006"));
@@ -244,7 +249,7 @@ public partial class MainWindow : Window
 
     private void Navigate(string page)
     {
-        if (!_navigation.ContainsKey(page)) return;
+        if (!_navigation.ContainsKey(page) || page == "developers" && !AdministratorActive) return;
         _processMonitor?.Dispose();
         _processMonitor = null;
         _embeddedShell?.Dispose();
@@ -255,6 +260,8 @@ public partial class MainWindow : Window
         _diagnosticsStatus = null;
         _consoleInput = null;
         _consoleScroll = null;
+        _consoleFollow?.Dispose();
+        _consoleFollow = null;
 
         foreach (var pair in _navigation)
         {
@@ -274,7 +281,8 @@ public partial class MainWindow : Window
             ["activity"] = (TallowText.Get("ui.main.0006"), TallowText.Get("ui.main.0021")),
             ["recovery"] = ("DAX Recovery", TallowText.Get("ui.main.0022")),
             ["settings"] = (TallowText.Get("ui.main.0008"), TallowText.Get("ui.main.0023")),
-            ["sources"] = (TallowText.Get("ui.main.0009"), TallowText.Get("ui.main.0024"))
+            ["sources"] = (TallowText.Get("ui.main.0009"), TallowText.Get("ui.main.0024")),
+            ["developers"] = ("Для разработчиков", "")
         };
         PageTitle.Text = headings[page].Name;
         PageSubtitle.Text = headings[page].Hint;
@@ -290,6 +298,7 @@ public partial class MainWindow : Window
             case "recovery": BuildRecovery(); break;
             case "settings": BuildSettings(); break;
             case "sources": BuildSources(); break;
+            case "developers": ContentPanel.Children.Add(Card(Text("Здесь появятся инструменты разработчика.", 14, muted: true))); break;
         }
         MainScroll.ScrollToTop();
         UiMotion.AnimatePage(ContentPanel);
@@ -514,9 +523,11 @@ public partial class MainWindow : Window
             ? TallowText.Get("ui.main.0050")
             : TallowText.Get("ui.main.0051"), 13, heading: true));
         capabilities.Children.Add(Text(
-            TallowText.Get("ui.main.0052"), 12, muted: true));
+            "Интерфейс использует токен текущего процесса Windows. Состояние Administrator подтверждает служба DAX.",
+            12, muted: true));
         capabilities.Children.Add(Text(
-            TallowText.Get("ui.main.0053"), 12, muted: true));
+            "Встроенная оболочка PowerShell доступна при уровне «Пользователь».",
+            12, muted: true));
         ContentPanel.Children.Add(Card(capabilities));
 
         AddSection(TallowText.Get("ui.main.0054"));
@@ -562,8 +573,8 @@ public partial class MainWindow : Window
 
     private void BuildGuard()
     {
-        AddIntro(TallowText.Get("ui.main.0067"), TallowText.Get("ui.main.0068"),
-            TallowText.Get("ui.main.0069"));
+        AddIntro("Yetta / DAX Guard", "Менеджер уровней доступа",
+            "Для уровня Administrator требуется отдельная служба DAX и разрешение Windows.");
 
         var current = new StackPanel();
         current.Children.Add(Text(TallowText.Get("ui.main.0070"), 10, heading: true, muted: true));
@@ -594,22 +605,10 @@ public partial class MainWindow : Window
             choices.Items.Add(item);
             if (profile == _settings.ActiveProfile) choices.SelectedItem = item;
         }
-        choices.SelectionChanged += (_, _) =>
+        choices.SelectionChanged += async (_, _) =>
         {
-            if (choices.SelectedItem is not ComboBoxItem { Tag: string profile } ||
-                profile == _settings.ActiveProfile) return;
-            if (profile == "Administrator" && !IsProcessAdministrator())
-            {
-                ShowDaxNotice("Недостаточно прав Windows",
-                    "Перезапусти Yetta от имени администратора, чтобы выбрать этот профиль.", WarningKind.Caution);
-                Navigate("guard");
-                return;
-            }
-            if (AccessProfiles.Apply(_settings, profile))
-            {
-                SavePreferences();
-                Navigate("guard");
-            }
+            if (choices.SelectedItem is ComboBoxItem { Tag: string profile } && profile != _settings.ActiveProfile)
+                await SelectAccessProfileAsync(profile);
         };
         current.Children.Add(choices);
         ContentPanel.Children.Add(Card(current));
@@ -617,6 +616,11 @@ public partial class MainWindow : Window
         AddSection(TallowText.Get("ui.main.0071"), TallowText.Get("ui.main.0072"));
         foreach (string profile in AccessProfiles.All)
         {
+            if (profile == "Administrator")
+            {
+                BuildAdministratorCard();
+                continue;
+            }
             bool installed = _settings.InstalledProfiles.Contains(profile);
             bool applied = profile == _settings.ActiveProfile;
             var row = new Grid();
@@ -640,7 +644,7 @@ public partial class MainWindow : Window
 
             var button = ActionButton(
                 applied ? TallowText.Get("ui.main.0073") : installed ? TallowText.Get("ui.main.0074") : TallowText.Get("ui.main.0075"),
-                () => InstallOrApplyProfile(profile), applied == false && installed, enabled: !applied);
+                async () => await SelectAccessProfileAsync(profile), !applied && installed, enabled: !applied);
             button.VerticalAlignment = VerticalAlignment.Center;
             button.Margin = new Thickness(13, 0, 0, 0);
             Grid.SetColumn(button, 1);
@@ -689,37 +693,8 @@ public partial class MainWindow : Window
         }, true));
         ttyPanel.Children.Add(ttyActions);
         ContentPanel.Children.Add(Card(ttyPanel));
-        AddNotice(TallowText.Get("ui.main.0091"),
-            TallowText.Get("ui.main.0092"));
+        AddNotice("Уровень System", "Профиль System пока недоступен.");
     }
-
-    private void InstallOrApplyProfile(string profile)
-    {
-        if (profile == "Administrator" && !IsProcessAdministrator())
-        {
-            ShowDaxNotice("Недостаточно прав Windows",
-                "Для профиля администратора запусти Yetta от имени администратора.", WarningKind.Caution);
-            return;
-        }
-        if (profile != "Administrator" && !AccessProfiles.CanInstallLogicalProfile(profile))
-        {
-            ShowDaxNotice(TallowText.Get("ui.main.0093"),
-                TallowText.Get("ui.main.0094") + AccessProfiles.DisplayName(profile) +
-                TallowText.Get("ui.main.0095"),
-                WarningKind.Dax);
-            return;
-        }
-        if (_settings.InstalledProfiles.Contains(profile))
-            AccessProfiles.Apply(_settings, profile);
-        else if (profile == "Administrator")
-            AccessProfiles.InstallAdministrator(_settings, verifiedWindowsAdministrator: true);
-        else
-            AccessProfiles.Install(_settings, profile);
-        SavePreferences();
-        Notify(TallowText.Get("ui.main.0004"), TallowText.Get("ui.main.0096") + AccessProfiles.DisplayName(profile) + TallowText.Get("ui.main.0097"));
-        Navigate("guard");
-    }
-
 
     private void OnFooterLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
@@ -1463,7 +1438,7 @@ public partial class MainWindow : Window
             }
             case "SCRIPT_RUN":
             {
-                if (_settings.ActiveProfile != "Administrator" || !IsProcessAdministrator())
+                if (!AdministratorActive || !IsProcessAdministrator())
                     return "[✖] Marvine: нужен профиль администратора и запущенная от администратора Yetta.";
                 var dax = await DaxAgentGate.GetStatusAsync(_updateStop.Token);
                 if (dax.State != DaxState.Ready)
