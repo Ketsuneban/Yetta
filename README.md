@@ -1,20 +1,20 @@
 # Yetta
 
-**Текущий тестовый релиз: [0.4.1-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.4.1-preview).**
+**Текущий тестовый релиз: [0.4.2-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.4.2-preview).**
 
-**Yetta** — открытый инструмент персонализации Windows 11. В **0.4.1-preview** Marvine получила полный набор элементов Subsy, края прокручиваемых областей показывают продолжение содержимого, а поиск помогает находить разделы, уведомления и записи журнала.
+**Yetta** — открытый инструмент персонализации Windows 11. В **0.4.2-preview** Marvine получила полный набор элементов Subsy, края прокручиваемых областей показывают продолжение содержимого, а поиск помогает находить разделы, уведомления и записи журнала.
 
 **Сайт:** https://yetta.pages.dev/ · **Исходный код:** https://github.com/Ketsuneban/Yetta · **Связь:** invzum@gmail.com
 
 ## Скачать EXE
 
-**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.4.1-preview)**
+**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.4.2-preview)**
 
 На странице релиза откройте **Assets → YettaSetup.exe** для установки или **Yetta.exe** для портативного запуска. Это отдельный исполняемый файл **для Windows 11 x64**, не ZIP. Он публикуется после успешной автоматической сборки Yetta и DAX. Установщик включает оба приложения; для портативного запуска требуется скачать **Yetta.exe**, **Yetta.DAX.exe** и **local.json** в одну папку. Для запуска отдельный .NET Runtime не нужен.
 
 Проверьте хеш файла по `SHA256SUMS.txt`, опубликованному рядом с EXE. Это **не цифровая подпись**. В этой версии подписанного установщика нет. **Если антивирус блокирует файл, не отключайте защиту и не добавляйте его в исключения**: сообщите о проблеме в [Issues](https://github.com/Ketsuneban/Yetta/issues).
 
-## Что работает в 0.4.1-preview
+## Что работает в 0.4.2-preview
 
 | Раздел | Возможности |
 |---|---|

@@ -20,13 +20,13 @@
               </Grid>
               <Grid Margin="{TemplateBinding Padding}" ClipToBounds="True" IsHitTestVisible="False">
                 <Rectangle x:Name="TopPreview" VerticalAlignment="Top" Visibility="Collapsed">
-                  <Rectangle.Effect><BlurEffect Radius="5" RenderingBias="Performance"/></Rectangle.Effect>
+                  <Rectangle.Effect><BlurEffect Radius="10" RenderingBias="Performance"/></Rectangle.Effect>
                   <Rectangle.OpacityMask><LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                     <GradientStop Color="#FF000000" Offset="0"/><GradientStop Color="#00000000" Offset="1"/>
                   </LinearGradientBrush></Rectangle.OpacityMask>
                 </Rectangle>
                 <Rectangle x:Name="BottomPreview" VerticalAlignment="Bottom" Visibility="Collapsed">
-                  <Rectangle.Effect><BlurEffect Radius="5" RenderingBias="Performance"/></Rectangle.Effect>
+                  <Rectangle.Effect><BlurEffect Radius="10" RenderingBias="Performance"/></Rectangle.Effect>
                   <Rectangle.OpacityMask><LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                     <GradientStop Color="#00000000" Offset="0"/><GradientStop Color="#FF000000" Offset="1"/>
                   </LinearGradientBrush></Rectangle.OpacityMask>
@@ -44,6 +44,38 @@
           </ControlTemplate>
         </Setter.Value>
       </Setter>
+    </Style>
+    <Style x:Key="WarningPassword" TargetType="PasswordBox">
+      <Setter Property="Foreground" Value="#FAFAFC"/><Setter Property="CaretBrush" Value="White"/>
+      <Setter Property="Background" Value="#A0151922"/><Setter Property="BorderBrush" Value="#556F8196"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="12,8"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="PasswordBox">
+        <Border x:Name="Chrome" CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+          <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#9BC6FF"/><Setter TargetName="Chrome" Property="Background" Value="#FF192231"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="WarningTextInput" TargetType="TextBox">
+      <Setter Property="Foreground" Value="White"/><Setter Property="CaretBrush" Value="White"/><Setter Property="Background" Value="#A0151922"/>
+      <Setter Property="Padding" Value="12,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+        <Border x:Name="Chrome" CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+          <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+        </Border><ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#9BC6FF"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="WarningCheck" TargetType="CheckBox">
+      <Setter Property="Cursor" Value="Hand"/><Setter Property="Padding" Value="4,8"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
+        <Border Background="Transparent" Padding="{TemplateBinding Padding}"><DockPanel>
+          <Border x:Name="Box" DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="6" BorderThickness="1" BorderBrush="#8095AC" Background="#40101925" Margin="0,0,10,0">
+            <TextBlock x:Name="Tick" Text="✓" Foreground="#122039" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+          </Border><ContentPresenter VerticalAlignment="Center"/>
+        </DockPanel></Border>
+        <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Box" Property="Background" Value="#9BC6FF"/><Setter TargetName="Tick" Property="Visibility" Value="Visible"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="White"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="DialogCloseButton" TargetType="Button">
       <Setter Property="FocusVisualStyle" Value="{x:Null}"/>

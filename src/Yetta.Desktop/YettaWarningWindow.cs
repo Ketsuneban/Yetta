@@ -20,7 +20,9 @@ internal sealed record WarningRequest(
     int? HeaderIconId = null,
     WarningCauseType CauseType = WarningCauseType.Auto,
     bool IsPreview = false,
-    bool RequirePassword = false);
+    bool RequirePassword = false,
+    string? TechnicalDetails = null,
+    IReadOnlyList<string>? RelatedPaths = null);
 
 /// <summary>
 /// Central policy dispatch for all seven Yetta warnings. UI styling never grants

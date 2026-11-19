@@ -58,6 +58,15 @@ public partial class MainWindow
         var last = _history.TakeLast(400).ToHashSet();
         foreach (var entry in _history.Where(entry => pinned.Contains(entry) || last.Contains(entry)))
             display.Children.Add(RenderTaggedEntry(entry));
+        var menu = new ContextMenu();
+        var copyAll = new MenuItem { Header = "Копировать весь вывод" };
+        copyAll.Click += (_, _) =>
+        {
+            try { Clipboard.SetText(string.Join(Environment.NewLine, _history.Select(entry => entry.Command.Length > 0 ? "› " + entry.Command : entry.Message))); }
+            catch (System.Runtime.InteropServices.ExternalException) { }
+        };
+        menu.Items.Add(copyAll);
+        display.ContextMenu = menu;
         _consoleOutput = display;
         var scroll = new EdgeScrollViewer
         {
@@ -95,44 +104,48 @@ public partial class MainWindow
         body.Children.Add(row);
 
         var shortcuts = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
-        foreach (string command in new[] { "/help", "/dax status", "/subsy demo", "/subsy gallery", "clear" })
+        bool showAll = false;
+        void RefreshSuggestions()
         {
-            var chip = ActionButton(command, () =>
+            shortcuts.Children.Clear();
+            var suggestions = CommandCompletion.Get(input.Text);
+            foreach (var suggestion in suggestions.Take(showAll ? int.MaxValue : 5))
             {
-                if (_marvineCommandRunning) return;
-                input.Text = command;
-                RunMarvine();
-                input.Focus();
-            });
-            chip.Background = new SolidColorBrush(Color.FromRgb(42, 53, 66));
-            chip.Foreground = Brushes.White;
-            chip.MinWidth = 0;
-            chip.MinHeight = 32;
-            chip.Padding = new Thickness(12, 5, 12, 5);
-            chip.Margin = new Thickness(0, 0, 6, 4);
-            shortcuts.Children.Add(chip);
+                var chip = SubsyButton(suggestion.Label, () =>
+                {
+                    if (_marvineCommandRunning) return;
+                    input.Text = suggestion.Command;
+                    input.CaretIndex = input.Text.Length;
+                    input.Focus();
+                });
+                shortcuts.Children.Add(chip);
+            }
+            if (suggestions.Count > 5)
+                shortcuts.Children.Add(SubsyButton(showAll ? "Свернуть варианты" : "Все варианты (" + suggestions.Count + ")", () =>
+                { showAll = !showAll; RefreshSuggestions(); }));
+            var args = CommandTokens.Read(input.Text, out _);
+            if (args.Count == 3 && args[0].Value == "/test" && args[1].Value == "warn" && WarningTestCommand.Kinds.Contains(args[2].Value, StringComparer.OrdinalIgnoreCase))
+            {
+                shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
+                {
+                    var picker = new Microsoft.Win32.OpenFileDialog();
+                    if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FileName + "\" "; input.CaretIndex = input.Text.Length; }
+                }));
+                shortcuts.Children.Add(SubsyButton("Выбрать папку…", () =>
+                {
+                    var picker = new Microsoft.Win32.OpenFolderDialog();
+                    if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FolderName + "\" "; input.CaretIndex = input.Text.Length; }
+                }));
+            }
         }
-        shortcuts.Children.Add(SubsyButton("К запросу", () =>
-        {
-            var next = display.Children.OfType<FrameworkElement>()
-                .FirstOrDefault(item => item.Tag is ConsoleEntry { AwaitsReply: true });
-            if (next is not null) next.BringIntoView();
-            else _consoleScroll?.ScrollToEnd();
-        }));
+        input.TextChanged += (_, _) => { showAll = false; RefreshSuggestions(); };
+        RefreshSuggestions();
         body.Children.Add(shortcuts);
-        var hint = new TextBlock
+        body.Children.Add(new TextBlock
         {
-            Text = "↑ ↓  История     Tab  Дополнение     Enter  Выполнить",
-            Foreground = ConsoleMuted, FontSize = 11, Margin = new Thickness(0, 4, 0, 0)
-        };
-        input.TextChanged += (_, _) =>
-        {
-            var suggestions = ConsoleEngine.Suggestions(input.Text);
-            hint.Text = input.Text.Length > 0 && suggestions.Count > 0
-                ? "Tab  " + string.Join("    ", suggestions.Take(3))
-                : "↑ ↓  История     Tab  Дополнение     Enter  Выполнить";
-        };
-        body.Children.Add(hint);
+            Text = "↑ ↓ / Num 8 2 — история    Tab — дополнить    Enter — выполнить    Выделение + Ctrl+C — копировать",
+            Foreground = ConsoleMuted, FontSize = 11, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap
+        });
     }
 
     private static TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()
@@ -148,12 +161,12 @@ public partial class MainWindow
         if (entry.Render is { } render)
             return render();
         if (entry.Command.Length > 0)
-            return LiteralConsoleLine("› " + entry.Command, Brushes.White);
+            return SelectableConsole.Wrap(LiteralConsoleLine("› " + entry.Command, Brushes.White));
         if (entry.Script is not { } script)
-            return ConsoleLine(entry.Message, false);
+            return SelectableConsole.Wrap(ConsoleLine(entry.Message, false));
         if (entry.Frame is null || !_settings.MarvineSubsyEnabled)
-            return LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
-                script.IsError ? Brushes.LightSalmon : ConsoleMuted);
+            return SelectableConsole.Wrap(LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
+                script.IsError ? Brushes.LightSalmon : ConsoleMuted));
 
         var name = new TextBlock { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap };
         var value = LiteralConsoleLine("", ConsoleMuted);

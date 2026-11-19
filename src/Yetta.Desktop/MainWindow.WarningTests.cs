@@ -29,7 +29,7 @@ public partial class MainWindow
             path = cause;
         }
         _ = YettaWarningWindow.Show(this, new WarningRequest(kind, "Тест предупреждения · " + kind,
-            test.Text, Subject: path is null ? cause : Path.GetFileName(path), SourcePath: path,
+            test.Text, Subject: path is null ? cause : Path.GetFileName(Path.TrimEndingDirectorySeparator(path)), SourcePath: path,
             RequireAcknowledgement: test.Check, RequireTty: test.Tty,
             PotentialDamage: kind is WarningKind.Dangerous or WarningKind.Critical,
             CauseType: type, IsPreview: true, RequirePassword: test.Password),

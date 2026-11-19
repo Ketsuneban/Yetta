@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.4.1-preview", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.4.2-preview", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null,
     string? SwitchThemeTo = null, bool ClearOutput = false,
     string? Request = null, string? Argument = null);
@@ -103,13 +103,7 @@ public static class ConsoleEngine
 
     public static IReadOnlyList<string> Suggestions(string? prefix)
     {
-        string query = (prefix ?? "").TrimStart();
-        string[] commands = ["/help", "/yetta version", "/yetta update", "/yetta download ",
-            "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable",
-            "/marvine colorset EGA", "/marvine colorset No Color", "/script list",
-            "/script run ", "/script stop ", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
-            "/test warn ", "/snob help", "clear", "status", "settings"];
-        return commands.Where(item => item.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Take(6).ToArray();
+        return CommandCompletion.Get(prefix ?? "").Select(s => s.Command).ToArray();
     }
 
     public static string HelpPage(int page, string profile)

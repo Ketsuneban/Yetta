@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private readonly List<string> _enteredCommands = [];
     private readonly MarvineScriptManager _scripts = new();
     private int _commandHistoryIndex;
+    private string _commandDraft = "";
     private readonly List<(DateTime Time, string Source, string Message)> _notifications = [];
     private string _page = "overview";
     private string _consoleMode = "Marvine";
@@ -99,6 +100,14 @@ public partial class MainWindow : Window
         Loaded += (_, _) => _ = WatchUpdatesAsync();
         Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; _scripts.Dispose(); };
     }
+
+    private void ShowDaxNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
+        YettaWarningWindow.Show(this, new WarningRequest(kind, title, message, Subject: "DAX", Publisher: "Tallow",
+            CauseType: WarningCauseType.Dax), _settings.ActiveProfile, nonModal: true);
+
+    private bool ConfirmDaxAction(string title, string message) => YettaWarningWindow.Show(this,
+        new WarningRequest(WarningKind.Agreement, title, message, Subject: "DAX", Publisher: "Tallow",
+            CauseType: WarningCauseType.Dax), _settings.ActiveProfile);
 
     private void InitializeIconsAndCursors()
     {
@@ -591,7 +600,7 @@ public partial class MainWindow : Window
                 profile == _settings.ActiveProfile) return;
             if (profile == "Administrator" && !IsProcessAdministrator())
             {
-                ShowYettaNotice("Недостаточно прав Windows",
+                ShowDaxNotice("Недостаточно прав Windows",
                     "Перезапусти Yetta от имени администратора, чтобы выбрать этот профиль.", WarningKind.Caution);
                 Navigate("guard");
                 return;
@@ -649,7 +658,7 @@ public partial class MainWindow : Window
         var ttyActions = new WrapPanel { Margin = new Thickness(0, 15, 0, 0) };
         ttyActions.Children.Add(ActionButton(TallowText.Get("ui.main.0081"), () =>
         {
-            if (!ConfirmYettaAction(TallowText.Get("ui.main.0082"),
+            if (!ConfirmDaxAction(TallowText.Get("ui.main.0082"),
                 TallowText.Get("ui.main.0083") +
                 TallowText.Get("ui.main.0084"))) return;
             try
@@ -660,12 +669,12 @@ public partial class MainWindow : Window
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
                 System.Runtime.InteropServices.ExternalException or IOException or InvalidDataException)
             {
-                ShowYettaNotice(TallowText.Get("ui.main.0086"), ex.Message, WarningKind.Caution);
+                ShowDaxNotice(TallowText.Get("ui.main.0086"), ex.Message, WarningKind.Caution);
             }
         }));
         ttyActions.Children.Add(ActionButton(TallowText.Get("ui.main.0087"), () =>
         {
-            if (!ConfirmYettaAction(TallowText.Get("ui.main.0088"),
+            if (!ConfirmDaxAction(TallowText.Get("ui.main.0088"),
                 TallowText.Get("ui.main.0089")))
                 return;
             try
@@ -675,7 +684,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
             {
-                ShowYettaNotice(TallowText.Get("ui.main.0086"), ex.Message, WarningKind.Caution);
+                ShowDaxNotice(TallowText.Get("ui.main.0086"), ex.Message, WarningKind.Caution);
             }
         }, true));
         ttyPanel.Children.Add(ttyActions);
@@ -688,13 +697,13 @@ public partial class MainWindow : Window
     {
         if (profile == "Administrator" && !IsProcessAdministrator())
         {
-            ShowYettaNotice("Недостаточно прав Windows",
+            ShowDaxNotice("Недостаточно прав Windows",
                 "Для профиля администратора запусти Yetta от имени администратора.", WarningKind.Caution);
             return;
         }
         if (profile != "Administrator" && !AccessProfiles.CanInstallLogicalProfile(profile))
         {
-            ShowYettaNotice(TallowText.Get("ui.main.0093"),
+            ShowDaxNotice(TallowText.Get("ui.main.0093"),
                 TallowText.Get("ui.main.0094") + AccessProfiles.DisplayName(profile) +
                 TallowText.Get("ui.main.0095"),
                 WarningKind.Dax);
@@ -1050,7 +1059,7 @@ public partial class MainWindow : Window
                     {
                         if (_consoleOutput == display)
                         {
-                            display.Children.Add(LiteralConsoleLine(line));
+                            display.Children.Add(SelectableConsole.Wrap(LiteralConsoleLine(line)));
                             if (display.Children.Count > 500) display.Children.RemoveAt(1);
                             scrolling.ScrollToEnd();
                         }
@@ -1088,14 +1097,17 @@ public partial class MainWindow : Window
             CaretBrush = Brushes.White, ToolTip = hint
         };
         SpellCheck.SetIsEnabled(field, false);
-        field.KeyDown += (_, e) =>
+        field.PreviewKeyDown += (_, e) =>
         {
-            if (_consoleMode == "Marvine" && (e.Key is Key.Up or Key.Down) && _enteredCommands.Count > 0)
+            bool up = e.Key == Key.Up || e.Key == Key.NumPad8 && !Keyboard.IsKeyToggled(Key.NumLock);
+            bool down = e.Key == Key.Down || e.Key == Key.NumPad2 && !Keyboard.IsKeyToggled(Key.NumLock);
+            if (_consoleMode == "Marvine" && (up || down) && _enteredCommands.Count > 0)
             {
+                if (_commandHistoryIndex == _enteredCommands.Count) _commandDraft = field.Text;
                 _commandHistoryIndex = Math.Clamp(_commandHistoryIndex +
-                    (e.Key == Key.Up ? -1 : 1), 0, _enteredCommands.Count);
+                    (up ? -1 : 1), 0, _enteredCommands.Count);
                 field.Text = _commandHistoryIndex == _enteredCommands.Count
-                    ? "" : _enteredCommands[_commandHistoryIndex];
+                    ? _commandDraft : _enteredCommands[_commandHistoryIndex];
                 field.CaretIndex = field.Text.Length;
                 e.Handled = true;
             }
@@ -1750,98 +1762,79 @@ public partial class MainWindow : Window
 
     private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false, Action<double>? consoleProgress = null)
     {
-            using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
-            _downloadCancel = downloadCancel;
-            _downloadingVersion = latest.Version;
-            var toast = new ToastContentBuilder()
-                .AddText("Скачивание новой версии Yetta")
-                .AddProgressBar(title: "Версия " + latest.Version, value: 0, status: "Скачивание…")
-                .AddButton(new ToastButton().SetContent("Отменить")
-                    .AddArgument("action", "cancel-update").SetBackgroundActivation())
-                .SetToastScenario(ToastScenario.Reminder);
-            uint sequence = 1;
-            int shownPercent = 0;
-            string shownStatus = "Скачивание…";
-            bool toastShown = false;
-            bool toastUpdating = true;
-            bool downloadActive = true;
-            try
+        using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
+        _downloadCancel = downloadCancel;
+        _downloadingVersion = latest.Version;
+        var notification = new UpdateNotification(latest.Version.ToString());
+        // Registration and shell calls run off the UI thread; local progress remains available if Windows suppresses toasts.
+        await Task.Run(notification.Show);
+        var status = Text("Загрузка Yetta " + latest.Version + "…", 13, heading: true);
+        var bar = new ProgressBar { Minimum = 0, Maximum = 1, Height = 5, Margin = new Thickness(0, 12, 0, 10) };
+        var cancel = ActionButton("Отменить загрузку", () => downloadCancel.Cancel());
+        var panel = new StackPanel { Children = { status, bar, cancel } };
+        var card = new Border { Background = Surface, CornerRadius = new CornerRadius(10), Padding = new Thickness(18),
+            Width = 340, Margin = new Thickness(0, 0, 0, 10), Child = panel };
+        ToastHost.Children.Add(card);
+        bool active = true;
+        int lastPercent = -1;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        long lastToast = -1000;
+        var progress = new Progress<double>(value =>
+        {
+            if (!active) return;
+            int percent = (int)(value * 100);
+            if (percent == lastPercent) return;
+            lastPercent = percent;
+            bar.Value = value;
+            string stage = value >= 1 ? "Готово к установке" : value >= .99 ? "Проверка файла…" : "Скачивание…";
+            status.Text = stage + "  " + percent + "%";
+            consoleProgress?.Invoke(value);
+            if (clock.ElapsedMilliseconds - lastToast >= 500 || value >= 1)
             {
-                toast.Show(notification =>
-                {
-                    notification.Tag = "yetta-update";
-                    notification.Group = "updates";
-                    notification.Data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
-                        "Версия " + latest.Version, 0, "0%", "Скачивание…", sequence);
-                });
-                toastShown = true;
+                lastToast = clock.ElapsedMilliseconds;
+                _ = Task.Run(() => notification.Update(value, stage));
             }
-            catch (Exception ex) { DaxAudit.Write("update", "toast_unavailable", ex.GetType().Name); }
-            void UpdateToast(double value, string status)
-            {
-                if (!toastShown || !toastUpdating) return;
-                int percent = (int)Math.Round(Math.Clamp(value, 0, 1) * 100);
-                if (percent < shownPercent || percent == shownPercent && status == shownStatus)
-                    return;
-                shownPercent = percent;
-                shownStatus = status;
-                try
-                {
-                    var data = ToastContentBuilder.CreateProgressBarData(toast.Content, 0,
-                        "Версия " + latest.Version, value,
-                        percent.ToString(System.Globalization.CultureInfo.InvariantCulture) + "%",
-                        status, ++sequence);
-                    var result = ToastNotificationManagerCompat.CreateToastNotifier()
-                        .Update(data, "yetta-update", "updates");
-                    if (result != Windows.UI.Notifications.NotificationUpdateResult.Succeeded)
-                    {
-                        toastUpdating = false;
-                        DaxAudit.Write("update", "toast_progress_unavailable", result.ToString());
-                    }
-                }
-                catch (Exception ex) { DaxAudit.Write("update", "toast_progress_unavailable", ex.GetType().Name); }
-            }
-            var progress = new Progress<double>(value =>
-            {
-                if (!downloadActive) return;
-                consoleProgress?.Invoke(value);
-                UpdateToast(value, value >= 0.99 && value < 1 ? "Проверка файла…" :
-                    value >= 1 ? "Загрузка завершена" : "Скачивание…");
-            });
-            try
-            {
-                var path = await YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token);
-                UpdateToast(1, "Загрузка завершена");
-                if (automatic && !_settings.AutoUpdatesEnabled) return;
-                try
-                {
-                    if (await DaxAgentGate.RequestAsync("STOP_FOR_UPDATE", _updateStop.Token) == "STOPPING")
-                        await Task.Delay(800, _updateStop.Token);
-                }
-                catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException)
-                {
-                    DaxAudit.Write("update", "dax_stop_unavailable", ex.GetType().Name);
-                }
-                var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
-                var start = new ProcessStartInfo(path)
-                {
-                    UseShellExecute = true,
-                    Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /LOG=\"" + log + "\""
-                };
-                using var installer = Process.Start(start) ?? throw new InvalidOperationException("Installer did not start.");
-                Close();
-            }
-            finally
-            {
-                downloadActive = false;
-                _downloadCancel = null;
-                _downloadingVersion = null;
-                if (toastShown)
-                {
-                    try { ToastNotificationManagerCompat.History.Remove("yetta-update", "updates"); }
-                    catch (Exception ex) { DaxAudit.Write("update", "toast_cleanup_unavailable", ex.GetType().Name); }
-                }
-            }
+        });
+        try
+        {
+            // Hashing and streaming never occupy the dispatcher, including cached downloads.
+            string path = await Task.Run(() => YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token));
+            if (automatic && !_settings.AutoUpdatesEnabled) return;
+            status.Text = "Запуск установщика…";
+            bar.IsIndeterminate = true;
+            cancel.IsEnabled = false;
+            await Task.Run(() => notification.Update(1, "Установка — ход выполнения в окне установщика"));
+            var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
+            var start = new ProcessStartInfo(path) { UseShellExecute = true };
+            foreach (string argument in new[] { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/DIR=" + AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar), "/LOG=" + log })
+                start.ArgumentList.Add(argument);
+            // Process.Start can synchronously wait for antivirus/installer extraction. Keep Yetta responsive until launch succeeds.
+            using var installer = await Task.Run(() => Process.Start(start)) ?? throw new InvalidOperationException("Установщик не запустился.");
+            status.Text = "Установка запущена. Yetta откроется после завершения.";
+            try { await DaxAgentGate.RequestAsync("STOP_FOR_UPDATE", _updateStop.Token); }
+            catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException)
+            { DaxAudit.Write("update", "dax_stop_unavailable", ex.GetType().Name); }
+            // The visible installer owns installation progress and the one restart.
+            Close();
+        }
+        catch (OperationCanceledException)
+        {
+            await Task.Run(() => notification.Update(0, "Загрузка отменена"));
+            throw;
+        }
+        catch
+        {
+            double current = Math.Max(0, bar.Value);
+            await Task.Run(() => notification.Update(current, "Обновление не завершено. Yetta продолжает работать."));
+            throw;
+        }
+        finally
+        {
+            active = false;
+            ToastHost.Children.Remove(card);
+            _downloadCancel = null;
+            _downloadingVersion = null;
+        }
     }
 
     private void BuildSources()

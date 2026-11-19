@@ -209,6 +209,18 @@ const string preview = "/test warn Critical \"C:\\My Files\\demo.py\" pass:true 
 Assert(WarningTestCommand.TryParse(preview, out var parsed) && parsed is { Password: true, Tty: false, Check: true } &&
     parsed.Cause == @"C:\My Files\demo.py", "warning parser preserves quoted Windows paths and flags");
 Assert(!WarningTestCommand.TryParse(preview.Replace("pass:true", "pass:maybe"), out _) &&
-    !WarningTestCommand.TryParse(preview + " extra", out _) &&
+    !WarningTestCommand.TryParse(preview + " pass:false", out _) &&
     !WarningTestCommand.TryParse(preview.Replace("Critical", "99"), out _), "invalid previews cannot open windows");
 Assert(ConsoleEngine.Execute(preview, c).Request == "TEST_WARN", "Marvine dispatches warning preview");
+
+Assert(WarningTestCommand.TryParse("/test warn Standard Yetta", out var simple) &&
+    simple is { Password: false, Tty: false, Check: false } && simple.Text.Length > 0, "minimal preview has defaults");
+Assert(WarningTestCommand.TryParse("/test warn Dax", out var noCause) && noCause?.Cause == "Yetta", "cause can default to Yetta");
+Assert(WarningTestCommand.TryParse("/test warn Caution Tallow check:true \"Описание с пробелами\" pass:true", out var flexible) &&
+    flexible is { Check: true, Password: true, Tty: false, Text: "Описание с пробелами" }, "optional flags work in any order");
+Assert(CommandCompletion.Get("/test").Select(x => x.Label).SequenceEqual(["warn"]), "test has only warn subcommand");
+Assert(CommandCompletion.Get("/test warn").Count == WarningTestCommand.Kinds.Length, "warning kinds are offered at the next step");
+Assert(CommandCompletion.Get("/test warn C").All(x => x.Label.StartsWith("C")), "partial warning type filters suggestions");
+Assert(CommandCompletion.Get("/test warn Caution").Any(x => x.Label == "Tallow"), "cause choices follow a complete type");
+Assert(CommandCompletion.Get("/test warn Caution Yetta check:true ").All(x => !x.Label.StartsWith("check:")), "used flags are not offered twice");
+Assert(CommandCompletion.Get("/test warn Caution Yetta tty:").Select(x => x.Label).SequenceEqual(["tty:true", "tty:false"]), "boolean flag gets exact alternatives");
