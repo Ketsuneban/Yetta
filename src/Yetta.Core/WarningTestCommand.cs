@@ -7,7 +7,7 @@ public sealed record WarningTestCommand(string Kind, string Cause, bool Password
     public static bool TryParse(string input, out WarningTestCommand? result)
     {
         result = null;
-        var args = CommandTokens.Read(input.Trim(), out bool closed);
+        var args = CommandTokens.Read(CommandAliases.Normalize(input.Trim()), out bool closed);
         if (!closed || args.Count < 3 || !args[0].Value.Equals("/test", StringComparison.OrdinalIgnoreCase) ||
             !args[1].Value.Equals("warn", StringComparison.OrdinalIgnoreCase)) return false;
         string? kind = Kinds.FirstOrDefault(x => x.Equals(args[2].Value, StringComparison.OrdinalIgnoreCase));

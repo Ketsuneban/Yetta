@@ -98,7 +98,7 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
         };
         Loaded += (_, _) => _ = WatchUpdatesAsync();
-        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; _scripts.Dispose(); };
+        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; _scripts.Dispose(); };
     }
 
     private void ShowDaxNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
@@ -964,6 +964,7 @@ public partial class MainWindow : Window
 
         if (_consoleMode == "Marvine")
         {
+            workspace.Background = ConsoleSurface;
             BuildMarvineWorkspace(body);
         }
         else if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
@@ -1035,6 +1036,8 @@ public partial class MainWindow : Window
                 Content = display
             };
             _consoleScroll = scrolling;
+            _consoleFollow?.Dispose();
+            _consoleFollow = new ConsoleFollowController(scrolling);
             UpdateConsoleHeight();
             body.Children.Add(scrolling);
             display.Children.Add(ConsoleLine(TallowText.Get("ui.main.0138"), true));
@@ -1061,7 +1064,7 @@ public partial class MainWindow : Window
                         {
                             display.Children.Add(SelectableConsole.Wrap(LiteralConsoleLine(line)));
                             if (display.Children.Count > 500) display.Children.RemoveAt(1);
-                            scrolling.ScrollToEnd();
+                            _consoleFollow?.ContentChanged();
                         }
                     }));
                 });
@@ -1137,7 +1140,7 @@ public partial class MainWindow : Window
         if (_daxGate.Status.State != DaxState.Ready)
         {
             _consoleOutput?.Children.Add(LiteralConsoleLine("Команда не отправлена. " + DaxStatusText(_daxGate.Status)));
-            _consoleScroll?.ScrollToEnd();
+            _consoleFollow?.ContentChanged();
             return;
         }
         var command = _consoleInput.Text;
@@ -1204,6 +1207,20 @@ public partial class MainWindow : Window
                     var text when text.StartsWith("[☄]", StringComparison.Ordinal) || text.StartsWith("[⌘]", StringComparison.Ordinal)
                         => new SolidColorBrush(Color.FromRgb(109, 193, 255)),
                     _ => new SolidColorBrush(Color.FromRgb(230, 234, 238))
+                };
+            }
+            if (_settings.MarvineColorset == "dracula")
+            {
+                color = part switch
+                {
+                    _ when prompt => Hex("#8BE9FD"),
+                    _ when part.StartsWith("[✔]") || part.StartsWith("[Зелёный]") => Hex("#50FA7B"),
+                    _ when part.StartsWith("[✖]") || part.StartsWith("[Красный]") => Hex("#FF5555"),
+                    _ when part.StartsWith("[⚠]") || part.StartsWith("[Жёлтый]") => Hex("#F1FA8C"),
+                    _ when part.StartsWith("[Серый]") => Hex("#6272A4"),
+                    _ when part.StartsWith("[☄]") => Hex("#FF79C6"),
+                    _ when part.StartsWith("[⌘]") => Hex("#BD93F9"),
+                    _ => Hex("#F8F8F2")
                 };
             }
             if (prompt || part.Contains("DAX TTY:", StringComparison.Ordinal))
@@ -1430,8 +1447,12 @@ public partial class MainWindow : Window
                 SavePreferences();
                 return "[✔] Marvine Subsy: " + (_settings.MarvineSubsyEnabled ? "включена." : "выключена.");
             case "COLORSET":
-                _settings.MarvineColorset = argument == "EGA" ? "EGA" : "No Color";
+                _settings.MarvineColorset = argument is "EGA" or "No Color" or "dracula" ? argument : "EGA";
                 SavePreferences();
+                bool following = _consoleFollow?.Following ?? true;
+                double offset = _consoleScroll?.VerticalOffset ?? 0;
+                Navigate("console");
+                if (!following) _consoleFollow?.PauseAt(offset);
                 return "[✔] Marvine: палитра " + _settings.MarvineColorset + ".";
             case "SCRIPT_LIST":
             {
@@ -1590,6 +1611,7 @@ public partial class MainWindow : Window
         var colorset = new ComboBox();
         colorset.Items.Add("EGA");
         colorset.Items.Add("No Color");
+        colorset.Items.Add("dracula");
         colorset.SelectedItem = _settings.MarvineColorset;
         colorset.SelectionChanged += (_, _) =>
         {

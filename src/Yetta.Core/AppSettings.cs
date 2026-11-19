@@ -21,7 +21,7 @@ public sealed class AppSettings
     {
         Theme = "Fluent";
         if (NotificationRetentionHours is < 1 or > 720) NotificationRetentionHours = 24;
-        if (MarvineColorset is not ("EGA" or "No Color")) MarvineColorset = "EGA";
+        if (MarvineColorset is not ("EGA" or "No Color" or "dracula")) MarvineColorset = "EGA";
         MarvineHistoryLimit = Math.Clamp(MarvineHistoryLimit, 100, 10000);
         InstalledProfiles ??= [];
         if (ActiveProfile == "SafeUser") ActiveProfile = "Guest";

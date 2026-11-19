@@ -229,6 +229,21 @@ internal static class StandardWarningDialog
         var subject = new Grid { Margin = new Thickness(0, 0, 0, 16) };
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         subject.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        subject.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var state = YettaWarningWindow.State(request, ConsentDialog.InWindowsSafeMode);
+        if (state != WarningState.None)
+        {
+            string label = state switch { WarningState.SafeMode => "Safe Mode", WarningState.Danger => "Danger!", _ => "Safe" };
+            Color color = state switch { WarningState.SafeMode => Color.FromRgb(115, 181, 255), WarningState.Danger => Color.FromRgb(255, 98, 88), _ => Color.FromRgb(83, 226, 124) };
+            var mini = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            mini.Children.Add(IconAssets.Asset("States/" + (int)state + ".png", 38));
+            mini.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = new SolidColorBrush(color),
+                Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Center });
+            var badge = new Border { Name = "WarningStateBadge", Width = 80, Height = 74, CornerRadius = new CornerRadius(10),
+                Margin = new Thickness(18, 0, 0, 0), Padding = new Thickness(8),
+                Background = new SolidColorBrush(Color.FromArgb(22, color.R, color.G, color.B)), Child = mini };
+            Grid.SetColumn(badge, 2); subject.Children.Add(badge);
+        }
         var cause = CauseIcon(request, 48);
         cause.Margin = new Thickness(0, 0, 15, 0);
         if (!string.IsNullOrWhiteSpace(request.SourcePath))
@@ -245,11 +260,14 @@ internal static class StandardWarningDialog
             WarningCauseType.Windows => "Windows", _ => request.Subject
         };
         identity.Children.Add(Text(displayName, 19, White, bold: true));
-        string publisherText = WarningCauseResolver.Type(request) is
-            WarningCauseType.Yetta or WarningCauseType.Dax or WarningCauseType.Tallow ? "Tallow" : request.Publisher ?? "Неизвестный издатель";
-        var publisher = Text("Издатель: " + publisherText, 12, Muted);
+        var publisher = Text("Издатель: проверка подписи…", 12, Muted);
         publisher.Margin = new Thickness(0, 4, 0, 0);
         identity.Children.Add(publisher);
+        var signatureStatus = Text("", 10.5, Muted);
+        signatureStatus.Margin = new Thickness(0, 3, 0, 0);
+        identity.Children.Add(signatureStatus);
+        if (WarningCauseResolver.Type(request) is WarningCauseType.Yetta or WarningCauseType.Dax or WarningCauseType.Tallow)
+            identity.Children.Add(Text("Автор проекта: Tallow", 10.5, Muted));
         Grid.SetColumn(identity, 1);
         subject.Children.Add(identity);
         body.Children.Add(subject);
@@ -276,6 +294,35 @@ internal static class StandardWarningDialog
             link.MouseLeftButtonUp += (_, _) => WarningFileNavigation.Reveal(path);
             evidence.Children.Add(link);
         }
+        var signatureDetails = Text("", 12, Muted);
+        evidence.Children.Add(signatureDetails);
+        window.Loaded += async (_, _) =>
+        {
+            using var stop = new CancellationTokenSource();
+            void CancelInspection(object? sender, EventArgs args) => stop.Cancel();
+            window.Closed += CancelInspection;
+            try
+            {
+                string? inspectionPath = request.SourcePath;
+                if (string.IsNullOrWhiteSpace(inspectionPath))
+                    inspectionPath = WarningCauseResolver.Type(request) switch
+                    {
+                        WarningCauseType.Dax => Path.Combine(AppContext.BaseDirectory, "Yetta.DAX.exe"),
+                        WarningCauseType.Yetta or WarningCauseType.Tallow => Environment.ProcessPath,
+                        _ => null
+                    };
+                var result = await Task.Run(() => PublisherInspector.InspectAsync(inspectionPath, stop.Token));
+                if (!stop.IsCancellationRequested && window.IsVisible)
+                {
+                    publisher.Text = result.Publisher;
+                    signatureStatus.Text = result.Status;
+                    signatureStatus.Foreground = result.Verified ? Success : Muted;
+                    signatureDetails.Text = result.Technical;
+                }
+            }
+            catch (OperationCanceledException) { }
+            finally { window.Closed -= CancelInspection; }
+        };
         content.Children.Add(evidence);
         more.MouseLeftButtonUp += (_, _) =>
         {
