@@ -185,6 +185,9 @@ static class Program
                     using var output = File.Create("artifacts/ui-preview/" + kind + ".png"); encoder.Save(output);
                 }, renderOnly: true);
         }
+        foreach (string profile in AccessProfiles.All.Append("Developers"))
+            if (IconAssets.Asset("Profiles/" + profile + ".png", 44).Source is null)
+                throw new Exception("Missing profile icon: " + profile);
         foreach (int stateIcon in new[] { 1, 2, 3 })
             if (IconAssets.Asset("States/" + stateIcon + ".png", 38).Source is null) throw new Exception("Missing state icon");
         if (YettaWarningWindow.State(new WarningRequest(WarningKind.Information, "i", "info", PotentialDamage: true), true) != WarningState.None ||

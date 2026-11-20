@@ -595,7 +595,6 @@ public partial class MainWindow : Window
         }, true));
         ttyPanel.Children.Add(ttyActions);
         ContentPanel.Children.Add(Card(ttyPanel));
-        AddNotice("Уровень System", "Профиль System пока недоступен.");
     }
 
     private void OnFooterLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -993,7 +992,7 @@ public partial class MainWindow : Window
                     release = YettaUpdater.FindReleaseByTag(argument);
                 if (release is null && string.IsNullOrWhiteSpace(argument))
                     return "[⚠] Marvine: укажи ID или тег из команды /yetta version.";
-                if (release is null) return "[✖] Marvine: релиз с таким ID не найден среди доступных установщиков.";
+                if (release is null) return "[✖] Marvine: релиз недоступен. Минимальная версия для установки — 0.3.3.";
                 if (!ConfirmYettaAction("Установить Yetta " + release.Tag,
                     "Будет загружен и запущен установщик релиза " + release.Tag + "."))
                     return "[ℹ] Marvine: установка отменена.";
@@ -1348,10 +1347,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
-            System.ComponentModel.Win32Exception or TaskCanceledException or
+            System.ComponentModel.Win32Exception or OperationCanceledException or
             System.Text.Json.JsonException or System.Xml.XmlException)
         {
-            if (ex is OperationCanceledException && !manual) return "Загрузка отменена";
+            if (ex is OperationCanceledException && (_dismissedAutoVersion is not null || _updateStop.IsCancellationRequested))
+                return "Загрузка отменена";
             string message = FriendlyMarvineError(ex);
             DaxAudit.Write("update", "check_failed", ex.GetType().Name);
             if (consoleProgress is not null) throw;
@@ -1377,13 +1377,14 @@ public partial class MainWindow : Window
         var panel = new StackPanel { Children = { status, bar, cancel } };
         var card = new Border { Background = Surface, CornerRadius = new CornerRadius(10), Padding = new Thickness(18),
             HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 10), Child = panel };
-        ToastHost.Children.Add(card);
+        UpdateHost.Content = card;
         bool active = true;
         int lastPercent = -1;
+        bool installing = false;
 
         var progress = new Progress<double>(value =>
         {
-            if (!active) return;
+            if (!active || installing) return;
             int percent = (int)(value * 100);
             if (percent == lastPercent) return;
             lastPercent = percent;
@@ -1397,6 +1398,7 @@ public partial class MainWindow : Window
             // Hashing and streaming never occupy the dispatcher, including cached downloads.
             string path = await Task.Run(() => YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token));
             if (automatic && !_settings.AutoUpdatesEnabled) return;
+            installing = true;
             status.Text = "Запуск установщика…";
             bar.IsIndeterminate = true;
             cancel.IsEnabled = false;
@@ -1418,9 +1420,8 @@ public partial class MainWindow : Window
         finally
         {
             active = false;
-            ToastHost.Children.Remove(card);
+            UpdateHost.Content = null;
             _downloadCancel = null;
-
         }
     }
 

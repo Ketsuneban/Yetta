@@ -254,3 +254,5 @@ foreach (var removed in new[] { "win", "dax", "settings", "guard", "info", "stat
 Assert(CommandCompletion.Get("").Count == 0 && CommandCompletion.Get("/").Count == 0, "quiet initial prompt");
 Assert(ConsoleEngine.Execute("help", c).Message.Split("/script").Length == 2, "one script help entry");
 Assert(!WarningTestCommand.TryParse("test warn Standard Yetta check:true late", out _), "description precedes switches");
+Assert(ConsoleEngine.Execute("test warn Unknown Yetta sample", c).Message.Contains("«Unknown»"), "report the offending token");
+Assert(CommandCompletion.Get("script ru").Select(s => s.Label).SequenceEqual(["run"]), "finish the action before offering a path");

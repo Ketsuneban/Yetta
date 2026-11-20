@@ -606,7 +606,7 @@ internal static class StandardWarningDialog
         window.Content = outer;
         if (deny is not null) window.Loaded += (_, _) => deny.Focus();
         if (fatal) window.Topmost = true;
-        UiMotion.AnimateOpen(outer);
+        window.Loaded += (_, _) => FadeIn(outer);
 
         onWindowCreated?.Invoke(window);
         if (renderOnly) return false;
@@ -623,42 +623,11 @@ internal static class StandardWarningDialog
         return result;
     }
 
-    private static void FlyInto(FrameworkElement label, bool into)
-    {
-        label.BeginAnimation(UIElement.OpacityProperty, null);
-        if (!UiMotion.AnimationsEnabled)
-        {
-            label.Visibility = into ? Visibility.Collapsed : Visibility.Visible;
-            label.Opacity = 1;
-            label.RenderTransform = Transform.Identity;
-            return;
-        }
-        var transform = new TranslateTransform();
-        label.RenderTransform = transform;
-        label.Visibility = Visibility.Visible;
-        label.Opacity = into ? 0 : 1;
-        var duration = TimeSpan.FromMilliseconds(170);
-        var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
-        var move = new DoubleAnimation(into ? 0 : -34, into ? -34 : 0, duration)
-        { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        var fade = new DoubleAnimation(into ? 1 : 0, into ? 0 : 1, duration)
-        { FillBehavior = FillBehavior.Stop };
-        fade.Completed += (_, _) =>
-        {
-            label.BeginAnimation(UIElement.OpacityProperty, null);
-            label.RenderTransform = Transform.Identity;
-            label.Opacity = 1;
-            if (into) label.Visibility = Visibility.Collapsed;
-        };
-        transform.BeginAnimation(TranslateTransform.XProperty, move);
-        label.BeginAnimation(UIElement.OpacityProperty, fade);
-    }
-
     private static void FadeIn(UIElement element)
     {
         element.Opacity = 1;
         if (!UiMotion.AnimationsEnabled) return;
-        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190))
+        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(130))
         { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }, FillBehavior = FillBehavior.Stop };
         element.BeginAnimation(UIElement.OpacityProperty, fade);
     }

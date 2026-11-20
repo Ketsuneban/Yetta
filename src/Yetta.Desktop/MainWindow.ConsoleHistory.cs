@@ -28,7 +28,7 @@ public partial class MainWindow
         panel.Children.Add(accept);
         var list = new ListBox
         {
-            Background = ConsolePanel, Foreground = Brushes.White, FontFamily = ConsoleFont,
+            Background = ConsolePanel, Foreground = ConsoleInk, FontFamily = ConsoleFont,
             BorderThickness = new Thickness(0), Padding = new Thickness(4)
         };
         System.Windows.Automation.AutomationProperties.SetName(list, "Найденные команды");

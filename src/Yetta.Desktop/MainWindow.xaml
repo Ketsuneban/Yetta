@@ -375,7 +375,9 @@
                      FontSize="11" Foreground="{DynamicResource TextSecondary}"/></StackPanel>
         </Grid>
       </Border>
-      <StackPanel x:Name="ToastHost" Grid.RowSpan="3" Panel.ZIndex="20" Width="324" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12,12,22,56"/>
+      <StackPanel Grid.RowSpan="3" Panel.ZIndex="20" Width="324" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12,12,22,56">
+        <StackPanel x:Name="ToastHost"/><ContentControl x:Name="UpdateHost"/>
+      </StackPanel>
     </Grid>
     </Grid>
   </Grid>

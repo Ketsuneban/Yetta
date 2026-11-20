@@ -41,8 +41,9 @@ public static class ConsoleEngine
                 if (action == "stop" && tail.Length > 0) return new("", Request: "SCRIPT_STOP", Argument: tail);
                 return Invalid(action, "/script run [путь] · /script list · /script stop <ID или путь>");
             case "test":
-                if (action == "warn" && WarningTestCommand.TryParse(raw, out _)) return new("", Request: "TEST_WARN", Argument: raw);
-                return Invalid(tokens.Skip(2).LastOrDefault()?.Value ?? action);
+                if (action != "warn") return Invalid(action.Length > 0 ? action : "действие");
+                return WarningTestCommand.TryParse(raw, out _, out var invalid)
+                    ? new("", Request: "TEST_WARN", Argument: raw) : Invalid(invalid);
             case "marvine":
                 if (action == "subsy" && tokens.Count == 3 && tail.ToLowerInvariant() is "enable" or "disable")
                     return new("", Request: "SUBSY", Argument: tail.ToLowerInvariant());
@@ -72,7 +73,7 @@ public static class ConsoleEngine
     {
         Syntax["script"] + " — run, list, stop", Syntax["test"], Syntax["marvine"],
         Syntax["yetta"] + " — version, update, download", Syntax["tty"], Syntax["subsy"],
-        "/clear — очистить вывод", "/version · /access · /theme", "/overview · /activity · /sources · /recovery"
+        "/help · /clear — справка и очистка вывода", "/snob — информация о доступе", "/version · /access · /theme", "/overview · /activity · /sources · /recovery"
     });
     public static IReadOnlyList<string> Suggestions(string? prefix) => CommandCompletion.Get(prefix ?? "").Select(x => x.Command).ToArray();
 }

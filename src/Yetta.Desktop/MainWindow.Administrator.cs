@@ -176,6 +176,9 @@ public partial class MainWindow
         ContentPanel.Children.Add(Card(panel));
     }
 
+    internal static string? BundledAdministratorHash => typeof(MainWindow).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "DaxInstallerSha256")?.Value;
+
     private async Task<bool> InstallAdministratorAsync()
     {
         if (_administratorBusy) return false;
@@ -183,11 +186,9 @@ public partial class MainWindow
         try
         {
             string path = Path.Combine(AppContext.BaseDirectory, "YettaDaxAdministratorSetup.exe");
-            string? expected = typeof(MainWindow).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-                .FirstOrDefault(a => a.Key == "DaxInstallerSha256")?.Value;
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             string actual = Convert.ToHexString(await SHA256.HashDataAsync(file, _updateStop.Token));
-            if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+            if (!actual.Equals(BundledAdministratorHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Контрольная сумма установщика DAX не совпала.");
             using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Verb = "runas" });
             if (process is null) return false;
