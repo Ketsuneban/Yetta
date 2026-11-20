@@ -27,7 +27,7 @@ public partial class MainWindow
             args.Handled = true;
             OpenPageFinder();
         }
-        else if (args.Key == Key.R && _page == "console" && _consoleMode == "Marvine")
+        else if (args.Key == Key.R && _page == "console")
         {
             args.Handled = true;
             OpenMarvineHistory();

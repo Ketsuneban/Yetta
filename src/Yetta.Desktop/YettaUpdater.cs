@@ -11,7 +11,11 @@ using System.Xml.Linq;
 
 namespace Yetta.Desktop;
 
-public sealed record UpdateRelease(long Id, Version Version, string Tag, Uri InstallerUrl, Uri ChecksumUrl);
+public sealed record UpdateRelease(long Id, Version Version, string Tag, Uri InstallerUrl, Uri ChecksumUrl)
+{
+    public bool Unified => Version >= new Version(0, 6, 0);
+    public string PayloadName => $"Yetta-{Version}.exe";
+}
 
 /// <summary>
 /// Opt-in unprivileged preview updater: GitHub release metadata + SHA-256
@@ -26,8 +30,8 @@ public static class YettaUpdater
 
     private static HttpClient Client()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.5.1"));
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(90), MaxResponseContentBufferSize = 8_000_000 };
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Yetta", "0.6.0"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
@@ -75,14 +79,9 @@ public static class YettaUpdater
                 !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
                 !uri.AbsolutePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
             string tag = uri.AbsolutePath[prefix.Length..];
-            if (!Regex.IsMatch(tag, @"\Av\d+\.\d+\.\d+(?:-preview)?\z", RegexOptions.CultureInvariant) ||
-                !Version.TryParse(tag[1..].Replace("-preview", "", StringComparison.OrdinalIgnoreCase),
-                    out var version)) continue;
-            releases.Add(new UpdateRelease(0, version, tag,
-                new Uri($"https://github.com/{Repo}/releases/download/{tag}/YettaSetup.exe"),
-                new Uri($"https://github.com/{Repo}/releases/download/{tag}/INSTALLER-SHA256.txt")));
+            if (FindReleaseByTag(tag) is { } release) releases.Add(release);
         }
-        if (releases.Count == 0) throw new InvalidDataException("Лента релизов GitHub пуста или повреждена.");
+        if (feed.Root?.Name != atom + "feed") throw new InvalidDataException("Лента релизов GitHub пуста или повреждена.");
         return releases.OrderByDescending(item => item.Version).ToArray();
     }
 
@@ -138,9 +137,11 @@ public static class YettaUpdater
             @"\Av\d+\.\d+\.\d+(?:-preview)?\z", RegexOptions.CultureInvariant)) return null;
         if (!Version.TryParse(tag[1..].Replace("-preview", "", StringComparison.OrdinalIgnoreCase),
             out var version)) return null;
-        return new UpdateRelease(0, version, tag,
-            new Uri($"https://github.com/{Repo}/releases/download/{tag}/YettaSetup.exe"),
-            new Uri($"https://github.com/{Repo}/releases/download/{tag}/INSTALLER-SHA256.txt"));
+        if (version < new Version(0, 3, 3)) return null;
+        string download = $"https://github.com/{Repo}/releases/download/{tag}/";
+        bool unified = version >= new Version(0, 6, 0);
+        return new UpdateRelease(0, version, tag, new Uri(download + (unified ? "YettaInstaller.exe" : "YettaSetup.exe")),
+            new Uri(unified ? $"https://api.github.com/repos/{Repo}/releases/tags/{tag}" : download + "INSTALLER-SHA256.txt"));
     }
 
     private static bool IsRateLimited(HttpResponseMessage reply) =>
@@ -162,30 +163,43 @@ public static class YettaUpdater
     {
         if (release.GetProperty("draft").GetBoolean()) return null;
         string tag = release.GetProperty("tag_name").GetString() ?? "";
-        string raw = tag.TrimStart('v').Replace("-preview", "", StringComparison.OrdinalIgnoreCase);
-        if (!Version.TryParse(raw, out var version)) return null;
-        Uri? setup = null, checksum = null;
-        foreach (var asset in release.GetProperty("assets").EnumerateArray())
-        {
-            string name = asset.GetProperty("name").GetString() ?? "";
-            string url = asset.GetProperty("browser_download_url").GetString() ?? "";
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-                uri.Scheme != Uri.UriSchemeHttps ||
-                !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-                !uri.AbsolutePath.StartsWith($"/{Repo}/releases/download/", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (name == "YettaSetup.exe") setup = uri;
-            if (name == "INSTALLER-SHA256.txt") checksum = uri;
-        }
-        return setup is not null && checksum is not null
-            ? new UpdateRelease(release.GetProperty("id").GetInt64(), version, tag, setup, checksum)
-            : null;
+        if (FindReleaseByTag(tag) is not { } item) return null;
+        var urls = release.GetProperty("assets").EnumerateArray()
+            .Select(a => a.GetProperty("browser_download_url").GetString()).ToHashSet();
+        bool complete = urls.Contains(item.InstallerUrl.AbsoluteUri) && urls.Contains(item.Unified
+            ? new Uri(item.InstallerUrl, "Yetta.exe").AbsoluteUri : item.ChecksumUrl.AbsoluteUri);
+        return complete ? item with { Id = release.GetProperty("id").GetInt64() } : null;
     }
 
     public static async Task<string> DownloadInstallerAsync(UpdateRelease release,
         IProgress<double>? progress = null, CancellationToken token = default)
     {
         using var http = Client();
+        string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yetta", "Updates");
+        Directory.CreateDirectory(directory);
+        string installer = Path.Combine(directory, "YettaSetup-" + release.Version + ".exe");
+        if (release.Unified)
+        {
+            using var metadata = await http.GetAsync(release.ChecksumUrl, token);
+            metadata.EnsureSuccessStatusCode();
+            using var json = JsonDocument.Parse(await metadata.Content.ReadAsByteArrayAsync(token));
+            if (ParseRelease(json.RootElement)?.Tag != release.Tag) throw new InvalidDataException("Некорректный состав релиза.");
+            var assets = json.RootElement.GetProperty("assets").EnumerateArray().ToArray();
+            string Digest(Uri url)
+            {
+                var asset = assets.Single(a => a.GetProperty("browser_download_url").GetString() == url.AbsoluteUri);
+                string? digest = asset.TryGetProperty("digest", out var field) ? field.GetString() : null;
+                if (digest is null || !Regex.IsMatch(digest, @"\Asha256:[0-9a-fA-F]{64}\z"))
+                    throw new InvalidDataException("GitHub не предоставил SHA-256 файла.");
+                return digest[7..];
+            }
+            var payloadUrl = new Uri(release.InstallerUrl, "Yetta.exe");
+            await DownloadVerifiedAsync(http, release.InstallerUrl, installer, Digest(release.InstallerUrl),
+                v => progress?.Report(v * .03), token);
+            await DownloadVerifiedAsync(http, payloadUrl, Path.Combine(directory, release.PayloadName), Digest(payloadUrl),
+                v => progress?.Report(.03 + .97 * v), token);
+            return installer;
+        }
         using var manifestReply = await http.GetAsync(release.ChecksumUrl,
             HttpCompletionOption.ResponseHeadersRead, token);
         manifestReply.EnsureSuccessStatusCode();
@@ -207,11 +221,13 @@ public static class YettaUpdater
             RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (!match.Success) throw new InvalidDataException("No installer SHA-256 in the release manifest.");
 
-        string directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Yetta", "Updates");
-        Directory.CreateDirectory(directory);
-        string destination = Path.Combine(directory, "YettaSetup-" + release.Version + ".exe");
+        return await DownloadVerifiedAsync(http, release.InstallerUrl, installer, match.Groups[1].Value,
+            v => progress?.Report(v), token);
+    }
+
+    private static async Task<string> DownloadVerifiedAsync(HttpClient http, Uri url, string destination,
+        string expected, Action<double> report, CancellationToken token)
+    {
         string partial = destination + "." + Guid.NewGuid().ToString("N") + ".download";
 
         // A verified installer can be reused after a cancelled or interrupted launch.
@@ -221,9 +237,9 @@ public static class YettaUpdater
             {
                 await using var cached = File.OpenRead(destination);
                 string cachedHash = Convert.ToHexString(await SHA256.HashDataAsync(cached, token));
-                if (cachedHash.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
+                if (cachedHash.Equals(expected, StringComparison.OrdinalIgnoreCase))
                 {
-                    progress?.Report(1);
+                    report(1);
                     return destination;
                 }
             }
@@ -233,7 +249,7 @@ public static class YettaUpdater
 
         try
         {
-            using var reply = await http.GetAsync(release.InstallerUrl,
+            using var reply = await http.GetAsync(url,
                 HttpCompletionOption.ResponseHeadersRead, token);
             reply.EnsureSuccessStatusCode();
             if (reply.Content.Headers.ContentLength is long length && length > MaxInstallerBytes)
@@ -255,16 +271,16 @@ public static class YettaUpdater
                     await output.WriteAsync(buffer.AsMemory(0, count), token);
                     hash.AppendData(buffer, 0, count);
                     if (reply.Content.Headers.ContentLength is long total && total > 0)
-                        progress?.Report(Math.Clamp((double)downloaded / total * 0.98, 0, 0.98));
+                        report(Math.Clamp((double)downloaded / total * 0.98, 0, 0.98));
                 }
             }
 
-            progress?.Report(0.99);
+            report(0.99);
             string actual = Convert.ToHexString(hash.GetHashAndReset());
-            if (!actual.Equals(match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
+            if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Installer checksum mismatch.");
             File.Move(partial, destination, overwrite: true);
-            progress?.Report(1);
+            report(1);
             return destination;
         }
         catch

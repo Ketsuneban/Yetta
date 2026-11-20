@@ -51,13 +51,13 @@ static class Program
         Layout(700, 430);
         var output = Descendants(root).OfType<RichTextBox>().Single();
         output.SelectAll();
-        if (!output.Selection.Text.Contains("script stop")) throw new Exception("Script help unavailable from console.");
-        input.Text = "win mouse-speed";
+        if (!output.Selection.Text.Contains("stop —")) throw new Exception("Script help unavailable from console.");
+        input.Text = "script list";
         ((Button)window.FindName("NavInfo")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         nav.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         root = (FrameworkElement)host.Child;
         Layout(700, 430);
-        if (Descendants(root).OfType<TextBox>().Single().Text != "win mouse-speed")
+        if (Descendants(root).OfType<TextBox>().Single().Text != "script list")
             throw new Exception("Returning to Marvine lost the draft.");
         var bitmap = new RenderTargetBitmap(700, 430, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(root);
@@ -67,22 +67,6 @@ static class Program
         png.Save(file);
         window.Close();
         Console.WriteLine("PASS Marvine at two sizes, expanded options, script help, selection and draft");
-    }
-
-    private static void VerifyWindowsPreferences()
-    {
-        foreach (var pref in WindowsCommands.Preferences)
-        {
-            int before = WindowsPersonalization.Read(pref.Key);
-            int next = before == pref.Minimum ? pref.Maximum : pref.Minimum;
-            try
-            {
-                WindowsPersonalization.Write(pref.Key, next);
-                if (WindowsPersonalization.Read(pref.Key) != next) throw new Exception("Setting readback: " + pref.Key);
-            }
-            finally { WindowsPersonalization.Write(pref.Key, before); }
-        }
-        Console.WriteLine("PASS Windows user preferences: change, read back and restore");
     }
 
     private static void VerifyPython()
@@ -169,10 +153,7 @@ static class Program
             throw new Exception("Cross-entry selection, trimming or form retention failed");
         transcript.Reset();
         if (transcript.Children.Count != 0) throw new Exception("Clear must also reset the grouped document.");
-        VerifyWindowsPreferences();
         VerifyPython();
-        if (!UpdateNotification.Template.Contains("value=\"{value}\"") || !UpdateNotification.Template.Contains("status=\"{status}\""))
-            throw new Exception("Toast progress must use data bindings.");
         var owner = new Window { Width = 100, Height = 100, Left = -10000, Top = -10000, ShowInTaskbar = false };
         owner.Show();
         Directory.CreateDirectory("artifacts/ui-preview");

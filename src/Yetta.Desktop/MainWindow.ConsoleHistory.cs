@@ -9,7 +9,7 @@ public partial class MainWindow
 {
     private void OpenMarvineHistory()
     {
-        if (_page != "console" || _consoleMode != "Marvine" || _consoleInput is not { IsReadOnly: false } input) return;
+        if (_page != "console" || _consoleInput is not { IsReadOnly: false } input) return;
         var dialog = new Window
         {
             Owner = this, Title = "История команд Marvine", Width = 540, Height = 400, MinWidth = 340, MinHeight = 240,

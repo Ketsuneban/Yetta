@@ -1,5 +1,10 @@
 # Yetta Changelog
 
+## 0.6.0-preview
+
+Единый EXE, загрузочный установщик, карточки профилей DAX и обновлённая консоль Marvine. [Подробности](docs/releases/v0.6.0-preview.md).
+
+
 ## 0.5.1-preview
 
 - Команды персонализации Windows, исправление запуска Python через Marvine и выбор .py без аргументов.

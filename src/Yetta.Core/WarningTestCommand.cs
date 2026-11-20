@@ -3,7 +3,7 @@ namespace Yetta.Core;
 public sealed record WarningTestCommand(string Kind, string Cause, bool Password, bool Tty, bool Check, string Text)
 {
     public static readonly string[] Kinds = ["Standard", "Information", "Caution", "Dangerous", "Critical", "Fatal", "Agreement", "Dax"];
-    public const string Usage = "/test warn <тип> [Yetta|DAX|Tallow|Windows|путь] [pass:true/false] [tty:true/false] [check:true/false] [\"текст\"]";
+    public const string Usage = "/test warn <тип> [Yetta|DAX|Tallow|Windows|путь] [\"текст окна\"] [pass:true/false] [tty:true/false] [check:true/false]";
     public static bool TryParse(string input, out WarningTestCommand? result)
     {
         result = null;
@@ -25,6 +25,7 @@ public sealed record WarningTestCommand(string Kind, string Cause, bool Password
                 string[] parts = token.Value.Split(':', 2);
                 if (!bool.TryParse(parts[1], out bool value) || !flags.TryAdd(parts[0], value)) return false;
             }
+            else if (flags.Count > 0) return false;
             else description.Add(token.Value);
         }
         result = new(kind, cause, flags.GetValueOrDefault("pass"), flags.GetValueOrDefault("tty"),

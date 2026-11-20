@@ -45,7 +45,6 @@ try
 catch (InvalidDataException) { Console.WriteLine("PASS bounded DAX frame"); }
 Assert(defaults.ActiveProfile == "Guest" && defaults.InstalledProfiles.SequenceEqual(["Guest"]),
     "Guest is the only initially installed profile");
-Assert(!AccessProfiles.CanLaunchUnprivilegedTerminal(defaults), "Guest blocks external terminal");
 Assert(!AccessProfiles.Install(defaults,"SafeUser"),"SafeUser is merged into Guest");
 defaults.ActiveProfile = "SafeUser";
 defaults.InstalledProfiles.Add("SafeUser");
@@ -54,7 +53,6 @@ Assert(defaults.ActiveProfile == "Guest" && !defaults.InstalledProfiles.Contains
     "old SafeUser preference migrates to Guest");
 Assert(AccessProfiles.Install(defaults,"User"),"User installs logical standard policy");
 Assert(AccessProfiles.Apply(defaults,"User"),"User can be applied");
-Assert(AccessProfiles.CanLaunchUnprivilegedTerminal(defaults),"User permits non-elevated Terminal");
 Assert(!AccessProfiles.Install(defaults,"Administrator"),"Administrator cannot be falsely installed");
 var adminCache = new AppSettings { InstalledProfiles = ["Guest", "Administrator"], ActiveProfile = "Administrator" };
 AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Unavailable);
@@ -67,7 +65,6 @@ Assert(adminCache.ActiveProfile == "Administrator", "confirmed service state act
 AccessProfiles.SyncAdministrator(adminCache, DaxAdministratorState.Revoked);
 Assert(adminCache.ActiveProfile == "Guest", "revocation removes the active profile immediately");
 Assert(!AccessProfiles.Install(defaults,"System"),"System cannot be falsely installed");
-Assert(!AccessProfiles.CanLaunchElevatedShell(defaults),"elevated shell not enabled");
 Assert(!AccessProfiles.Apply(defaults,"System"),"non-installed level cannot be applied");
 defaults.ActiveProfile = "System";
 defaults.InstalledProfiles.Add("System");
@@ -91,15 +88,15 @@ try
 finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
 var c=new ConsoleContext("Glass","Guest");
-Assert(ConsoleEngine.Execute(" HELP ",c).Request == "HELP_PAGE","Marvine help");
+Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("/script ["),"Marvine help");
 Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo is null,"theme switching disabled");
-Assert(ConsoleEngine.Execute("guard",c).NavigateTo=="guard","guard navigation");
+Assert(ConsoleEngine.Execute("guard",c).Message.Contains("Неизвестная команда"),"guard navigation");
 Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
 Assert(ConsoleEngine.Execute("/snob",c).Message.Contains("не повышает права"),"reserved command cannot elevate");
 Assert(ConsoleEngine.Execute("clear",c).ClearOutput,"clear");
-Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("не поддерживается"),
+Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("Неизвестная команда"),
     "no arbitrary PowerShell");
-Assert(ConsoleEngine.Execute("cmd /c del c:\\",c).Message.Contains("не поддерживается"),
+Assert(ConsoleEngine.Execute("cmd /c del c:\\",c).Message.Contains("Неизвестная команда"),
     "no arbitrary CMD");
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Information,false)==27,"safe icon 27");
 Assert(WarningPolicy.StatusIcon(YettaWarningLevel.Dangerous,false)==26,"danger icon 26");
@@ -215,7 +212,7 @@ Assert(WarningCause.Icon(WarningCauseType.Tallow) == 6 && WarningCause.Icon(Warn
     WarningCause.Icon(WarningCauseType.Yetta) == 15 && WarningCause.Icon(WarningCauseType.Dax) == 16, "component cause mapping");
 Assert(WarningCause.Icon(WarningCauseType.File, new("backup.7z")) == 10 &&
     WarningCause.Icon(WarningCauseType.File, new("README")) == 12, "archive and extensionless fallback");
-const string preview = "/test warn Critical \"C:\\My Files\\demo.py\" pass:true tty:false check:true \"Тест с пробелами\"";
+const string preview = "/test warn Critical \"C:\\My Files\\demo.py\" \"Тест с пробелами\" pass:true tty:false check:true";
 Assert(WarningTestCommand.TryParse(preview, out var parsed) && parsed is { Password: true, Tty: false, Check: true } &&
     parsed.Cause == @"C:\My Files\demo.py", "warning parser preserves quoted Windows paths and flags");
 Assert(!WarningTestCommand.TryParse(preview.Replace("pass:true", "pass:maybe"), out _) &&
@@ -226,7 +223,7 @@ Assert(ConsoleEngine.Execute(preview, c).Request == "TEST_WARN", "Marvine dispat
 Assert(WarningTestCommand.TryParse("/test warn Standard Yetta", out var simple) &&
     simple is { Password: false, Tty: false, Check: false } && simple.Text.Length > 0, "minimal preview has defaults");
 Assert(WarningTestCommand.TryParse("/test warn Dax", out var noCause) && noCause?.Cause == "Yetta", "cause can default to Yetta");
-Assert(WarningTestCommand.TryParse("/test warn Caution Tallow check:true \"Описание с пробелами\" pass:true", out var flexible) &&
+Assert(WarningTestCommand.TryParse("/test warn Caution Tallow \"Описание с пробелами\" check:true pass:true", out var flexible) &&
     flexible is { Check: true, Password: true, Tty: false, Text: "Описание с пробелами" }, "optional flags work in any order");
 Assert(CommandCompletion.Get("/test").Select(x => x.Label).SequenceEqual(["warn"]), "test has only warn subcommand");
 Assert(CommandCompletion.Get("/test warn").Count == WarningTestCommand.Kinds.Length, "warning kinds are offered at the next step");
@@ -251,15 +248,9 @@ Assert(WarningStatePolicy.Resolve(true, true, false) == WarningState.Danger && W
 Assert(WarningStatePolicy.Resolve(false, true, true) == WarningState.None, "informational events have no state");
 
 Assert(ConsoleEngine.Execute("scr   run", c).Request == "SCRIPT_RUN", "script picker through spaced alias");
-Assert(ConsoleEngine.Execute("script", c).Message.Contains("script run") && ConsoleEngine.Execute("/help 4", c).Message.Contains("wallpaper"), "discoverable script and Windows help");
 Assert(ConsoleEngine.Execute(@"script   run   ""C:\My  Scripts\A.py""", c).Argument == @"""C:\My  Scripts\A.py""", "preserve quoted filename bytes");
-Assert(ConsoleEngine.Execute("/win mouse-speed", c) is { Preference.Key: "mouse-speed", SettingValue: null }, "read existing setting");
-Assert(ConsoleEngine.Execute("WIN mouse-speed 20", c) is { Preference.Key: "mouse-speed", SettingValue: 20 }, "bounded personal setting");
-Assert(ConsoleEngine.Execute("win mouse-speed 21", c).Preference is null && ConsoleEngine.Execute("win key-delay -1", c).Preference is null, "reject invalid ranges");
-Assert(ConsoleEngine.Execute("win animations off", c).SettingValue == 0 && ConsoleEngine.Execute("win animations yes", c).Preference is null, "strict toggle values");
-Assert(ConsoleEngine.Execute("win wallpaper \"C:\\Pictures\\A B.png\"", c).Argument == @"C:\Pictures\A B.png" &&
-       ConsoleEngine.Execute("win wallpaper \"unfinished", c).Request is null, "wallpaper path and incomplete quote");
-Assert(WindowsCommands.Pages.All(p => ConsoleEngine.Execute("win open " + p.Key, c).Argument == p.Value) &&
-       ConsoleEngine.Execute("win open https://example.com", c).Request is null, "only catalogued Windows pages");
-Assert(CommandCompletion.Get("win open").Count == WindowsCommands.Pages.Count && CommandCompletion.Get("win animations").Count == 2 &&
-       CommandCompletion.Get("/w").Any(x => x.Label == "/win"), "Windows pages, switches and partial root completion");
+foreach (var removed in new[] { "win", "dax", "settings", "guard", "info", "status", "logs", "powershell" })
+    Assert(ConsoleEngine.Execute(removed, c).Message.Contains("Неизвестная команда"), "removed " + removed);
+Assert(CommandCompletion.Get("").Count == 0 && CommandCompletion.Get("/").Count == 0, "quiet initial prompt");
+Assert(ConsoleEngine.Execute("help", c).Message.Split("/script").Length == 2, "one script help entry");
+Assert(!WarningTestCommand.TryParse("test warn Standard Yetta check:true late", out _), "description precedes switches");

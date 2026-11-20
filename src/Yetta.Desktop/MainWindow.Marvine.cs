@@ -27,10 +27,11 @@ public partial class MainWindow
         System.Windows.Shapes.Path Ring, RotateTransform Rotation);
 
     private bool Dracula => _settings.MarvineColorset == "dracula";
-    private Brush ConsoleSurface => Dracula ? Hex("#282A36") : Hex("#171D25");
-    private Brush ConsolePanel => Dracula ? Hex("#44475A") : Hex("#283441");
-    private Brush ConsoleMuted => Dracula ? Hex("#CCD1E5") : Hex("#BDCAD6");
-    private Brush ConsoleAccent => Dracula ? Hex("#BD93F9") : Hex("#8DE1DB");
+    private Brush ConsoleSurface => Dracula ? Hex("#282A36") : Surface;
+    private Brush ConsoleInk => Dracula ? Brushes.White : Ink;
+    private Brush ConsolePanel => Dracula ? Hex("#44475A") : Resource("HoverBackground");
+    private Brush ConsoleMuted => Dracula ? Hex("#CCD1E5") : Muted;
+    private Brush ConsoleAccent => Dracula ? Hex("#BD93F9") : Accent;
     private static Brush Hex(string value) => new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
     private string _marvineDraft = "";
     private ConsoleFollowController? _consoleFollow;
@@ -43,7 +44,7 @@ public partial class MainWindow
 
     private ConsoleTranscript AttachTranscript(DockPanel layout, int limit = 500)
     {
-        var empty = _consoleMode == "Marvine" ? LiteralConsoleLine("win — настройки Windows    ·    help — все команды") : null;
+        var empty = WelcomeBanner();
         var display = new ConsoleTranscript(limit, empty) { Margin = new Thickness(5, 6, 8, 5) };
         var scroll = new EdgeScrollViewer
         {
@@ -72,7 +73,7 @@ public partial class MainWindow
         var row = new DockPanel();
         var send = SubsyButton("Выполнить", () => { input.Focus(); execute(); }, true);
         send.Background = ConsoleAccent;
-        send.Foreground = Hex("#18222C");
+        send.Foreground = Dracula ? Hex("#18222C") : Resource("AccentForeground");
         send.MinHeight = 40;
         send.Margin = new Thickness(8, 0, 0, 0);
         DockPanel.SetDock(send, Dock.Right);
@@ -106,7 +107,7 @@ public partial class MainWindow
         {
             send.IsEnabled = !input.IsReadOnly && !string.IsNullOrWhiteSpace(input.Text);
             hint.Visibility = input.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            marker.Visibility = prefix == "/" && input.Text.TrimStart().StartsWith('/') ? Visibility.Collapsed : Visibility.Visible;
+
         }
         input.TextChanged += (_, _) => Refresh();
         var readOnly = DependencyPropertyDescriptor.FromProperty(TextBox.IsReadOnlyProperty, typeof(TextBox));
@@ -138,21 +139,62 @@ public partial class MainWindow
         {
             shortcuts.Children.Clear();
             var suggestions = CommandCompletion.Get(input.Text);
-            foreach (var suggestion in suggestions.Take(showAll ? int.MaxValue : 5))
+            foreach (var group in suggestions.GroupBy(s => s.Label.Split(':')[0]).Take(showAll ? int.MaxValue : 5))
             {
+                var suggestion = group.First();
+                if (suggestion.Label.EndsWith(":true") || suggestion.Label.EndsWith(":false"))
+                {
+                    var pair = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                    var flag = LiteralConsoleLine(group.Key, ConsoleInk);
+                    flag.VerticalAlignment = VerticalAlignment.Center;
+                    flag.Margin = new Thickness(8, 0, 6, 0);
+                    pair.Children.Add(flag);
+                    foreach (var state in group)
+                    {
+                        string value = state.Label.Split(':')[1];
+                        var choice = new RadioButton { Content = value, Style = (Style)FindResource("FlagChoice"),
+                            Foreground = ConsoleInk, ToolTip = state.Label };
+                        choice.Click += (_, _) =>
+                        {
+                            if (input.IsReadOnly) return;
+                            input.Text = state.Command.TrimStart('/');
+                            input.CaretIndex = input.Text.Length;
+                            input.Focus();
+                        };
+                        pair.Children.Add(choice);
+                    }
+                    shortcuts.Children.Add(new Border { Background = ConsolePanel, CornerRadius = new CornerRadius(14),
+                        Margin = new Thickness(0, 4, 6, 4), Padding = new Thickness(2), Child = pair });
+                    continue;
+                }
                 var chip = SubsyButton(suggestion.Label, () =>
                 {
                     if (_marvineCommandRunning) return;
-                    input.Text = suggestion.Command;
+                    input.Text = suggestion.Command.TrimStart('/');
                     input.CaretIndex = input.Text.Length;
                     input.Focus();
                 });
                 shortcuts.Children.Add(chip);
             }
-            if (suggestions.Count > 5)
+            if (suggestions.Select(x => x.Label.Split(':')[0]).Distinct().Count() > 5)
                 shortcuts.Children.Add(SubsyButton(showAll ? "Свернуть варианты" : "Все варианты (" + suggestions.Count + ")", () =>
                 { showAll = !showAll; RefreshSuggestions(); }));
             var args = CommandTokens.Read(CommandAliases.Normalize(input.Text), out _);
+            var words = CommandTokens.Read(input.Text, out bool closed);
+            bool completed = closed && (input.Text.EndsWith(' ') || words.Count > 1 &&
+                words[1].Value.Equals(args[1].Value, StringComparison.OrdinalIgnoreCase));
+            if (completed && args.Count == 2 && args[0].Value == "/script" && args[1].Value is "run" or "stop")
+                shortcuts.Children.Add(SubsyButton("Выбрать .py…", () =>
+                {
+                    if (input.IsReadOnly) return;
+                    var picker = new Microsoft.Win32.OpenFileDialog { Filter = "Python (*.py)|*.py", CheckFileExists = true };
+                    if (picker.ShowDialog(this) == true)
+                    {
+                        input.Text = input.Text.TrimEnd() + " \"" + picker.FileName + "\"";
+                        input.CaretIndex = input.Text.Length;
+                    }
+                    input.Focus();
+                }));
             if (args.Count == 3 && args[0].Value == "/test" && args[1].Value == "warn" && WarningTestCommand.Kinds.Contains(args[2].Value, StringComparer.OrdinalIgnoreCase))
             {
                 shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
@@ -171,6 +213,13 @@ public partial class MainWindow
         }
         input.TextChanged += (_, _) =>
         {
+            if (input.Text.StartsWith('/'))
+            {
+                int caret = input.CaretIndex;
+                input.Text = input.Text.TrimStart('/');
+                input.CaretIndex = Math.Clamp(caret - 1, 0, input.Text.Length);
+                return;
+            }
             _marvineDraft = input.Text;
             showAll = false;
             RefreshSuggestions();
@@ -187,7 +236,7 @@ public partial class MainWindow
         {
             if (_history.Count == 0) return;
             try { Clipboard.SetText(string.Join(Environment.NewLine, _history.Select(entry =>
-                entry.Command.Length > 0 ? "/ " + entry.Command.TrimStart('/') : entry.Message))); }
+                entry.Command.Length > 0 ? "❭ " + entry.Command.TrimStart('/') : entry.Message))); }
             catch (System.Runtime.InteropServices.ExternalException)
             { AddConsoleEntry(new ConsoleEntry("", "[⚠] Буфер обмена занят. Повтори копирование.")); }
         });
@@ -210,12 +259,28 @@ public partial class MainWindow
             }
             else if (e.Key == Key.Tab && input.CaretIndex == input.Text.Length && input.SelectionLength == 0 &&
                      input.Text.Length > 0 && CommandCompletion.Get(input.Text).FirstOrDefault() is { } completion)
-                input.Text = completion.Command;
+                input.Text = completion.Command.TrimStart('/');
             else return;
             input.CaretIndex = input.Text.Length;
             e.Handled = true;
         };
         input.Focus();
+    }
+
+    private UIElement WelcomeBanner()
+    {
+        var row = new DockPanel { Margin = new Thickness(6, 10, 0, 16) };
+        var jelly = LiteralConsoleLine("  ╭────╮  \n ╭╯ •  •╰╮ \n ╰┬┬──┬┬╯ \n  ╰╯  ╰╯  ", ConsoleAccent);
+        jelly.Margin = new Thickness(0, 0, 16, 0);
+        row.Children.Add(jelly);
+        var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var name = LiteralConsoleLine("Marvine", ConsoleAccent);
+        name.FontSize = 20;
+        name.FontWeight = FontWeights.Bold;
+        details.Children.Add(name);
+        details.Children.Add(LiteralConsoleLine($"Yetta {ReleaseVersion} · {AccessProfiles.DisplayName(_settings.ActiveProfile)} · {_settings.MarvineColorset}"));
+        row.Children.Add(details);
+        return row;
     }
 
     private TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()
@@ -231,14 +296,14 @@ public partial class MainWindow
         if (entry.Render is { } render)
             return render();
         if (entry.Command.Length > 0)
-            return LiteralConsoleLine("/ " + entry.Command.TrimStart('/'), ConsoleAccent);
+            return LiteralConsoleLine("❭ " + entry.Command.TrimStart('/'), ConsoleAccent);
         if (entry.Script is not { } script)
             return ConsoleLine(entry.Message, false);
         if (entry.Frame is null || !_settings.MarvineSubsyEnabled)
             return LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
                 script.IsError ? (_settings.MarvineColorset == "dracula" ? Hex("#FF5555") : Brushes.LightSalmon) : ConsoleMuted);
 
-        var name = new TextBlock { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap };
+        var name = new TextBlock { Foreground = ConsoleInk, TextWrapping = TextWrapping.Wrap };
         var value = LiteralConsoleLine("", ConsoleMuted);
         var bar = new ProgressBar
         {
@@ -297,7 +362,7 @@ public partial class MainWindow
             _history.RemoveAt(position);
         }
 
-        if (_page != "console" || _consoleMode != "Marvine" || _consoleOutput is not { } display) return;
+        if (_page != "console" || _consoleOutput is not { } display) return;
         AppendMarvineEntry(display, entry);
         _consoleFollow?.ContentChanged();
     }

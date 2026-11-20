@@ -97,7 +97,7 @@ public partial class MainWindow
         {
             try
             {
-                await using var stream = new FileStream(Path.Combine(AppContext.BaseDirectory, name),
+                await using var stream = new FileStream(name == "Yetta.exe" ? Environment.ProcessPath! : Path.Combine(AppContext.BaseDirectory, name),
                     FileMode.Open, FileAccess.Read, FileShare.Read, 128 * 1024, useAsync: true);
                 byte[] hash = await SHA256.HashDataAsync(stream, token);
                 results.Add(name + "\n" + Convert.ToHexStringLower(hash));

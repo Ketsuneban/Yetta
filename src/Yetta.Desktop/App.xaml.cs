@@ -9,6 +9,14 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.SequenceEqual(["--verify-bundle"]))
+        {
+            bool complete = new[] { "Yetta.DAX.exe", "YettaDaxAdministratorSetup.exe", "local.json" }
+                .All(name => System.IO.File.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, name)));
+            Shutdown(complete ? 0 : 2);
+            return;
+        }
+        TextSelection.Enable();
         foreach (var pair in TallowText.All)
             Resources["Local." + pair.Key] = pair.Value;
         TallowText.Changed += OnCatalogChanged;

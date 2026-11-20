@@ -24,7 +24,6 @@ internal sealed class ConsoleTranscript : StackPanel
 
     internal void Append(UIElement content, Func<bool>? pinned = null)
     {
-        if (_entries.Count == 0 && _empty is not null) Children.Remove(_empty);
         if (content is TextBlock text)
         {
             var paragraph = new Paragraph

@@ -168,7 +168,7 @@ internal static class StandardWarningDialog
                 else window.DialogResult = accepted;
             }
             if (!UiMotion.AnimationsEnabled) { Complete(); return; }
-            var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150))
+            var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(100))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
                 FillBehavior = FillBehavior.HoldEnd
@@ -330,7 +330,7 @@ internal static class StandardWarningDialog
             evidence.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
             more.Text = expanded ? "Свернуть подробности" : "Подробнее";
         };
-        var explanation = new EdgeScrollViewer { Content = content, Background = new SolidColorBrush(palette.Surface),
+        var explanation = new EdgeScrollViewer { Content = content, EdgePreviewHeight = 0, Background = new SolidColorBrush(palette.Surface),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Padding = new Thickness(0, 0, 8, 0) };
         Grid.SetRow(explanation, 1);

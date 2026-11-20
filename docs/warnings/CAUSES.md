@@ -32,15 +32,15 @@
 ## Marvine
 
 ```text
-/test warn <Standard|Information|Caution|Dangerous|Critical|Fatal|Agreement|Dax> <причина> [pass:true/false] [tty:true/false] [check:true/false] ["текст"]
+/test warn <Standard|Information|Caution|Dangerous|Critical|Fatal|Agreement|Dax> <причина> ["текст"] [pass:true/false] [tty:true/false] [check:true/false]
 ```
 
 Причина: Yetta, DAX, Tallow, Windows, путь к файлу/папке или HTTP(S) URL. Пути с пробелами заключаются в двойные кавычки. Для приложения используйте `"app:C:\Path With Spaces\Application.exe"`. Обычный путь всегда обозначает конкретный файл, даже если это .exe или .py.
 
 ```text
-/test warn Caution "C:\Work\script.py" pass:false tty:false check:true "Проверка Python-файла"
-/test warn Critical DAX pass:true tty:true check:true "Проверка всех полей"
-/test warn Fatal Tallow pass:false tty:false check:false "Тест фатального окна"
+/test warn Caution "C:\Work\script.py" "Проверка Python-файла" pass:false tty:false check:true
+/test warn Critical DAX "Проверка всех полей" pass:true tty:true check:true
+/test warn Fatal Tallow "Тест фатального окна" pass:false tty:false check:false
 ```
 
 `pass:true` включает поле с демонстрационным паролем **test**, подписанным в окне; пароль Windows не запрашивается. `tty:true` требует действующий локальный TTY. `check:true` включает галочку. В тестах флаги задают поля точно, включая Critical и Fatal; правила настоящих предупреждений не ослабляются. Тест ничего не запускает и не восстанавливает; Fatal сохраняет приоритет в очереди. Закрытие окна и отклонение не означают согласие. Пароли и введённый TTY не попадают в историю Marvine.
