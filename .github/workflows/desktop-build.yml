@@ -70,7 +70,7 @@ jobs:
           $env:YETTA_SMOKE_PYTHON = (Resolve-Path 'artifacts/python/python.exe').Path
           dotnet run --project tests/Yetta.Desktop.Smoke/Yetta.Desktop.Smoke.csproj --configuration Release
       - name: Upload warning layout previews
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Yetta-warning-previews
           path: artifacts/ui-preview/
@@ -165,7 +165,7 @@ jobs:
           "SHA256 YettaSetup.exe $setupHash" | Set-Content (Join-Path $release.FullName 'INSTALLER-SHA256.txt') -Encoding ascii
 
       - name: Upload build for QA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Yetta-win-x64-QA
           path: artifacts/release/
