@@ -1,6 +1,6 @@
 ﻿; Yetta preview installer. Distribution uses Inno Setup as a build tool;
 ; the application source itself is written for Yetta.
-#define MyAppVersion "0.6.0-preview"
+#define MyAppVersion "0.6.1-preview"
 
 [Setup]
 AppId={{FAAE9E3E-7B5F-494F-9CC1-2CE4D2F33C9F}
@@ -25,7 +25,7 @@ CloseApplications=yes
 CloseApplicationsFilter=Yetta.exe,Yetta.DAX.exe
 RestartApplications=no
 UninstallDisplayIcon={app}\Yetta.exe
-VersionInfoVersion=0.6.0
+VersionInfoVersion=0.6.1
 
 [Files]
 Source: "{tmp}\Yetta.exe"; DestDir: "{app}"; Flags: external ignoreversion; ExternalSize: {#PayloadBytes}
@@ -81,5 +81,14 @@ begin
     end;
   except
     Result := GetExceptionMessage;
+  end;
+end;
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and (ExpandConstant('{param:PURGEYETTADATA|0}') = '1') then begin
+    if not DelTree(ExpandConstant('{localappdata}\Yetta'), True, True, True) then
+      Log('Could not remove the complete Yetta user data directory.');
+    if not DelTree(GetTempDir + '\.net\Yetta', True, True, True) then
+      Log('Could not remove the complete default Yetta runtime cache.');
   end;
 end;

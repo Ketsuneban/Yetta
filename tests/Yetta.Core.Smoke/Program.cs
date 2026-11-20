@@ -92,7 +92,16 @@ Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("/script ["),"Marvine 
 Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo is null,"theme switching disabled");
 Assert(ConsoleEngine.Execute("guard",c).Message.Contains("Неизвестная команда"),"guard navigation");
 Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
-Assert(ConsoleEngine.Execute("/snob",c).Message.Contains("не повышает права"),"reserved command cannot elevate");
+Assert(ConsoleEngine.Execute("/snob", c).Message.Contains("install|uninstall|check"), "Snob commands are discoverable");
+Assert(ConsoleEngine.Execute("snob uninstall", c) is { Request: "SNOB_UNINSTALL", Argument: null }, "catalog opens without a package ID");
+Assert(ConsoleEngine.Execute("snob install Yetta.yetta", c) is { Request: "SNOB_INSTALL", Argument: "Yetta.yetta" }, "Yetta package ID");
+Assert(ConsoleEngine.Execute("snob check \"Visual Studio Code\"", c) is { Request: "SNOB_CHECK", Argument: "Visual Studio Code" }, "quoted package name");
+Assert(ConsoleEngine.Execute("snob yetta exit", c) is { Request: "SNOB_YETTA", Argument: "exit" }, "close and exit route separately");
+Assert(ConsoleEngine.Execute("help", c).Request == "HELP" && ConsoleEngine.Execute("help", c with { SubsyEnabled = false }).Request is null,
+    "help uses Subsy when enabled and plain text otherwise");
+Assert(WarningTestCommand.TryParse("test warn Fatal", out var fatalPreview) && fatalPreview is { Password: false, Tty: false, Check: false } &&
+    !WarningTestCommand.TryParse("test warn Fatal Yetta check:true", out _) && CommandCompletion.Get("test warn Fatal ").Count == 0,
+    "fatal warnings accept no extra arguments");
 Assert(ConsoleEngine.Execute("clear",c).ClearOutput,"clear");
 Assert(ConsoleEngine.Execute("powershell -command whoami",c).Message.Contains("Неизвестная команда"),
     "no arbitrary PowerShell");

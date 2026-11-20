@@ -15,7 +15,7 @@ namespace Yetta.DaxAgent;
 /// </summary>
 internal static class Program
 {
-    private const string MutexName = "Local\\YettaDaxAgent_0_3";
+    private const string MutexName = "Local\\YettaDaxAgent_0_6_1";
     [STAThread]
     private static void Main()
     {
@@ -159,14 +159,17 @@ internal sealed class TrayAgent : ApplicationContext
     }
 
     private static string AppPath => Environment.GetEnvironmentVariable("YETTA_DESKTOP_PATH") is { } path &&
-        Path.IsPathFullyQualified(path) && Path.GetFileName(path).Equals("Yetta.exe", StringComparison.OrdinalIgnoreCase)
+        Path.IsPathFullyQualified(path) && string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase)
         ? path : Path.Combine(AppContext.BaseDirectory, "Yetta.exe");
+
+    private static string CatalogPath => Path.Combine(
+        Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory, "local.json");
 
     private void OpenYetta()
     {
         try
         {
-            using var owned = new ProcessSet(Process.GetProcessesByName("Yetta"));
+            using var owned = new ProcessSet(Process.GetProcessesByName(Path.GetFileNameWithoutExtension(AppPath)));
             var active = owned.Processes.FirstOrDefault(p => !p.HasExited && p.MainWindowHandle != IntPtr.Zero);
             if (active is not null)
             {
@@ -196,13 +199,13 @@ internal sealed class TrayAgent : ApplicationContext
     private string CheckComponents()
     {
         // Explicitly report only observed/known state; do not invent malware verdicts.
-        var processes = Process.GetProcessesByName("Yetta");
+        var processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(AppPath));
         try
         {
             bool interfaceRunning = processes.Any(p => !p.HasExited);
             bool installed = File.Exists(AppPath);
             string desktop = interfaceRunning ? "запущена" : installed ? "установлена" : "не найдена";
-            bool catalog = File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"));
+            bool catalog = File.Exists(CatalogPath);
             return $"Yetta: {desktop}.\nПроцессов Yetta: {processes.Length}.\n" +
                 $"Каталог local.json: {(catalog ? "на месте" : "не найден")}.";
         }
@@ -218,7 +221,7 @@ internal sealed class TrayAgent : ApplicationContext
             string report = await Task.Run(CheckComponents);
             if (_state != AgentState.Working || _shuttingDown) return;
             _lastReport = report;
-            SetState(File.Exists(AppPath) && File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"))
+            SetState(File.Exists(AppPath) && File.Exists(CatalogPath)
                 ? AgentState.Healthy : AgentState.Notice);
             ShowBalloon(TallowText.Get("dax.tray.0027"), _lastReport.Replace('\n', ' '));
         }
@@ -315,7 +318,7 @@ internal sealed class TrayAgent : ApplicationContext
     private DaxStatus ReadStatus()
     {
         bool desktop = File.Exists(AppPath);
-        bool catalog = File.Exists(Path.Combine(AppContext.BaseDirectory, "local.json"));
+        bool catalog = File.Exists(CatalogPath);
         var state = _state switch
         {
             AgentState.Healthy => desktop && catalog ? DaxState.Ready : DaxState.Notice,

@@ -59,6 +59,17 @@ static class Program
         Layout(700, 430);
         if (Descendants(root).OfType<TextBox>().Single().Text != "script list")
             throw new Exception("Returning to Marvine lost the draft.");
+        var draft = Descendants(root).OfType<TextBox>().Single();
+        draft.Text = "help";
+        Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Выполнить")
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Layout(700, 430);
+        var next = Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Далее →");
+        if (!next.IsEnabled) throw new Exception("Subsy help was not paginated.");
+        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Layout(700, 430);
+        if (!Descendants(root).OfType<TextBlock>().Any(t => t.Text.StartsWith("2 / ", StringComparison.Ordinal)))
+            throw new Exception("Subsy help navigation did not advance.");
         var bitmap = new RenderTargetBitmap(700, 430, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(root);
         var png = new PngBitmapEncoder();
@@ -184,6 +195,30 @@ static class Program
                     var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
                     using var output = File.Create("artifacts/ui-preview/" + kind + ".png"); encoder.Save(output);
                 }, renderOnly: true);
+        }
+        foreach (bool fatal in new[] { false, true })
+        {
+            var request = new WarningRequest(fatal ? WarningKind.Fatal : WarningKind.Caution, "Проверка", "Текст",
+                IsPreview: fatal, RequirePassword: true, RequireAcknowledgement: true, RequireTty: true, ReportOnly: !fatal);
+            StandardWarningDialog.Show(owner, request, "Administrator", true, dialog =>
+            {
+                var root = (FrameworkElement)dialog.Content;
+                var size = new Size(660, 560);
+                root.Measure(size); root.Arrange(new Rect(size)); root.UpdateLayout();
+                var elements = Descendants(root).ToArray();
+                var buttons = elements.OfType<Button>().Select(b => b.Content as string).ToArray();
+                if (elements.OfType<PasswordBox>().Any() || elements.OfType<CheckBox>().Any() ||
+                    buttons.Any(b => b is "Разрешить" or "Запретить") || !buttons.Contains(fatal ? "Сброс" : "Закрыть"))
+                    throw new Exception("Report-only and fatal windows must not show decision controls or input fields.");
+                if (fatal && buttons.Length != 1) throw new Exception("Fatal actions must contain only reset.");
+                if (!fatal)
+                {
+                    elements.OfType<Button>().Single(b => Equals(b.Content, "Подробнее")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    root.UpdateLayout();
+                    if (!Descendants(root).OfType<Button>().Any(b => Equals(b.Content, "Свернуть подробности")))
+                        throw new Exception("Warning details could not be opened from the link button.");
+                }
+            }, renderOnly: true);
         }
         foreach (string profile in AccessProfiles.All.Append("Developers"))
             if (IconAssets.Asset("Profiles/" + profile + ".png", 44).Source is null)

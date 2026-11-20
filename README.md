@@ -1,6 +1,6 @@
 # Yetta
 
-**Текущий тестовый релиз: [0.6.0-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.6.0-preview).**
+**Текущий тестовый релиз: [0.6.1-preview](https://github.com/Ketsuneban/Yetta/releases/tag/v0.6.1-preview).**
 
 **Yetta** — открытое приложение для Windows 11 с консолью Marvine и менеджером доступа DAX Guard.
 
@@ -8,13 +8,13 @@
 
 ## Скачать EXE
 
-**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.6.0-preview)**
+**[GitHub Releases — Yetta.exe](https://github.com/Ketsuneban/Yetta/releases/tag/v0.6.1-preview)**
 
 **Yetta.exe** запускает полное приложение для Windows 11 x64. Внутри уже есть среда .NET, DAX, Python для Marvine, каталог текстов и установщик профиля администратора. При первом запуске компоненты распаковываются локально. **Yetta Installer** скачивает тот же EXE, проверяет SHA-256 и создаёт ярлыки.
 
-Для перехода с 0.5.1 и предыдущих версий один раз запустите новый установщик или скачайте Yetta.exe вручную. Старый обновлятор ожидает прежние имена файлов релиза.
+Обновляторы веток 0.3–0.5 находят в релизе совместимые имена \`YettaSetup.exe\` и \`INSTALLER-SHA256.txt\`. Для сборок без встроенного обновлятора запустите Yetta Installer вручную.
 
-## Что работает в 0.6.0-preview
+## Что работает в 0.6.1-preview
 
 | Раздел | Возможности |
 |---|---|

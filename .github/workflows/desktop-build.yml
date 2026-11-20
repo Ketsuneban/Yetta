@@ -152,11 +152,15 @@ jobs:
           if ($installed.ExitCode -ne 0) { Get-Content $log; throw "Web installer failed: $($installed.ExitCode)" }
           if ((Get-FileHash (Join-Path $target 'Yetta.exe')).Hash -ne $hash) { throw 'Installed executable mismatch.' }
           Copy-Item LICENSE $release
+          # Preserve the download contract used by the 0.3–0.5 updater.
+          Copy-Item $setup (Join-Path $release.FullName 'YettaSetup.exe')
+          $setupHash = (Get-FileHash $setup).Hash
+          "SHA256 YettaSetup.exe $setupHash" | Set-Content (Join-Path $release.FullName 'INSTALLER-SHA256.txt') -Encoding ascii
 
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.6.0-preview-win-x64-QA
+          name: Yetta-0.6.1-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -174,7 +178,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.6.0-preview-win-x64-QA
+          name: Yetta-0.6.1-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh
@@ -196,11 +200,17 @@ jobs:
           }
           $notes = "docs/releases/v$version-preview.md"
           if (!(Test-Path $notes)) { throw "Missing release notes: $notes" }
-          gh release create $tag 'artifacts/release/Yetta.exe' 'artifacts/release/YettaInstaller.exe#Yetta Installer' 'artifacts/release/LICENSE' --target $env:GITHUB_SHA --title "Yetta $version Preview" --notes-file $notes --prerelease
+          gh release create $tag 'artifacts/release/Yetta.exe' 'artifacts/release/YettaInstaller.exe#Yetta Installer' 'artifacts/release/LICENSE' 'artifacts/release/YettaSetup.exe#Yetta Setup (legacy updater)' 'artifacts/release/INSTALLER-SHA256.txt' --target $env:GITHUB_SHA --title "Yetta $version Preview" --notes-file $notes --prerelease
           if ($LASTEXITCODE -ne 0) { throw "GitHub release publication failed." }
           # Exercise the same network download as a fresh installation.
           $target = Join-Path $env:RUNNER_TEMP 'Yetta web install'
-          $setup = (Resolve-Path 'artifacts/release/YettaInstaller.exe').Path
+          $legacy = "https://github.com/Ketsuneban/Yetta/releases/download/$tag"
+          $manifestPath = Join-Path $env:RUNNER_TEMP 'INSTALLER-SHA256.txt'
+          Invoke-WebRequest "$legacy/INSTALLER-SHA256.txt" -OutFile $manifestPath
+          $manifest = (Get-Content $manifestPath -Raw).Trim()
+          $setup = Join-Path $env:RUNNER_TEMP 'YettaSetup.exe'
+          Invoke-WebRequest "$legacy/YettaSetup.exe" -OutFile $setup
+          if ($manifest -ne "SHA256 YettaSetup.exe $((Get-FileHash $setup).Hash)") { throw 'Legacy updater checksum mismatch.' }
           $log = Join-Path $env:RUNNER_TEMP 'Yetta-web-install.log'
           $argsLine = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOLAUNCH=1 /DIR="{0}" /LOG="{1}"' -f $target,$log
           $installed = Start-Process $setup -ArgumentList $argsLine -Wait -PassThru

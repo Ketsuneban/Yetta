@@ -23,7 +23,7 @@ public static class CommandAliases
             string[] options = root switch
             {
                 "yetta" => ["update", "version", "download"], "dax" => ["diagnostics"],
-                "subsy" => ["demo", "gallery"], "tty" => ["info", "update"],
+                "subsy" => ["demo", "gallery"], "snob" => ["install", "uninstall", "check", "yetta", "dax", "help"], "tty" => ["info", "update"],
                 "marvine" => ["subsy", "colorset"], "script" => ["list", "run", "stop"], "test" => ["warn"], _ => []
             };
             word = options.Length == 0 ? word : word.ToLowerInvariant() switch { "upd" => "update", "ver" => "version", "dl" => "download", "diag" => "diagnostics", "colors" => "colorset", _ => word };

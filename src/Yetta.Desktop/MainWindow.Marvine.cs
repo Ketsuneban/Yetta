@@ -195,7 +195,10 @@ public partial class MainWindow
                     }
                     input.Focus();
                 }));
-            if (args.Count == 3 && args[0].Value == "/test" && args[1].Value == "warn" && WarningTestCommand.Kinds.Contains(args[2].Value, StringComparer.OrdinalIgnoreCase))
+            if (args.Count == 2 && args[0].Value == "/snob" &&
+                args[1].Value.Equals("uninstall", StringComparison.OrdinalIgnoreCase))
+                shortcuts.Children.Add(SubsyButton("Выбрать программу…", async () => await ShowUninstallCatalogAsync()));
+            if (args.Count == 3 && args[0].Value == "/test" && args[1].Value == "warn" && !args[2].Value.Equals("Fatal", StringComparison.OrdinalIgnoreCase) && WarningTestCommand.Kinds.Contains(args[2].Value, StringComparer.OrdinalIgnoreCase))
             {
                 shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
                 {
@@ -269,18 +272,44 @@ public partial class MainWindow
 
     private UIElement WelcomeBanner()
     {
-        var row = new DockPanel { Margin = new Thickness(6, 10, 0, 16) };
-        var jelly = LiteralConsoleLine("  ╭────╮  \n ╭╯ •  •╰╮ \n ╰┬┬──┬┬╯ \n  ╰╯  ╰╯  ", ConsoleAccent);
-        jelly.Margin = new Thickness(0, 0, 16, 0);
-        row.Children.Add(jelly);
-        var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var name = LiteralConsoleLine("Marvine", ConsoleAccent);
-        name.FontSize = 20;
-        name.FontWeight = FontWeights.Bold;
-        details.Children.Add(name);
-        details.Children.Add(LiteralConsoleLine($"Yetta {ReleaseVersion} · {AccessProfiles.DisplayName(_settings.ActiveProfile)} · {_settings.MarvineColorset}"));
-        row.Children.Add(details);
-        return row;
+        var layout = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+        var columns = new Grid();
+        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5, GridUnitType.Star) });
+        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Star) });
+
+        var identity = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(4, 2, 12, 0) };
+        var greeting = LiteralConsoleLine("Добро пожаловать");
+        greeting.TextAlignment = TextAlignment.Center;
+        greeting.Foreground = ConsoleInk;
+        var mark = LiteralConsoleLine("   ╭────────╮\n  ╱  ◇    ◇  ╲\n  ╲__________╱\n    ╰╯╰╯╰╯", ConsoleAccent);
+        mark.TextAlignment = TextAlignment.Center;
+        var profile = LiteralConsoleLine(AccessProfiles.DisplayName(_settings.ActiveProfile) + " · " + _settings.MarvineColorset);
+        profile.TextAlignment = TextAlignment.Center;
+        identity.Children.Add(greeting);
+        identity.Children.Add(mark);
+        identity.Children.Add(profile);
+        columns.Children.Add(identity);
+
+        var tips = new StackPanel { Margin = new Thickness(14, 0, 4, 0) };
+        tips.Children.Add(LiteralConsoleLine("Начало работы", ConsoleAccent));
+        tips.Children.Add(LiteralConsoleLine("/help — справка · /script — Python", ConsoleInk));
+        tips.Children.Add(LiteralConsoleLine("Последняя команда", ConsoleAccent));
+        tips.Children.Add(LiteralConsoleLine(_enteredCommands.LastOrDefault() ?? "Команд пока нет"));
+        var side = new Border { Child = tips, BorderBrush = ConsolePanel, BorderThickness = new Thickness(1, 0, 0, 0) };
+        Grid.SetColumn(side, 1);
+        columns.Children.Add(side);
+
+        var outline = new Border { BorderBrush = ConsoleAccent, BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 10, 0, 0), CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12, 15, 12, 8), Child = columns };
+        layout.Children.Add(outline);
+        var title = LiteralConsoleLine($"Marvine · Yetta {ReleaseVersion}", ConsoleAccent);
+        title.FontWeight = FontWeights.SemiBold;
+        title.Margin = new Thickness(0);
+        layout.Children.Add(new Border { Child = title, Background = ConsoleSurface,
+            Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(5, 0, 5, 0),
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+        return layout;
     }
 
     private TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()

@@ -4,7 +4,8 @@ public sealed record CommandSuggestion(string Label, string Command);
 public static class CommandCompletion
 {
     private static readonly string[] Commands = [.. ConsoleEngine.Syntax.Keys.Select(k => "/" + k),
-        "/test warn", "/script run", "/script stop", "/script list", "/yetta update", "/yetta version", "/yetta download",
+        "/test warn", "/snob install", "/snob uninstall", "/snob check", "/snob dax status",
+        "/snob yetta close", "/snob yetta exit", "/snob yetta uninstall", "/script run", "/script stop", "/script list", "/yetta update", "/yetta version", "/yetta download",
         "/tty info", "/tty update", "/marvine colorset EGA", "/marvine colorset No Color", "/marvine colorset dracula",
         "/marvine subsy enable", "/marvine subsy disable", "/subsy demo", "/subsy gallery"];
 
@@ -36,6 +37,7 @@ public static class CommandCompletion
         if (tokens.Count >= 2 && tokens[0].Value.Equals("/test", StringComparison.OrdinalIgnoreCase) &&
             tokens[1].Value.Equals("warn", StringComparison.OrdinalIgnoreCase))
         {
+            if (tokens.Count >= 3 && tokens[2].Value.Equals("Fatal", StringComparison.OrdinalIgnoreCase)) return [];
             int position = space ? tokens.Count : tokens.Count - 1;
             bool complete = tokens.Count == 2 || tokens.Count == 3 && WarningTestCommand.Kinds.Contains(tokens[2].Value, StringComparer.OrdinalIgnoreCase) ||
                 tokens.Count == 4 && new[] { "Yetta", "DAX", "Tallow", "Windows" }.Contains(tokens[3].Value, StringComparer.OrdinalIgnoreCase);

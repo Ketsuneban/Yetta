@@ -1,7 +1,7 @@
 namespace Yetta.Core;
 
 public sealed record ConsoleContext(string Theme, string ActiveProfile = "Guest",
-    string Version = "0.6.0", bool SubsyEnabled = true, string Colorset = "EGA");
+    string Version = "0.6.1", bool SubsyEnabled = true, string Colorset = "EGA");
 public sealed record ConsoleResult(string Message, string? NavigateTo = null, string? SwitchThemeTo = null,
     bool ClearOutput = false, string? Request = null, string? Argument = null);
 
@@ -12,7 +12,7 @@ public static class ConsoleEngine
         ["help"] = "/help", ["script"] = "/script [действие] [путь]", ["test"] = WarningTestCommand.Usage,
         ["marvine"] = "/marvine [Colorset | Subsy] [дополнительные аргументы]", ["yetta"] = "/yetta [действие]",
         ["tty"] = "/tty [Info | Update]", ["subsy"] = "/subsy [demo | gallery]", ["clear"] = "/clear",
-        ["snob"] = "/snob", ["version"] = "/version", ["access"] = "/access", ["activity"] = "/activity",
+        ["snob"] = "/snob install|uninstall|check <программа> · /snob yetta close|exit|uninstall · /snob dax status", ["version"] = "/version", ["access"] = "/access", ["activity"] = "/activity",
         ["overview"] = "/overview", ["sources"] = "/sources", ["recovery"] = "/recovery", ["theme"] = "/theme"
     };
 
@@ -33,7 +33,9 @@ public static class ConsoleEngine
         string tail = tokens.Count > 2 ? raw[tokens[2].Start..] : "";
         switch (canonical)
         {
-            case "help" when tokens.Count == 1: return new(HelpPage(1, context.ActiveProfile));
+            case "help" when tokens.Count == 1:
+                var help = HelpPage(1, context.ActiveProfile);
+                return context.SubsyEnabled ? new(help, Request: "HELP", Argument: help) : new(help);
             case "script":
                 if (action is "" or "help" && tokens.Count <= 2) return new(syntax + "\nrun — выбрать или запустить .py\nlist — список запусков\nstop — остановить по ID или пути");
                 if (action == "list" && tokens.Count == 2) return new("", Request: "SCRIPT_LIST");
@@ -56,7 +58,16 @@ public static class ConsoleEngine
                 return Invalid(tail.Length > 0 ? tail : action, "/yetta update|version · /yetta download <ID или тег>");
             case "tty" when tokens.Count == 2 && action is "info" or "update": return new("", Request: "TTY_" + action.ToUpperInvariant());
             case "subsy" when tokens.Count == 2 && action is "demo" or "gallery": return new("", Request: "SUBSY_" + action.ToUpperInvariant());
-            case "snob" when tokens.Count == 1 || action == "help": return new("/snob не повышает права. Профили доступны в DAX Guard.");
+            case "snob":
+                if (action is "" or "help") return new(syntax + "\nКоманды выполняются с текущими правами Windows.");
+                if (action == "uninstall" && tokens.Count == 2) return new("", Request: "SNOB_UNINSTALL");
+                if (action is "install" or "uninstall" or "check" && tokens.Count > 2)
+                    return new("", Request: "SNOB_" + action.ToUpperInvariant(), Argument: string.Join(" ", tokens.Skip(2).Select(t => t.Value)));
+                if (action == "yetta" && tokens.Count == 3 && tokens[2].Value.ToLowerInvariant() is "close" or "exit" or "uninstall")
+                    return new("", Request: "SNOB_YETTA", Argument: tokens[2].Value.ToLowerInvariant());
+                if (action == "dax" && (tokens.Count == 2 || tokens.Count == 3 && tokens[2].Value.Equals("status", StringComparison.OrdinalIgnoreCase)))
+                    return new("", Request: "SNOB_DAX");
+                return Invalid(tail.Length > 0 ? tail : action);
             case "theme" when tokens.Count <= 2: return new("Yetta использует оформление Windows.");
         }
         if (tokens.Count > 1) return Invalid(tokens[^1].Value);
@@ -73,7 +84,7 @@ public static class ConsoleEngine
     {
         Syntax["script"] + " — run, list, stop", Syntax["test"], Syntax["marvine"],
         Syntax["yetta"] + " — version, update, download", Syntax["tty"], Syntax["subsy"],
-        "/help · /clear — справка и очистка вывода", "/snob — информация о доступе", "/version · /access · /theme", "/overview · /activity · /sources · /recovery"
+        "/help · /clear — справка и очистка вывода", Syntax["snob"], "/version · /access · /theme", "/overview · /activity · /sources · /recovery"
     });
     public static IReadOnlyList<string> Suggestions(string? prefix) => CommandCompletion.Get(prefix ?? "").Select(x => x.Command).ToArray();
 }

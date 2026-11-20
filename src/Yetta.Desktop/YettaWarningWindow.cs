@@ -22,7 +22,12 @@ internal sealed record WarningRequest(
     bool IsPreview = false,
     bool RequirePassword = false,
     string? TechnicalDetails = null,
-    IReadOnlyList<string>? RelatedPaths = null);
+    IReadOnlyList<string>? RelatedPaths = null,
+    bool ReportOnly = false)
+{
+    internal bool OffersDecision => !ReportOnly && Kind != WarningKind.Fatal &&
+        (IsPreview || Kind is WarningKind.Standard or WarningKind.Caution or WarningKind.Dangerous or WarningKind.Critical);
+}
 
 /// <summary>
 /// Central policy dispatch for all seven Yetta warnings. UI styling never grants
@@ -36,8 +41,9 @@ internal static class YettaWarningWindow
     /// <summary>Status square for the main zone; 0 means "no square".</summary>
     internal static WarningState State(WarningRequest request, bool windowsSafeMode)
     {
-        bool decision = request.Kind is WarningKind.Standard or WarningKind.Caution or WarningKind.Dangerous or WarningKind.Critical or WarningKind.Agreement ||
-            request.Kind is WarningKind.Dax or WarningKind.Fatal && (request.PotentialDamage || request.RequireAcknowledgement || request.RequireTty);
+        bool decision = request.OffersDecision || !request.ReportOnly && request.Kind == WarningKind.Agreement ||
+            !request.ReportOnly && request.Kind is WarningKind.Dax or WarningKind.Fatal &&
+            (request.PotentialDamage || request.RequireAcknowledgement || request.RequireTty);
         return WarningStatePolicy.Resolve(decision, request.PotentialDamage || request.Kind is WarningKind.Dangerous or WarningKind.Critical, windowsSafeMode);
     }
 
