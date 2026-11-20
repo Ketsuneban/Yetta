@@ -372,7 +372,6 @@ internal static class StandardWarningDialog
             request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
         bool needsCheck = !fatal && !request.ReportOnly && request.RequireAcknowledgement;
         PasswordBox? confirmationPassword = null;
-#if DEBUG
         if (!oneAction && request.IsPreview && request.RequirePassword)
         {
             footerStack.Children.Add(Text("Пароль подтверждения · для теста: test", 12.5, Muted));
@@ -381,7 +380,6 @@ internal static class StandardWarningDialog
                 Margin = new Thickness(0, 6, 0, 12), PasswordChar = '•' };
             footerStack.Children.Add(confirmationPassword);
         }
-#endif
 
         CheckBox? checkbox = null;
         TextBlock? checkboxLabel = null;

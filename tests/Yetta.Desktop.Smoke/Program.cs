@@ -239,15 +239,7 @@ static class Program
                     if (publisher.Parent != subject.Parent) throw new Exception("Publisher must be directly below cause name.");
                     var details = labels.Single(x => x.Text == "Техническая причина теста");
                     if (details.Parent is not StackPanel { Visibility: Visibility.Collapsed }) throw new Exception("Details must start collapsed.");
-                    const int ttyFields = 1;
-#if DEBUG
-                    const int demoPasswordFields = 1;
-#else
-                    const int demoPasswordFields = 0;
-#endif
-                    int expectedPasswordBoxes = fields ? ttyFields + demoPasswordFields : 0;
-                    if (elements.OfType<PasswordBox>().Count() != expectedPasswordBoxes)
-                        throw new Exception("TTY and the Debug-only preview password have separate fields.");
+                    if (elements.OfType<PasswordBox>().Count() != (fields ? 2 : 0)) throw new Exception("Password and TTY fields are independent.");
                     if (!labels.Any(x => x.Text.StartsWith("Описание всегда видно"))) throw new Exception("Description missing.");
                     var image = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
                     image.Render(root);
