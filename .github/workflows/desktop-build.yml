@@ -137,8 +137,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Unified publish failed." }
           $release = New-Item -ItemType Directory -Path artifacts/release -Force
           $exe = (Copy-Item artifacts/portable/Yetta.exe $release -PassThru).FullName
+          $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $env:RUNNER_TEMP 'yetta-bundle-smoke'
           $verify = Start-Process $exe -ArgumentList '--verify-bundle' -WorkingDirectory $release.FullName -PassThru -Wait
           if ($verify.ExitCode -ne 0) { throw "Portable components were not available at startup: $($verify.ExitCode)" }
+          $tray = @(Get-ChildItem $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR -Recurse -Filter Yetta.DAX.exe)
+          if ($tray.Count -ne 1) { throw 'Exact bundled tray executable was not found.' }
+          $renamed = Join-Path $env:RUNNER_TEMP 'Yetta (1).exe'
+          Copy-Item $exe $renamed
+          dotnet run --project tests/Yetta.Desktop.Smoke -c Release --no-build -- --verify-agent $tray[0].FullName $renamed
+          if ($LASTEXITCODE -ne 0) { throw 'Bundled DAX did not find the renamed desktop executable.' }
           $hash = (Get-FileHash $exe).Hash
           $bytes = (Get-Item $exe).Length
           $iscc = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Inno Setup 6\ISCC.exe'

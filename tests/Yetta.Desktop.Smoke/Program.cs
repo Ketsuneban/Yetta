@@ -113,9 +113,43 @@ static class Program
         Console.WriteLine("PASS real Python process, Unicode path, both output streams, exit and list");
     }
 
-    [STAThread]
-    private static void Main()
+    private static async Task VerifyBundledAgent(string tray, string renamedApp)
     {
+        var start = new System.Diagnostics.ProcessStartInfo(tray) { UseShellExecute = false };
+        start.Environment["YETTA_DESKTOP_PATH"] = renamedApp;
+        using var agent = System.Diagnostics.Process.Start(start) ?? throw new Exception("DAX did not start.");
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(16));
+            DaxStatus status;
+            do
+            {
+                status = await DaxAgentGate.GetStatusAsync(timeout.Token);
+                if (status is { State: DaxState.Ready, DesktopPresent: true, CatalogPresent: true })
+                {
+                    Console.WriteLine("PASS bundled DAX locates a renamed Yetta EXE and its catalog");
+                    return;
+                }
+                if (status.State != DaxState.Unavailable) throw new Exception("Bundled DAX: " + status);
+                await Task.Delay(250, timeout.Token);
+            } while (!agent.HasExited);
+            throw new Exception("Bundled DAX exited before it could respond.");
+        }
+        finally
+        {
+            await DaxAgentGate.TryStopDaxAsync();
+            if (!agent.WaitForExit(3000)) agent.Kill();
+        }
+    }
+
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        if (args is ["--verify-agent", var tray, var appPath])
+        {
+            VerifyBundledAgent(tray, appPath).GetAwaiter().GetResult();
+            return;
+        }
         // Load the actual styles and lay out a disconnected control, with no app window.
         var app = new App();
         app.InitializeComponent();

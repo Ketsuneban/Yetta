@@ -117,8 +117,7 @@ public partial class MainWindow
             "WinGet найдёт пакет с этим точным именем или ID и запустит его установщик.")) return "";
 
         string verb = check ? "show" : remove ? "uninstall" : "install";
-        bool looksLikeId = !argument.Any(char.IsWhiteSpace) && (argument.Contains('.') || argument.Contains('_') || Guid.TryParse(argument, out _));
-        string selector = remove && match is not null ? match.Selector : looksLikeId ? "--id" : "--name";
+        string selector = remove && match is not null ? match.Selector : "--query";
         string target = remove && match is not null ? (selector == "--name" ? match.Name : match.Id) : argument;
         var result = await WindowsPackages.WinGetAsync(verb, selector, target, _updateStop.Token);
         if (check) return ShowSnobDetails(result.Code == 0 ? "Сведения WinGet" : "WinGet · сведения недоступны", result.Output);
