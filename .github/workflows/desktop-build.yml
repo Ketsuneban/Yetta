@@ -198,3 +198,14 @@ jobs:
           if (!(Test-Path $notes)) { throw "Missing release notes: $notes" }
           gh release create $tag 'artifacts/release/Yetta.exe' 'artifacts/release/YettaInstaller.exe#Yetta Installer' 'artifacts/release/LICENSE' --target $env:GITHUB_SHA --title "Yetta $version Preview" --notes-file $notes --prerelease
           if ($LASTEXITCODE -ne 0) { throw "GitHub release publication failed." }
+          # Exercise the same network download as a fresh installation.
+          $target = Join-Path $env:RUNNER_TEMP 'Yetta web install'
+          $setup = (Resolve-Path 'artifacts/release/YettaInstaller.exe').Path
+          $log = Join-Path $env:RUNNER_TEMP 'Yetta-web-install.log'
+          $argsLine = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOLAUNCH=1 /DIR="{0}" /LOG="{1}"' -f $target,$log
+          $installed = Start-Process $setup -ArgumentList $argsLine -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { Get-Content $log; throw "Published web install failed: $($installed.ExitCode)" }
+          $app = Join-Path $target 'Yetta.exe'
+          if ((Get-FileHash $app).Hash -ne (Get-FileHash 'artifacts/release/Yetta.exe').Hash) { throw 'Release download mismatch.' }
+          $check = Start-Process $app -ArgumentList '--verify-bundle' -PassThru -Wait
+          if ($check.ExitCode -ne 0) { throw "Downloaded installation failed the bundle check: $($check.ExitCode)" }
