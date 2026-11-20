@@ -132,6 +132,11 @@ public partial class MainWindow
         history.ToolTip = "Найти введённую команду (Ctrl+R)";
         DockPanel.SetDock(history, Dock.Right);
         tools.Children.Add(history);
+        _marvineDirectoryLabel = LiteralConsoleLine(MarvineDirectory);
+        _marvineDirectoryLabel.TextTrimming = TextTrimming.CharacterEllipsis;
+        _marvineDirectoryLabel.TextWrapping = TextWrapping.NoWrap;
+        _marvineDirectoryLabel.ToolTip = MarvineDirectory;
+        footer.Children.Add(_marvineDirectoryLabel);
         footer.Children.Add(BuildCommandRow(input, "/", RunMarvine));
         var shortcuts = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
         bool showAll = false;
@@ -187,10 +192,22 @@ public partial class MainWindow
                 shortcuts.Children.Add(SubsyButton("Выбрать .py…", () =>
                 {
                     if (input.IsReadOnly) return;
-                    var picker = new Microsoft.Win32.OpenFileDialog { Filter = "Python (*.py)|*.py", CheckFileExists = true };
+                    var picker = new Microsoft.Win32.OpenFileDialog { Filter = "Python (*.py)|*.py", CheckFileExists = true, InitialDirectory = MarvineDirectory };
                     if (picker.ShowDialog(this) == true)
                     {
                         input.Text = input.Text.TrimEnd() + " \"" + picker.FileName + "\"";
+                        input.CaretIndex = input.Text.Length;
+                    }
+                    input.Focus();
+                }));
+            if (completed && args.Count == 2 && args[0].Value == "/marvine" && args[1].Value == "open")
+                shortcuts.Children.Add(SubsyButton("Выбрать рабочую папку…", () =>
+                {
+                    if (input.IsReadOnly) return;
+                    var picker = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = MarvineDirectory };
+                    if (picker.ShowDialog(this) == true)
+                    {
+                        input.Text = $"marvine open \"{picker.FolderName}\"";
                         input.CaretIndex = input.Text.Length;
                     }
                     input.Focus();
@@ -203,13 +220,13 @@ public partial class MainWindow
                 shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
                 {
                     if (input.IsReadOnly) return;
-                    var picker = new Microsoft.Win32.OpenFileDialog();
+                    var picker = new Microsoft.Win32.OpenFileDialog { InitialDirectory = MarvineDirectory };
                     if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FileName + "\" "; input.CaretIndex = input.Text.Length; }
                 }));
                 shortcuts.Children.Add(SubsyButton("Выбрать папку…", () =>
                 {
                     if (input.IsReadOnly) return;
-                    var picker = new Microsoft.Win32.OpenFolderDialog();
+                    var picker = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = MarvineDirectory };
                     if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FolderName + "\" "; input.CaretIndex = input.Text.Length; }
                 }));
             }
@@ -332,6 +349,13 @@ public partial class MainWindow
             return LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
                 script.IsError ? (_settings.MarvineColorset == "dracula" ? Hex("#FF5555") : Brushes.LightSalmon) : ConsoleMuted);
 
+        var (card, view) = BuildProgressCard(script.Id, entry.Frame);
+        _subsyViews[entry] = view;
+        return card;
+    }
+
+    private (Border Card, SubsyView View) BuildProgressCard(string id, SubsyFrame frame)
+    {
         var name = new TextBlock { Foreground = ConsoleInk, TextWrapping = TextWrapping.Wrap };
         var value = LiteralConsoleLine("", ConsoleMuted);
         var bar = new ProgressBar
@@ -350,9 +374,8 @@ public partial class MainWindow
         };
         var details = new StackPanel { Orientation = Orientation.Horizontal, Children = { ring, value } };
         var view = new SubsyView(name, value, bar, ring, rotation);
-        _subsyViews[entry] = view;
-        RefreshSubsyView(view, script.Id, entry.Frame);
-        return SubsyCard(new StackPanel { Children = { name, details, bar } });
+        RefreshSubsyView(view, id, frame);
+        return (SubsyCard(new StackPanel { Children = { name, details, bar } }), view);
     }
 
     private void AppendMarvineEntry(ConsoleTranscript display, ConsoleEntry entry) =>
@@ -399,7 +422,8 @@ public partial class MainWindow
     private void EnqueueScriptOutput(ScriptOutput output)
     {
         if (Dispatcher.HasShutdownStarted) return;
-        if (Interlocked.Increment(ref _pendingScriptOutput) <= 400 || output.Exited)
+        int queued = Interlocked.Increment(ref _pendingScriptOutput);
+        if (queued <= 400 || output.Exited || queued <= 420 && SubsyPrompt.Parse(output.Text) is not null)
             _scriptOutput.Enqueue(output with { Text = output.Text.Length > 4096 ? output.Text[..4096] : output.Text });
         else
         {
@@ -430,6 +454,12 @@ public partial class MainWindow
 
     private void ShowScriptOutput(ScriptOutput output)
     {
+        if (_scriptSessions.TryGetValue(output.Run, out var session))
+        {
+            session(output);
+            if (output.Exited) _scriptSessions.Remove(output.Run);
+            return;
+        }
         if (output.Exited)
         {
             FinishScriptPrompt(output.Run);

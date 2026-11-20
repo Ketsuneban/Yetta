@@ -15,6 +15,9 @@ internal static class WindowsPackages
         string Scope, bool System, bool Hidden, string Selector, string? UninstallPath = null,
         string? PackageFullName = null, string? RemovalRestriction = null)
     {
+        public string CatalogMetadata => string.Join(" · ", new[] { Publisher, Version,
+            Hidden ? "Скрытое" : System ? "Системное" : PackageFullName is not null ? "MSIX" : "" }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
         public string Label => $"{Name}  ·  {Version}  ·  {Id}";
         internal string Details => $"{Name}\nID: {Id}\nВерсия: {Version}\nИздатель: {Publisher}\n" +
             $"Расположение: {Location}\nОбласть: {Scope}\nСистемная: {(System ? "да" : "нет")}\nСкрытая: {(Hidden ? "да" : "нет")}" +

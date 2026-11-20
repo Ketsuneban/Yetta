@@ -88,7 +88,7 @@ try
 finally { if (Directory.Exists(dir)) Directory.Delete(dir,true); }
 
 var c=new ConsoleContext("Glass","Guest");
-Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("/script ["),"Marvine help");
+Assert(ConsoleEngine.Execute(" HELP ",c).Message.Contains("/script run|list|stop"),"Marvine help");
 Assert(ConsoleEngine.Execute("theme fluent",c).SwitchThemeTo is null,"theme switching disabled");
 Assert(ConsoleEngine.Execute("guard",c).Message.Contains("Неизвестная команда"),"guard navigation");
 Assert(ConsoleEngine.Execute("activity",c).NavigateTo=="activity","activity navigation");
@@ -97,8 +97,8 @@ Assert(ConsoleEngine.Execute("snob uninstall", c) is { Request: "SNOB_UNINSTALL"
 Assert(ConsoleEngine.Execute("snob install Yetta.yetta", c) is { Request: "SNOB_INSTALL", Argument: "Yetta.yetta" }, "Yetta package ID");
 Assert(ConsoleEngine.Execute("snob check \"Visual Studio Code\"", c) is { Request: "SNOB_CHECK", Argument: "Visual Studio Code" }, "quoted package name");
 Assert(ConsoleEngine.Execute("snob yetta exit", c) is { Request: "SNOB_YETTA", Argument: "exit" }, "close and exit route separately");
-Assert(ConsoleEngine.Execute("help", c).Request == "HELP" && ConsoleEngine.Execute("help", c with { SubsyEnabled = false }).Request is null,
-    "help uses Subsy when enabled and plain text otherwise");
+Assert(ConsoleEngine.Execute("help", c).Request == "HELP" && ConsoleEngine.Execute("help", c with { SubsyEnabled = false }).Request == "HELP",
+    "help keeps its rendering route in both console modes");
 Assert(WarningTestCommand.TryParse("test warn Fatal", out var fatalPreview) && fatalPreview is { Password: false, Tty: false, Check: false } &&
     !WarningTestCommand.TryParse("test warn Fatal Yetta check:true", out _) && CommandCompletion.Get("test warn Fatal ").Count == 0,
     "fatal warnings accept no extra arguments");
@@ -265,3 +265,8 @@ Assert(ConsoleEngine.Execute("help", c).Message.Split("/script").Length == 2, "o
 Assert(!WarningTestCommand.TryParse("test warn Standard Yetta check:true late", out _), "description precedes switches");
 Assert(ConsoleEngine.Execute("test warn Unknown Yetta sample", c).Message.Contains("«Unknown»"), "report the offending token");
 Assert(CommandCompletion.Get("script ru").Select(s => s.Label).SequenceEqual(["run"]), "finish the action before offering a path");
+
+Assert(ConsoleEngine.Execute(@"marvine open ""C:\Work\My Folder""", c) is
+    { Request: "MARVINE_OPEN", Argument: @"""C:\Work\My Folder""" }, "Marvine preserves a quoted workspace path");
+Assert(ConsoleEngine.Execute("marvine open ..", c) is { Request: "MARVINE_OPEN", Argument: ".." } &&
+    CommandCompletion.Get("marvine op").Any(item => item.Label == "open"), "relative workspaces and completion");

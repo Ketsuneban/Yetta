@@ -26,7 +26,8 @@ public partial class MainWindow
                 cause = cause[4..];
             }
             if (string.IsNullOrWhiteSpace(cause)) return WarningTestCommand.Usage;
-            path = cause;
+            path = Uri.TryCreate(cause, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"
+                ? cause : ResolveMarvinePath(cause);
         }
         _ = YettaWarningWindow.Show(this, new WarningRequest(kind, "Тест предупреждения · " + kind,
             test.Text, Subject: path is null ? cause : Path.GetFileName(Path.TrimEndingDirectorySeparator(path)), SourcePath: path,

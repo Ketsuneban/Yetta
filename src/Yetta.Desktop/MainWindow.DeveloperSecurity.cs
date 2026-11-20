@@ -12,7 +12,7 @@ namespace Yetta.Desktop;
 
 public partial class MainWindow
 {
-    private Window MiniWindow(string title, UIElement body)
+    private Window MiniWindow(string title, UIElement body, bool modal = true)
     {
         var w = new Window
         {
@@ -26,8 +26,9 @@ public partial class MainWindow
         {
             Content = "×", Width = 38, Height = 32, Margin = new Thickness(4), FontSize = 19,
             Foreground = Ink, Cursor = Cursors.Hand, Style = (Style)FindResource("DialogCloseButton"),
-            ToolTip = "Закрыть", IsCancel = true
+            ToolTip = "Закрыть", IsCancel = modal
         };
+        if (!modal) close.Click += (_, _) => w.Close();
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
         var caption = Text(title, 13, heading: true);

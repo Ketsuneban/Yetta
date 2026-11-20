@@ -7,7 +7,7 @@ public static class CommandCompletion
         "/test warn", "/snob install", "/snob uninstall", "/snob check", "/snob dax status",
         "/snob yetta close", "/snob yetta exit", "/snob yetta uninstall", "/script run", "/script stop", "/script list", "/yetta update", "/yetta version", "/yetta download",
         "/tty info", "/tty update", "/marvine colorset EGA", "/marvine colorset No Color", "/marvine colorset dracula",
-        "/marvine subsy enable", "/marvine subsy disable", "/subsy demo", "/subsy gallery"];
+        "/marvine open", "/marvine subsy enable", "/marvine subsy disable", "/subsy demo", "/subsy gallery"];
 
     public static IReadOnlyList<CommandSuggestion> Get(string input)
     {
