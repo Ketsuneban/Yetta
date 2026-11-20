@@ -190,9 +190,9 @@ static class Program
         if (YettaWarningWindow.State(new WarningRequest(WarningKind.Information, "i", "info", PotentialDamage: true), true) != WarningState.None ||
             YettaWarningWindow.State(new WarningRequest(WarningKind.Standard, "s", "decision"), false) != WarningState.Safe)
             throw new Exception("Badge policy confused information or Guest with Windows safe mode.");
-        var parsedIdentity = PublisherInspector.Parse("""{"Status":"Valid","Signer":"Example Publisher","Thumbprint":"AB","Message":"OK"}""");
+        var parsedIdentity = PublisherInspector.Describe(Microsoft.Security.Extensions.SignatureState.SignedAndTrusted, "Example Publisher", "OK");
         if (!parsedIdentity.Verified || !parsedIdentity.Publisher.Contains("Example Publisher")) throw new Exception("Verified signer missing");
-        var invalidIdentity = PublisherInspector.Parse("""{"Status":"HashMismatch","Signer":"Untrusted Claim","Message":"Changed"}""");
+        var invalidIdentity = PublisherInspector.Describe(Microsoft.Security.Extensions.SignatureState.Invalid, "Untrusted Claim", "Changed");
         if (invalidIdentity.Verified || invalidIdentity.Publisher.Contains("Untrusted Claim")) throw new Exception("Broken signature trusted its publisher");
         string unsignedFile = Path.Combine(Path.GetTempPath(), "Yetta signature's test; " + Guid.NewGuid() + ".ps1");
         File.WriteAllText(unsignedFile, "# Unsigned PowerShell script; verification never executes this file");
@@ -230,6 +230,6 @@ static class Program
         }
         Console.WriteLine("PASS Authenticode, owner metadata, semantic badges and sticky console scrolling");
         owner.Close();
-        Console.WriteLine("PASS selectable output, bound toast progress and rendered warning layouts");
+        Console.WriteLine("PASS selectable output, Marvine and rendered warning layouts");
     }
 }

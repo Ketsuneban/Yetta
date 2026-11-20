@@ -9,7 +9,7 @@ namespace Yetta.Desktop;
 
 /// <summary>
 /// Updates visible, static WPF labels without destroying controls or erasing
-/// entered text, checkboxes, warnings or an active PowerShell session.
+/// entered text, checkboxes, warnings or the current Marvine session.
 /// DynamicResource-backed values update through App.Resources instead.
 /// </summary>
 internal static class LiveTextWindows

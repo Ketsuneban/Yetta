@@ -82,8 +82,8 @@ public partial class MainWindow
 
         AddSection("Компоненты");
         var modules = new StackPanel();
-        modules.Children.Add(Text("Guard · предварительная проверка команд встроенного PowerShell.", 13));
-        modules.Children.Add(Text("Process · наблюдение за процессами из сеанса Yetta.", 13));
+        modules.Children.Add(Text("Guard · проверка профиля доступа и разрешения на запуск скриптов.", 13));
+        modules.Children.Add(Text("Marvine · запущенные скрипты и их состояние.", 13));
         modules.Children.Add(Text("Audit · журнал решений и результатов Yetta.", 13));
         modules.Children.Add(Text("Update · проверка SHA-256 установщика.", 13));
         modules.Children.Add(Text("Threat и System · системный анализ и восстановление пока недоступны.", 13, muted: true));
