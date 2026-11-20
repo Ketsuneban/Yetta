@@ -43,7 +43,8 @@ public partial class MainWindow
 
     private ConsoleTranscript AttachTranscript(DockPanel layout, int limit = 500)
     {
-        var display = new ConsoleTranscript(limit) { Margin = new Thickness(5, 6, 8, 5) };
+        var empty = _consoleMode == "Marvine" ? LiteralConsoleLine("win — настройки Windows    ·    help — все команды") : null;
+        var display = new ConsoleTranscript(limit, empty) { Margin = new Thickness(5, 6, 8, 5) };
         var scroll = new EdgeScrollViewer
         {
             Content = display, Focusable = false, Background = ConsoleSurface, EdgePreviewHeight = 14,

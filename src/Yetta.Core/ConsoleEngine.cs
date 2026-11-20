@@ -61,9 +61,9 @@ public static class ConsoleEngine
         if (command.StartsWith("/script stop ", StringComparison.Ordinal))
             return new ConsoleResult("", Request: "SCRIPT_STOP", Argument: raw[13..].Trim());
         if (command is "/snob" or "/snob help")
-            return new ConsoleResult("[ℹ] Marvine: /snob пока не повышает права; нужен проверяемый посредник DAX [A].");
+            return new ConsoleResult("[ℹ] Marvine: /snob не повышает права. Профиль Администратор доступен в DAX Guard.");
         if (command.StartsWith("/snob ", StringComparison.Ordinal))
-            return new ConsoleResult("[✖] Marvine: повышение прав недоступно: посредник DAX [A] ещё не установлен.");
+            return new ConsoleResult("[✖] Marvine: эта команда не выполняет действия с повышенными правами.");
         return command switch
         {
             "" => new ConsoleResult(TallowText.Get("marvine.console.0001")),
@@ -120,7 +120,7 @@ public static class ConsoleEngine
                 "Напиши /help 3 для следующей страницы.",
             4 => WindowsCommands.Help,
             _ => "[⌘] Marvine: команды · страница 3/4\n" +
-                "[Серый] /snob — повышение прав появится вместе с DAX [A]\n" +
+                "[Серый] /snob — зарезервированная команда\n" +
                 "[Зелёный] /dax status — состояние локального DAX\n" +
                 "[Зелёный] /dax diagnostics — экран диагностики\n" +
                 "[Зелёный] " + WarningTestCommand.Usage + "\n" +

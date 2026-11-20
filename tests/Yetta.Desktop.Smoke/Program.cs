@@ -101,6 +101,17 @@ static class Program
             if (!exit.Wait(TimeSpan.FromSeconds(15)) || !lines.Any(l => l.Text == "Привет") ||
                 !lines.Any(l => l.IsError && l.Text == "stderr") || !lines.Any(l => l.Exited && !l.IsError) ||
                 scripts.List().Single().Running) throw new Exception("Python run, output or exit failed.");
+            File.WriteAllText(file, "import time\nprint('ready', flush=True)\ntime.sleep(60)");
+            using var ready = new ManualResetEventSlim();
+            using var stopped = new ManualResetEventSlim();
+            scripts.Start("again", file, python, l =>
+            {
+                if (l.Text == "ready") ready.Set();
+                if (l.Exited) stopped.Set();
+            });
+            if (!ready.Wait(TimeSpan.FromSeconds(15)) || !scripts.Stop(file) ||
+                !stopped.Wait(TimeSpan.FromSeconds(15)) || scripts.List().Any(s => s.Running))
+                throw new Exception("Stopping a second run by the same file path failed.");
         }
         finally { folder.Delete(true); }
         Console.WriteLine("PASS real Python process, Unicode path, both output streams, exit and list");

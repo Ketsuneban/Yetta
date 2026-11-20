@@ -120,11 +120,15 @@ internal sealed class MarvineScriptManager : IDisposable
     {
         lock (_sync)
         {
-            Script? script = _scripts.Values.FirstOrDefault(item =>
-                item.Id.Equals(idOrPath, StringComparison.OrdinalIgnoreCase) ||
-                item.Path.Equals(idOrPath.Trim('"'), StringComparison.OrdinalIgnoreCase));
+            if (!_scripts.TryGetValue(idOrPath, out var script))
+            {
+                string path = Path.GetFullPath(idOrPath.Trim('"'));
+                script = _scripts.Values.LastOrDefault(item =>
+                    item.Path.Equals(path, StringComparison.OrdinalIgnoreCase) && !item.Process.HasExited);
+            }
             if (script is null || script.Process.HasExited) return false;
-            script.Process.Kill(entireProcessTree: true);
+            try { script.Process.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) when (script.Process.HasExited) { return false; }
             return true;
         }
     }

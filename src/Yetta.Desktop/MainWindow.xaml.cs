@@ -982,7 +982,7 @@ public partial class MainWindow : Window
 
     private async void RunPowerShell()
     {
-        if (_consoleInput is null || _embeddedShell is null) return;
+        if (_consoleInput is null || _embeddedShell is not { } shell || _consoleOutput is not { } display) return;
         if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
         if (_daxGate.Status.State != DaxState.Ready)
         {
@@ -1015,11 +1015,11 @@ public partial class MainWindow : Window
         _consoleInput.Clear();
         _consoleOutput?.Append(ConsoleLine("> " + command, true));
         DaxAudit.Write("powershell", "submitted", "Command sent through user-level shell. Text omitted.");
-        try { await _embeddedShell.SendAsync(command); }
+        try { await shell.SendAsync(command); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or
             ObjectDisposedException)
         {
-            _consoleOutput?.Append(ConsoleLine(TallowText.Get("ui.main.0154") + ex.Message, false));
+            if (ReferenceEquals(display, _consoleOutput)) display.Append(ConsoleLine(TallowText.Get("ui.main.0154") + ex.Message, false));
         }
     }
 

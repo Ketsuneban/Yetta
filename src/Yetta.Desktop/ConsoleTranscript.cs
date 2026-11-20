@@ -7,13 +7,24 @@ namespace Yetta.Desktop;
 
 // Adjacent text entries share a document so selection can cross command/output boundaries.
 // Interactive Subsy forms stay in the regular focus tree and retain their own input controls.
-internal sealed class ConsoleTranscript(int limit = 500) : StackPanel
+internal sealed class ConsoleTranscript : StackPanel
 {
     private sealed record Entry(UIElement View, Paragraph? Text, Func<bool>? Pinned);
     private readonly List<Entry> _entries = [];
 
+    private readonly int _limit;
+    private readonly UIElement? _empty;
+
+    internal ConsoleTranscript(int limit = 500, UIElement? empty = null)
+    {
+        _limit = limit;
+        _empty = empty;
+        if (empty is not null) Children.Add(empty);
+    }
+
     internal void Append(UIElement content, Func<bool>? pinned = null)
     {
+        if (_entries.Count == 0 && _empty is not null) Children.Remove(_empty);
         if (content is TextBlock text)
         {
             var paragraph = new Paragraph
@@ -49,7 +60,7 @@ internal sealed class ConsoleTranscript(int limit = 500) : StackPanel
             Children.Add(content);
             _entries.Add(new(content, null, pinned));
         }
-        while (_entries.Count > limit)
+        while (_entries.Count > _limit)
         {
             int index = _entries.FindIndex(entry => entry.Pinned?.Invoke() != true);
             if (index < 0) break;
@@ -68,5 +79,6 @@ internal sealed class ConsoleTranscript(int limit = 500) : StackPanel
     {
         _entries.Clear();
         Children.Clear();
+        if (_empty is not null) Children.Add(_empty);
     }
 }
