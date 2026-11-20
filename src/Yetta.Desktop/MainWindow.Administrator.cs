@@ -75,7 +75,7 @@ public partial class MainWindow
             }));
         else
             actions.Children.Add(ActionButton("Установщик DAX", () => OpenExternal(
-                "https://github.com/Ketsuneban/Yetta/releases/tag/v0.5.0-preview", "DAX Administrator · YettaDaxAdministratorSetup.exe"), true));
+                "https://github.com/Ketsuneban/Yetta/releases/tag/v" + ReleaseVersion, "DAX Administrator · YettaDaxAdministratorSetup.exe"), true));
         actions.Children.Add(ActionButton("Проверить статус", async () => await RefreshAdministratorAsync()));
         panel.Children.Add(actions);
         ContentPanel.Children.Add(Card(panel));

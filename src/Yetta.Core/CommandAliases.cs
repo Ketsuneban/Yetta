@@ -3,7 +3,7 @@ namespace Yetta.Core;
 /// <summary>Normalize command words only; quoted paths, flags and free text retain their bytes.</summary>
 public static class CommandAliases
 {
-    private static readonly string[] Groups = ["help", "test", "yetta", "dax", "subsy", "tty", "marvine", "script", "snob"];
+    private static readonly string[] Groups = ["help", "win", "test", "yetta", "dax", "subsy", "tty", "marvine", "script", "snob"];
     private static readonly Dictionary<string, string> Root = new(StringComparer.OrdinalIgnoreCase)
         { ["marv"] = "marvine", ["scr"] = "script", ["cls"] = "clear", ["?"] = "help" };
     public static string Normalize(string input)
@@ -13,7 +13,6 @@ public static class CommandAliases
         if (tokens.Count == 0) return raw;
         string root = tokens[0].Value.TrimStart('/').ToLowerInvariant();
         if (Root.TryGetValue(root, out var alias)) root = alias;
-        if (root == "?") root = "help";
         string[] roots = [.. Groups, "clear", "status", "info", "settings", "guard", "logs", "activity", "overview", "home", "recovery", "sources", "version", "about", "access", "theme", "notifications"];
         root = Expand(root, roots);
         string first = Groups.Contains(root) ? "/" + root : root;
@@ -27,9 +26,10 @@ public static class CommandAliases
                 "subsy" => ["demo", "gallery"], "tty" => ["info", "update"],
                 "marvine" => ["subsy", "colorset"], "script" => ["list", "run", "stop"], "test" => ["warn"], _ => []
             };
-            word = word.ToLowerInvariant() switch { "upd" => "update", "ver" => "version", "dl" => "download", "diag" => "diagnostics", "colors" => "colorset", _ => word };
+            word = options.Length == 0 ? word : word.ToLowerInvariant() switch { "upd" => "update", "ver" => "version", "dl" => "download", "diag" => "diagnostics", "colors" => "colorset", _ => word };
             word = Expand(word, options);
-            replacements.Add((tokens[1].Start, tokens[1].End, word));
+            replacements.Add((tokens[0].End, tokens[1].End, " " + word));
+            if (tokens.Count > 2) replacements.Add((tokens[1].End, tokens[2].Start, " "));
             if (root == "marvine" && word.Equals("subsy", StringComparison.OrdinalIgnoreCase) && tokens.Count > 2 && !tokens[2].Quoted)
                 replacements.Add((tokens[2].Start, tokens[2].End, Expand(tokens[2].Value, ["enable", "disable"])));
         }

@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Input;
+using System.ComponentModel;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Yetta.Core;
@@ -24,9 +26,13 @@ public partial class MainWindow
     private sealed record SubsyView(TextBlock Name, TextBlock Value, ProgressBar Bar,
         System.Windows.Shapes.Path Ring, RotateTransform Rotation);
 
-    private Brush ConsoleSurface => _settings.MarvineColorset == "dracula" ? Hex("#282A36") : new SolidColorBrush(Color.FromRgb(23, 23, 23));
-    private Brush ConsoleMuted => _settings.MarvineColorset == "dracula" ? Hex("#F8F8F2") : new SolidColorBrush(Color.FromRgb(170, 189, 207));
+    private bool Dracula => _settings.MarvineColorset == "dracula";
+    private Brush ConsoleSurface => Dracula ? Hex("#282A36") : Hex("#171D25");
+    private Brush ConsolePanel => Dracula ? Hex("#44475A") : Hex("#283441");
+    private Brush ConsoleMuted => Dracula ? Hex("#CCD1E5") : Hex("#BDCAD6");
+    private Brush ConsoleAccent => Dracula ? Hex("#BD93F9") : Hex("#8DE1DB");
     private static Brush Hex(string value) => new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
+    private string _marvineDraft = "";
     private ConsoleFollowController? _consoleFollow;
     private static readonly FontFamily ConsoleFont = new("Cascadia Mono, Consolas");
     private readonly List<ConsoleEntry> _history = [];
@@ -35,84 +41,97 @@ public partial class MainWindow
     private readonly ConcurrentQueue<ScriptOutput> _scriptOutput = new();
     private int _pendingScriptOutput, _droppedScriptOutput, _scriptDrainScheduled;
 
-    private void BuildMarvineWorkspace(StackPanel body)
+    private ConsoleTranscript AttachTranscript(DockPanel layout, int limit = 500)
     {
-        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
-        var status = new TextBlock
-        {
-            Text = _settings.ActiveProfile.ToUpperInvariant() + "  ·  " + ReleaseVersion,
-            Foreground = ConsoleMuted, FontFamily = ConsoleFont, FontSize = 11,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        DockPanel.SetDock(status, Dock.Right);
-        header.Children.Add(status);
-        header.Children.Add(new TextBlock
-        {
-            Text = "Рабочая область", Foreground = Brushes.White,
-            FontSize = 18, FontWeight = FontWeights.SemiBold
-        });
-        body.Children.Add(header);
-
-        var display = new StackPanel { Margin = new Thickness(14, 11, 12, 4) };
-        if (_history.Count == 0)
-            display.Children.Add(LiteralConsoleLine("Marvine готова. Введи /help или выбери команду ниже."));
-        var pinned = _history.Where(entry => entry.AwaitsReply).ToHashSet();
-        var last = _history.TakeLast(400).ToHashSet();
-        foreach (var entry in _history.Where(entry => pinned.Contains(entry) || last.Contains(entry)))
-            display.Children.Add(RenderTaggedEntry(entry));
-        var menu = new ContextMenu();
-        var copyAll = new MenuItem { Header = "Копировать весь вывод" };
-        copyAll.Click += (_, _) =>
-        {
-            try { Clipboard.SetText(string.Join(Environment.NewLine, _history.Select(entry => entry.Command.Length > 0 ? "› " + entry.Command : entry.Message))); }
-            catch (System.Runtime.InteropServices.ExternalException) { }
-        };
-        menu.Items.Add(copyAll);
-        display.ContextMenu = menu;
-        _consoleOutput = display;
+        var empty = _consoleMode == "Marvine" ? LiteralConsoleLine("win — настройки Windows    ·    help — все команды") : null;
+        var display = new ConsoleTranscript(limit, empty) { Margin = new Thickness(5, 6, 8, 5) };
         var scroll = new EdgeScrollViewer
         {
-            Background = ConsoleSurface, Focusable = false, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = display
+            Content = display, Focusable = false, Background = ConsoleSurface, EdgePreviewHeight = 14,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
         };
-        _consoleScroll = scroll;
-        _consoleFollow?.Dispose();
+        _consoleOutput = display;
         _consoleFollow = new ConsoleFollowController(scroll);
-        UpdateConsoleHeight();
-        body.Children.Add(new Border { CornerRadius = new CornerRadius(6), Background = ConsoleSurface, Child = scroll });
-        scroll.Loaded += (_, _) => _consoleFollow?.ContentChanged();
+        var viewport = new Grid();
+        viewport.Children.Add(scroll);
+        var follow = _consoleFollow;
+        var bottom = SubsyButton("К последней строке ↓", follow.Resume);
+        bottom.Visibility = Visibility.Collapsed;
+        bottom.HorizontalAlignment = HorizontalAlignment.Right;
+        bottom.VerticalAlignment = VerticalAlignment.Bottom;
+        bottom.Margin = new Thickness(0, 0, 18, 6);
+        follow.FollowingChanged += following => bottom.Visibility = following ? Visibility.Collapsed : Visibility.Visible;
+        viewport.Children.Add(bottom);
+        layout.Children.Add(viewport);
+        return display;
+    }
 
-        var row = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
-        var send = ActionButton("Выполнить", RunMarvine, true);
-        send.MinWidth = 108;
+    private DockPanel BuildCommandRow(TextBox input, string prefix, Action execute)
+    {
+        var row = new DockPanel();
+        var send = SubsyButton("Выполнить", () => { input.Focus(); execute(); }, true);
+        send.Background = ConsoleAccent;
+        send.Foreground = Hex("#18222C");
+        send.MinHeight = 40;
         send.Margin = new Thickness(8, 0, 0, 0);
         DockPanel.SetDock(send, Dock.Right);
         row.Children.Add(send);
-        var prompt = new Border
+        var marker = new TextBlock
         {
-            Background = new SolidColorBrush(Color.FromRgb(31, 40, 52)), CornerRadius = new CornerRadius(6),
-            Child = new TextBlock
-            {
-                Text = "/", FontSize = 22, Foreground = new SolidColorBrush(Color.FromRgb(120, 222, 213)),
-                VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center
-            },
-            Width = 26, Margin = new Thickness(0, 0, 3, 0)
+            Text = prefix, FontFamily = ConsoleFont, FontWeight = FontWeights.Bold, Foreground = ConsoleAccent,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 4, 0)
         };
-        DockPanel.SetDock(prompt, Dock.Left);
-        row.Children.Add(prompt);
-        var input = BuildTerminalInput("/help — команды Marvine", RunMarvine);
-        input.IsReadOnly = _marvineCommandRunning;
-        System.Windows.Automation.AutomationProperties.SetName(input, "Команда Marvine");
-        _consoleInput = input;
-        if (_settings.MarvineColorset == "dracula")
+        var field = new DockPanel();
+        field.Children.Add(marker);
+        var layers = new Grid();
+        layers.Children.Add(input);
+        var hint = new TextBlock
         {
-            input.Background = Hex("#44475A"); input.Foreground = Hex("#F8F8F2");
-            prompt.Background = Hex("#44475A");
-            if (prompt.Child is TextBlock marker) marker.Foreground = Hex("#BD93F9");
+            Text = "Введите команду", IsHitTestVisible = false, Foreground = ConsoleMuted,
+            Margin = new Thickness(6, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+        layers.Children.Add(hint);
+        field.Children.Add(layers);
+        var frame = new Border
+        {
+            Child = field, CornerRadius = new CornerRadius(7), Background = ConsolePanel, MinHeight = 40,
+            BorderThickness = new Thickness(1), BorderBrush = Brushes.Transparent
+        };
+        row.Children.Add(frame);
+        input.IsKeyboardFocusedChanged += (_, _) => frame.BorderBrush = input.IsKeyboardFocused ? ConsoleAccent : Brushes.Transparent;
+        frame.MouseLeftButtonDown += (_, _) => input.Focus();
+        void Refresh()
+        {
+            send.IsEnabled = !input.IsReadOnly && !string.IsNullOrWhiteSpace(input.Text);
+            hint.Visibility = input.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            marker.Visibility = prefix == "/" && input.Text.TrimStart().StartsWith('/') ? Visibility.Collapsed : Visibility.Visible;
         }
-        row.Children.Add(input);
-        body.Children.Add(row);
+        input.TextChanged += (_, _) => Refresh();
+        var readOnly = DependencyPropertyDescriptor.FromProperty(TextBox.IsReadOnlyProperty, typeof(TextBox));
+        EventHandler changed = (_, _) => Refresh();
+        input.Loaded += (_, _) => { readOnly.AddValueChanged(input, changed); Refresh(); };
+        input.Unloaded += (_, _) => readOnly.RemoveValueChanged(input, changed);
+        Refresh();
+        return row;
+    }
 
+    private void BuildMarvineWorkspace(DockPanel layout, DockPanel tools)
+    {
+        var footer = new StackPanel();
+        DockPanel.SetDock(footer, Dock.Bottom);
+        layout.Children.Add(footer);
+        var input = BuildTerminalInput("Команда Marvine", RunMarvine);
+        input.IsReadOnly = _marvineCommandRunning;
+        input.Text = _marvineDraft;
+        input.CaretIndex = input.Text.Length;
+        _consoleInput = input;
+        var history = SubsyButton("История", OpenMarvineHistory);
+        history.ToolTip = "Найти введённую команду (Ctrl+R)";
+        DockPanel.SetDock(history, Dock.Right);
+        tools.Children.Add(history);
+        footer.Children.Add(BuildCommandRow(input, "/", RunMarvine));
         var shortcuts = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
         bool showAll = false;
         void RefreshSuggestions()
@@ -138,11 +157,13 @@ public partial class MainWindow
             {
                 shortcuts.Children.Add(SubsyButton("Выбрать файл…", () =>
                 {
+                    if (input.IsReadOnly) return;
                     var picker = new Microsoft.Win32.OpenFileDialog();
                     if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FileName + "\" "; input.CaretIndex = input.Text.Length; }
                 }));
                 shortcuts.Children.Add(SubsyButton("Выбрать папку…", () =>
                 {
+                    if (input.IsReadOnly) return;
                     var picker = new Microsoft.Win32.OpenFolderDialog();
                     if (picker.ShowDialog(this) == true) { input.Text = input.Text.TrimEnd() + " \"" + picker.FolderName + "\" "; input.CaretIndex = input.Text.Length; }
                 }));
@@ -150,16 +171,51 @@ public partial class MainWindow
         }
         input.TextChanged += (_, _) =>
         {
-            if (prompt.Child is TextBlock marker) marker.Text = input.Text.TrimStart().StartsWith('/') ? "" : "/";
-            showAll = false; RefreshSuggestions();
+            _marvineDraft = input.Text;
+            showAll = false;
+            RefreshSuggestions();
         };
         RefreshSuggestions();
-        body.Children.Add(shortcuts);
-        body.Children.Add(new TextBlock
+        var options = new ScrollViewer
         {
-            Text = "↑ ↓ / Num 8 2 — история    Tab — дополнить    Enter — выполнить    Выделение + Ctrl+C — копировать",
-            Foreground = ConsoleMuted, FontSize = 11, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap
+            Content = shortcuts, MaxHeight = 118, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false
+        };
+        footer.Children.Add(options);
+        var display = AttachTranscript(layout, Math.Min(400, _settings.MarvineHistoryLimit));
+        var copy = SubsyButton("Копировать вывод", () =>
+        {
+            if (_history.Count == 0) return;
+            try { Clipboard.SetText(string.Join(Environment.NewLine, _history.Select(entry =>
+                entry.Command.Length > 0 ? "/ " + entry.Command.TrimStart('/') : entry.Message))); }
+            catch (System.Runtime.InteropServices.ExternalException)
+            { AddConsoleEntry(new ConsoleEntry("", "[⚠] Буфер обмена занят. Повтори копирование.")); }
         });
+        DockPanel.SetDock(copy, Dock.Right);
+        tools.Children.Add(copy);
+        var recent = _history.TakeLast(Math.Min(400, _settings.MarvineHistoryLimit)).ToHashSet();
+        foreach (var entry in _history.Where(entry => entry.AwaitsReply || recent.Contains(entry)))
+            AppendMarvineEntry(display, entry);
+        input.ToolTip = "↑ и ↓ — история · Tab — дополнить · Ctrl+R — поиск по истории";
+        input.PreviewKeyDown += (_, e) =>
+        {
+            if (input.IsReadOnly || Keyboard.Modifiers != ModifierKeys.None) return;
+            bool up = e.Key == Key.Up || e.Key == Key.NumPad8 && !Keyboard.IsKeyToggled(Key.NumLock);
+            bool down = e.Key == Key.Down || e.Key == Key.NumPad2 && !Keyboard.IsKeyToggled(Key.NumLock);
+            if ((up || down) && _enteredCommands.Count > 0)
+            {
+                if (_commandHistoryIndex == _enteredCommands.Count) _commandDraft = input.Text;
+                _commandHistoryIndex = Math.Clamp(_commandHistoryIndex + (up ? -1 : 1), 0, _enteredCommands.Count);
+                input.Text = _commandHistoryIndex == _enteredCommands.Count ? _commandDraft : _enteredCommands[_commandHistoryIndex];
+            }
+            else if (e.Key == Key.Tab && input.CaretIndex == input.Text.Length && input.SelectionLength == 0 &&
+                     input.Text.Length > 0 && CommandCompletion.Get(input.Text).FirstOrDefault() is { } completion)
+                input.Text = completion.Command;
+            else return;
+            input.CaretIndex = input.Text.Length;
+            e.Handled = true;
+        };
+        input.Focus();
     }
 
     private TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()
@@ -175,12 +231,12 @@ public partial class MainWindow
         if (entry.Render is { } render)
             return render();
         if (entry.Command.Length > 0)
-            return SelectableConsole.Wrap(LiteralConsoleLine("/ " + entry.Command.TrimStart('/'), _settings.MarvineColorset == "dracula" ? Hex("#8BE9FD") : Brushes.White));
+            return LiteralConsoleLine("/ " + entry.Command.TrimStart('/'), ConsoleAccent);
         if (entry.Script is not { } script)
-            return SelectableConsole.Wrap(ConsoleLine(entry.Message, false));
+            return ConsoleLine(entry.Message, false);
         if (entry.Frame is null || !_settings.MarvineSubsyEnabled)
-            return SelectableConsole.Wrap(LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
-                script.IsError ? (_settings.MarvineColorset == "dracula" ? Hex("#FF5555") : Brushes.LightSalmon) : ConsoleMuted));
+            return LiteralConsoleLine(script.Id + "  ·  " + entry.Message,
+                script.IsError ? (_settings.MarvineColorset == "dracula" ? Hex("#FF5555") : Brushes.LightSalmon) : ConsoleMuted);
 
         var name = new TextBlock { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap };
         var value = LiteralConsoleLine("", ConsoleMuted);
@@ -205,12 +261,8 @@ public partial class MainWindow
         return SubsyCard(new StackPanel { Children = { name, details, bar } });
     }
 
-    private UIElement RenderTaggedEntry(ConsoleEntry entry)
-    {
-        var element = RenderConsoleEntry(entry);
-        if (element is FrameworkElement taggable) taggable.Tag = entry;
-        return element;
-    }
+    private void AppendMarvineEntry(ConsoleTranscript display, ConsoleEntry entry) =>
+        display.Append(RenderConsoleEntry(entry), entry.Prompt is null ? null : () => entry.AwaitsReply);
 
     private static void RefreshSubsyView(SubsyView view, string id, SubsyFrame frame)
     {
@@ -246,15 +298,7 @@ public partial class MainWindow
         }
 
         if (_page != "console" || _consoleMode != "Marvine" || _consoleOutput is not { } display) return;
-        display.Children.Add(RenderTaggedEntry(entry));
-        int limit = Math.Min(400, _settings.MarvineHistoryLimit);
-        while (display.Children.Count > limit)
-        {
-            var first = display.Children.OfType<FrameworkElement>().FirstOrDefault(item =>
-                item.Tag is not ConsoleEntry { AwaitsReply: true } && !ReferenceEquals(item.Tag, entry));
-            if (first is null) break;
-            display.Children.Remove(first);
-        }
+        AppendMarvineEntry(display, entry);
         _consoleFollow?.ContentChanged();
     }
 

@@ -30,7 +30,7 @@ public partial class MainWindow
 
     private Border SubsyCard(UIElement child) => new()
     {
-        Background = new SolidColorBrush(Color.FromRgb(35, 42, 48)),
+        Background = ConsolePanel,
         CornerRadius = new CornerRadius(7), Padding = new Thickness(14, 11, 14, 10),
         Margin = new Thickness(0, 1, 0, 9), Child = child
     };
@@ -40,7 +40,7 @@ public partial class MainWindow
         var button = ActionButton(label, click, primary);
         if (!primary)
         {
-            button.Background = new SolidColorBrush(Color.FromRgb(59, 67, 75));
+            button.Background = Dracula ? Hex("#505469") : Hex("#344353");
             button.Foreground = Brushes.White;
         }
         button.MinWidth = 0;

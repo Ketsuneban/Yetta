@@ -52,8 +52,15 @@ jobs:
         run: dotnet run --project tests/Yetta.Updater.Smoke/Yetta.Updater.Smoke.csproj --configuration Release
       - name: Compile desktop application
         run: dotnet build src/Yetta.Desktop/Yetta.Desktop.csproj --configuration Release --no-restore -warnaserror
-      - name: Verify desktop scroll template
-        run: dotnet run --project tests/Yetta.Desktop.Smoke/Yetta.Desktop.Smoke.csproj --configuration Release
+      - name: Set up Python for the Marvine process test
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify desktop layout, personalization and Python
+        shell: pwsh
+        run: |
+          $env:YETTA_SMOKE_PYTHON = (Get-Command python.exe).Source
+          dotnet run --project tests/Yetta.Desktop.Smoke/Yetta.Desktop.Smoke.csproj --configuration Release
       - name: Upload warning layout previews
         uses: actions/upload-artifact@v4
         with:
@@ -150,7 +157,7 @@ jobs:
       - name: Upload build for QA
         uses: actions/upload-artifact@v4
         with:
-          name: Yetta-0.5.0-preview-win-x64-QA
+          name: Yetta-0.5.1-preview-win-x64-QA
           path: artifacts/release/
           if-no-files-found: error
           retention-days: 30
@@ -168,7 +175,7 @@ jobs:
       - name: Retrieve validated EXE
         uses: actions/download-artifact@v4
         with:
-          name: Yetta-0.5.0-preview-win-x64-QA
+          name: Yetta-0.5.1-preview-win-x64-QA
           path: artifacts/release
       - name: Publish direct-download EXE
         shell: pwsh
