@@ -968,6 +968,8 @@ public partial class MainWindow : Window
         if (request.StartsWith("SNOB_", StringComparison.Ordinal)) return await RunSnobAsync(request, argument);
         switch (request)
         {
+            case "MARVINE_OPEN":
+                return OpenMarvineDirectory(argument!);
             case "HELP":
                 return ShowMarvineHelp(argument ?? "");
             case "TEST_WARN":
@@ -1069,11 +1071,11 @@ public partial class MainWindow : Window
                 catch (SystemException) { return "[✖] Windows не подтвердила права процесса. Запуск отменён."; }
                 if (argument is null)
                 {
-                    var picker = new OpenFileDialog { Title = "Выбери скрипт Python", Filter = "Скрипты Python (*.py)|*.py" };
+                    var picker = new OpenFileDialog { Title = "Выбери скрипт Python", Filter = "Скрипты Python (*.py)|*.py", InitialDirectory = MarvineDirectory };
                     if (picker.ShowDialog(this) != true) return "[ℹ] Выбор скрипта отменён.";
                     argument = picker.FileName;
                 }
-                string path = Path.GetFullPath(argument.Trim('"'));
+                string path = ResolveMarvinePath(argument);
                 if (!File.Exists(path) || !path.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
                     return "[⚠] Нужен существующий файл .py. Введи script run, чтобы выбрать файл.";
                 string? interpreter = ResolvePythonExecutable();
@@ -1081,7 +1083,8 @@ public partial class MainWindow : Window
                 string? id = await PromptInlineIdAsync();
                 if (id is null) return "[ℹ] Запуск отменён.";
                 string rights = elevated ? "Администратор Windows" : "текущий пользователь Windows";
-                if (!ConfirmYettaAction("Запустить Python-скрипт", $"Файл: {path}\nИнтерпретатор: {interpreter}\nПрава: {rights}."))
+                string workingDirectory = _marvineDirectory ?? Path.GetDirectoryName(path)!;
+                if (!ConfirmYettaAction("Запустить Python-скрипт", $"Файл: {path}\nПапка: {workingDirectory}\nИнтерпретатор: {interpreter}\nПрава: {rights}."))
                     return "[ℹ] Запуск отменён.";
                 var dax = await _daxGate.WaitForScriptAgentAsync(_updateStop.Token);
                 var grant = await DaxAdministratorClient.RequestAsync(DaxAdministratorOperation.Status, _updateStop.Token);
@@ -1100,14 +1103,14 @@ public partial class MainWindow : Window
                     DaxAudit.Write("script", "denied", "Elevated script refused by DAX.");
                     return "[✖] DAX отклонил повышенный запуск. Открой Yetta обычным способом для запуска с правами пользователя.";
                 }
-                _scripts.Start(id, path, interpreter, EnqueueScriptOutput);
+                OpenScriptSession(id, path, interpreter, workingDirectory);
                 DaxAudit.Write("script", "started", "Marvine script ID: " + id);
                 return "[✔] Marvine: скрипт " + id + " запущен.";
             }
             case "SCRIPT_STOP":
                 return _settings.ActiveProfile == "Guest"
                     ? "[✖] DAX отклонил команду из-за недостатка прав пользователя: «script stop»."
-                    : _scripts.Stop(argument ?? "")
+                    : _scripts.Stop(ResolveMarvinePath(argument ?? ""), argument?.Trim().Trim('"'))
                         ? "[✔] Marvine: скрипт остановлен."
                         : "[ℹ] Marvine: запущенный скрипт с таким ID или путём не найден.";
             default:

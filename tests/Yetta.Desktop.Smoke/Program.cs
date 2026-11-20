@@ -64,6 +64,13 @@ static class Program
         Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Выполнить")
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Layout(700, 430);
+        var helpColors = Descendants(root).OfType<TextBlock>().SelectMany(label => label.Inlines.OfType<Run>()).ToArray();
+        var commandBrush = helpColors.First(run => run.Text == "/script").Foreground;
+        var argumentBrush = helpColors.First(run => run.Text == "[путь или ID]").Foreground;
+        var stopBrush = helpColors.First(run => run.Text == "stop").Foreground;
+        var descriptionBrush = helpColors.First(run => run.Text.StartsWith(" — открыть Python", StringComparison.Ordinal)).Foreground;
+        if (new[] { commandBrush, argumentBrush, stopBrush, descriptionBrush }.Distinct().Count() != 4)
+            throw new Exception("Help lost its command, argument, action or description color.");
         var next = Descendants(root).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Далее →");
         if (!next.IsEnabled) throw new Exception("Subsy help was not paginated.");
         next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -89,12 +96,22 @@ static class Program
         {
             var file = Path.Combine(folder.FullName, "Проба с пробелами.py");
             File.WriteAllText(Path.Combine(folder.FullName, "helper.py"), "greeting = 'Привет'");
-            File.WriteAllText(file, "import sys, helper\nprint(helper.greeting, flush=True)\nprint('stderr', file=sys.stderr)");
+            File.WriteAllText(file, "import os, sys, helper\nprint(helper.greeting, flush=True)\nprint(os.getcwd())\nprint('stderr', file=sys.stderr)\nprint('\\n' + input('Введите ответ: '))");
+            string workspace = folder.CreateSubdirectory("Рабочая папка").FullName;
             using var scripts = new MarvineScriptManager();
             var lines = new System.Collections.Concurrent.ConcurrentQueue<ScriptOutput>();
             using var exit = new ManualResetEventSlim();
-            scripts.Start("probe", file, python, line => { lines.Enqueue(line); if (line.Exited) exit.Set(); });
+            using var question = new ManualResetEventSlim();
+            var run = scripts.Start("probe", file, python, line =>
+            {
+                lines.Enqueue(line);
+                if (line is { Partial: true, Text: "Введите ответ: " }) question.Set();
+                if (line.Exited) exit.Set();
+            }, workspace);
+            if (!question.Wait(TimeSpan.FromSeconds(15))) throw new Exception("Python stdin prompt was not visible before newline.");
+            scripts.SendAsync(run, "ответ из Subsy", CancellationToken.None).GetAwaiter().GetResult();
             if (!exit.Wait(TimeSpan.FromSeconds(15)) || !lines.Any(l => l.Text == "Привет") ||
+                !lines.Any(l => l.Text == "ответ из Subsy") || !lines.Any(l => l.Text == workspace) ||
                 !lines.Any(l => l.IsError && l.Text == "stderr") || !lines.Any(l => l.Exited && !l.IsError) ||
                 scripts.List().Single().Running) throw new Exception("Python run, output or exit failed.");
             File.WriteAllText(file, "import time\nprint('ready', flush=True)\ntime.sleep(60)");

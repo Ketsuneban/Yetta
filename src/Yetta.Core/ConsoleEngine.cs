@@ -10,7 +10,7 @@ public static class ConsoleEngine
     internal static readonly Dictionary<string, string> Syntax = new(StringComparer.OrdinalIgnoreCase)
     {
         ["help"] = "/help", ["script"] = "/script [действие] [путь]", ["test"] = WarningTestCommand.Usage,
-        ["marvine"] = "/marvine [Colorset | Subsy] [дополнительные аргументы]", ["yetta"] = "/yetta [действие]",
+        ["marvine"] = "/marvine open <путь> · /marvine colorset <палитра> · /marvine subsy enable|disable", ["yetta"] = "/yetta [действие]",
         ["tty"] = "/tty [Info | Update]", ["subsy"] = "/subsy [demo | gallery]", ["clear"] = "/clear",
         ["snob"] = "/snob install|uninstall|check <программа> · /snob yetta close|exit|uninstall · /snob dax status", ["version"] = "/version", ["access"] = "/access", ["activity"] = "/activity",
         ["overview"] = "/overview", ["sources"] = "/sources", ["recovery"] = "/recovery", ["theme"] = "/theme"
@@ -35,7 +35,7 @@ public static class ConsoleEngine
         {
             case "help" when tokens.Count == 1:
                 var help = HelpPage(1, context.ActiveProfile);
-                return context.SubsyEnabled ? new(help, Request: "HELP", Argument: help) : new(help);
+                return new(help, Request: "HELP", Argument: help);
             case "script":
                 if (action is "" or "help" && tokens.Count <= 2) return new(syntax + "\nrun — выбрать или запустить .py\nlist — список запусков\nstop — остановить по ID или пути");
                 if (action == "list" && tokens.Count == 2) return new("", Request: "SCRIPT_LIST");
@@ -47,11 +47,13 @@ public static class ConsoleEngine
                 return WarningTestCommand.TryParse(raw, out _, out var invalid)
                     ? new("", Request: "TEST_WARN", Argument: raw) : Invalid(invalid);
             case "marvine":
+                if (action == "open" && tail.Length > 0)
+                    return new("", Request: "MARVINE_OPEN", Argument: tail);
                 if (action == "subsy" && tokens.Count == 3 && tail.ToLowerInvariant() is "enable" or "disable")
                     return new("", Request: "SUBSY", Argument: tail.ToLowerInvariant());
                 if (action == "colorset" && new[] { "EGA", "No Color", "dracula" }.FirstOrDefault(c => c.Equals(tail, StringComparison.OrdinalIgnoreCase)) is { } color)
                     return new("", Request: "COLORSET", Argument: color);
-                return Invalid(tail.Length > 0 ? tail : action, "/marvine colorset EGA|dracula|No Color · /marvine subsy enable|disable");
+                return Invalid(tail.Length > 0 ? tail : action);
             case "yetta":
                 if (action is "update" or "version" && tokens.Count == 2) return new("", Request: action.ToUpperInvariant());
                 if (action == "download" && tokens.Count == 3) return new("", Request: "DOWNLOAD", Argument: tokens[2].Value);
@@ -82,9 +84,20 @@ public static class ConsoleEngine
 
     public static string HelpPage(int page, string profile) => string.Join("\n", new[]
     {
-        Syntax["script"] + " — run, list, stop", Syntax["test"], Syntax["marvine"],
-        Syntax["yetta"] + " — version, update, download", Syntax["tty"], Syntax["subsy"],
-        "/help · /clear — справка и очистка вывода", Syntax["snob"], "/version · /access · /theme", "/overview · /activity · /sources · /recovery"
+        "/script run|list|stop [путь или ID] — открыть Python в Subsy, показать сеансы или остановить запуск",
+        "/marvine open <путь> — сменить рабочую папку сеанса",
+        "/marvine colorset <палитра> — выбрать оформление консоли",
+        "/marvine subsy enable|disable — настроить оформление вывода в Marvine",
+        Syntax["test"] + " — показать тестовое предупреждение",
+        "/yetta version|update|download [релиз] — проверить версию, обновиться или выбрать релиз",
+        Syntax["tty"] + " — показать или обновить ключ",
+        Syntax["subsy"] + " — открыть примеры элементов Subsy",
+        "/help · /clear — показать справку или очистить вывод",
+        "/snob install|uninstall|check <программа> — управлять приложениями Windows",
+        "/snob yetta close|exit|uninstall — закрыть, завершить или удалить Yetta",
+        "/snob dax status — посмотреть состояние DAX",
+        "/version · /access · /theme — посмотреть сведения о сеансе",
+        "/overview · /activity · /sources · /recovery — открыть раздел Yetta"
     });
     public static IReadOnlyList<string> Suggestions(string? prefix) => CommandCompletion.Get(prefix ?? "").Select(x => x.Command).ToArray();
 }

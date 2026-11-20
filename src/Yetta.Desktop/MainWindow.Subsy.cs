@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -52,7 +54,7 @@ public partial class MainWindow
         return button;
     }
 
-    private UIElement RenderPrompt(PromptState state)
+    private UIElement RenderPrompt(PromptState state, Window? owner = null, string? directory = null)
     {
         var request = state.Prompt;
         var root = new StackPanel();
@@ -175,8 +177,8 @@ public partial class MainWindow
                 send.IsEnabled = false;
                 Add("Выбрать файл…", () =>
                 {
-                    var picker = new OpenFileDialog { Title = request.Label, CheckFileExists = true };
-                    if (picker.ShowDialog(this) != true) return;
+                    var picker = new OpenFileDialog { Title = request.Label, CheckFileExists = true, InitialDirectory = directory ?? MarvineDirectory };
+                    if (picker.ShowDialog(owner ?? this) != true) return;
                     selected = picker.FileName;
                     path.Text = selected;
                     send.IsEnabled = true;
@@ -290,8 +292,50 @@ public partial class MainWindow
 
     private string ShowMarvineHelp(string text)
     {
-        if (!_settings.MarvineSubsyEnabled) return text;
-        return PageMarvineResult("Справка Marvine", text.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        string[] rows = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        const int pageSize = 6;
+        AddConsoleEntry(new ConsoleEntry("", text)
+        {
+            Render = () => !_settings.MarvineSubsyEnabled ? RenderHelp(rows) :
+                SubsyCard(new StackPanel
+                {
+                    Children =
+                    {
+                        LiteralConsoleLine("Справка Marvine", ConsoleInk),
+                        BuildPager((rows.Length + pageSize - 1) / pageSize,
+                            page => RenderHelp(rows.Skip(page * pageSize).Take(pageSize)))
+                    }
+                })
+        });
+        return "";
+    }
+
+    private TextBlock RenderHelp(IEnumerable<string> rows)
+    {
+        var block = LiteralConsoleLine("", ConsoleInk);
+        bool monochrome = _settings.MarvineColorset == "No Color";
+        bool light = !Dracula && ConsoleSurface is SolidColorBrush surface &&
+            (surface.Color.R * .299 + surface.Color.G * .587 + surface.Color.B * .114) > 150;
+        var command = monochrome ? ConsoleInk : Hex(light ? "#17683C" : Dracula ? "#50FA7B" : "#69D894");
+        var argument = monochrome ? ConsoleInk : Hex(light ? "#795400" : Dracula ? "#F1FA8C" : "#EED176");
+        var destructive = monochrome ? ConsoleInk : Hex(light ? "#A3212A" : Dracula ? "#FF7777" : "#FF9696");
+        foreach (string row in rows)
+        {
+            if (block.Inlines.Count != 0) block.Inlines.Add(new LineBreak());
+            int separator = row.IndexOf(" — ", StringComparison.Ordinal);
+            string syntax = separator < 0 ? row : row[..separator];
+            foreach (Match token in Regex.Matches(syntax, @"\s+|<[^>]+>|\[[^\]]+\]|[^\s|·]+|[|·]"))
+            {
+                string word = token.Value;
+                Brush color = word is "uninstall" or "stop" or "exit" or "Critical" or "Fatal" or "/clear"
+                    ? destructive : word.StartsWith('/') ? command :
+                    string.IsNullOrWhiteSpace(word) || word is "|" or "·" ? ConsoleMuted : argument;
+                block.Inlines.Add(new Run(word) { Foreground = color });
+            }
+            if (separator >= 0)
+                block.Inlines.Add(new Run(row[separator..]) { Foreground = ConsoleMuted });
+        }
+        return block;
     }
 
     private UIElement BuildPager(int total, Func<int, UIElement> content,
