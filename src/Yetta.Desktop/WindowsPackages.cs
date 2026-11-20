@@ -12,11 +12,13 @@ internal static class WindowsPackages
     private const string Uninstall = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
 
     internal sealed record Package(string Name, string Id, string Version, string Publisher, string Location,
-        string Scope, bool System, bool Hidden, string Selector, string? UninstallPath = null)
+        string Scope, bool System, bool Hidden, string Selector, string? UninstallPath = null,
+        string? PackageFullName = null, string? RemovalRestriction = null)
     {
         public string Label => $"{Name}  ·  {Version}  ·  {Id}";
         internal string Details => $"{Name}\nID: {Id}\nВерсия: {Version}\nИздатель: {Publisher}\n" +
-            $"Расположение: {Location}\nОбласть: {Scope}\nСистемная: {(System ? "да" : "нет")}\nСкрытая: {(Hidden ? "да" : "нет")}";
+            $"Расположение: {Location}\nОбласть: {Scope}\nСистемная: {(System ? "да" : "нет")}\nСкрытая: {(Hidden ? "да" : "нет")}" +
+            (RemovalRestriction is null ? "" : $"\nУдаление: {RemovalRestriction}");
     }
 
     internal static IReadOnlyList<Package> List()
@@ -37,11 +39,16 @@ internal static class WindowsPackages
                 string uninstallCommand = Read("UninstallString");
                 if (name.Length == 0 && uninstallCommand.Length == 0) continue;
                 bool hidden = key.GetValue("SystemComponent") is 1 || name.Length == 0;
-                bool system = hidden || Read("ReleaseType").Length > 0 || key.GetValue("NoRemove") is 1;
+                bool update = Read("ReleaseType").Length > 0;
+                bool noRemove = key.GetValue("NoRemove") is 1;
+                string? restriction = noRemove ? "В регистрации приложения указано ограничение на удаление." :
+                    update ? "Эта запись относится к обслуживанию Windows." :
+                    hidden ? "Это скрытый компонент приложения." : null;
                 string location = Read("InstallLocation");
                 packages.Add(new(name.Length == 0 ? id : name, id, Read("DisplayVersion"), Read("Publisher"), location,
-                    hive == RegistryHive.CurrentUser ? "Текущий пользователь" : "Все пользователи", system, hidden,
-                    Guid.TryParse(id, out _) ? "--product-code" : "--name", InnoUninstaller(uninstallCommand, location)));
+                    hive == RegistryHive.CurrentUser ? "Текущий пользователь" : "Все пользователи", restriction is not null, hidden,
+                    Guid.TryParse(id, out _) ? "--product-code" : "--name", InnoUninstaller(uninstallCommand, location),
+                    RemovalRestriction: restriction));
             }
         }
         try
@@ -52,11 +59,19 @@ internal static class WindowsPackages
                 var version = id.Version;
                 bool hidden = package.IsFramework || package.IsResourcePackage;
                 bool system = hidden || package.SignatureKind == Windows.ApplicationModel.PackageSignatureKind.System;
+                string name = id.Name;
+                try
+                {
+                    string displayName = package.DisplayName;
+                    if (!string.IsNullOrWhiteSpace(displayName)) name = displayName;
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or System.Runtime.InteropServices.COMException) { }
                 string location;
                 try { location = package.InstalledLocation.Path; }
                 catch (Exception ex) when (ex is UnauthorizedAccessException or System.Runtime.InteropServices.COMException) { location = ""; }
-                packages.Add(new(id.Name, id.FamilyName, $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}",
-                    id.Publisher, location, "MSIX · текущий пользователь", system, hidden, "--id"));
+                packages.Add(new(name, id.FamilyName, $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}",
+                    id.Publisher, location, "MSIX · текущий пользователь", system, hidden, "--id", PackageFullName: id.FullName,
+                    RemovalRestriction: hidden ? "Это пакет ресурсов или общий компонент приложений." : null));
             }
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Runtime.InteropServices.COMException) { }
@@ -78,7 +93,28 @@ internal static class WindowsPackages
 
     internal static bool Matches(Package package, string query) =>
         package.Id.Equals(query, StringComparison.OrdinalIgnoreCase) ||
-        package.Name.Equals(query, StringComparison.CurrentCultureIgnoreCase);
+        package.Name.Equals(query, StringComparison.CurrentCultureIgnoreCase) ||
+        string.Equals(package.PackageFullName, query, StringComparison.OrdinalIgnoreCase) ||
+        (package.PackageFullName is not null && package.Id.StartsWith(query + "_", StringComparison.OrdinalIgnoreCase)) ||
+        ((query.Equals("Copilot", StringComparison.OrdinalIgnoreCase) ||
+          query.Equals("Microsoft Copilot", StringComparison.OrdinalIgnoreCase)) &&
+            (package.Name.Equals("Copilot", StringComparison.OrdinalIgnoreCase) ||
+             package.Name.Equals("Microsoft Copilot", StringComparison.OrdinalIgnoreCase) ||
+             package.Id.StartsWith("Microsoft.Copilot_", StringComparison.OrdinalIgnoreCase)));
+
+    internal static async Task<(int Code, string Output)> RemoveMsixAsync(string packageFullName)
+    {
+        try
+        {
+            var result = await new PackageManager().RemovePackageAsync(packageFullName);
+            return (result.ExtendedErrorCode?.HResult ?? 0, result.ErrorText);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException
+            or System.Runtime.InteropServices.COMException)
+        {
+            return (ex.HResult, ex.Message);
+        }
+    }
 
     internal static async Task<(int Code, string Output)> WinGetAsync(
         string verb, string selector, string target, CancellationToken token)

@@ -82,6 +82,9 @@ public partial class MainWindow
         }
         if (string.IsNullOrWhiteSpace(argument) || argument.StartsWith('-') || argument.Any(char.IsControl))
             return "[✖] Укажи название приложения или его точный ID.";
+        bool remove = request == "SNOB_UNINSTALL";
+        if (remove && argument.Equals("Edge", StringComparison.OrdinalIgnoreCase))
+            argument = "Microsoft Edge";
 
         bool check = request == "SNOB_CHECK";
         if (!check && _settings.ActiveProfile == "Guest")
@@ -106,22 +109,31 @@ public partial class MainWindow
         if (check && matches.Length > 0)
             return ShowSnobDetails("Программа в Windows", string.Join("\n\n", matches.Select(p => p.Details)));
         var match = matches.Length == 1 ? matches[0] : null;
-        bool remove = request == "SNOB_UNINSTALL";
         if (remove && matches.Length > 1) return "[✖] Найдено несколько программ. Укажи точный ID из каталога.";
-        if (remove && (match is { System: true } || IsWindowsSecurity(argument))) return "[✖] Эту системную запись можно просмотреть через snob check.";
+        if (remove && (IsWindowsSecurity(argument) || match is not null &&
+            (IsWindowsSecurity(match.Name) || IsWindowsSecurity(match.Id))))
+            return "[✖] Это компонент безопасности Windows.";
+        if (remove && match?.RemovalRestriction is { } restriction)
+            return ShowSnobDetails("Удаление ограничено", $"{match.Name}\n{restriction}", showInstalledApps: true);
         if (remove && (match?.Id == YettaUninstallId || argument.Equals("Yetta", StringComparison.OrdinalIgnoreCase)))
             return "[ℹ] Для удаления Yetta используй snob yetta uninstall.";
+        string? packageFullName = remove ? match?.PackageFullName : null;
         if (remove && !ApproveAction("Удалить программу", match?.Label ?? argument,
-            "WinGet запустит зарегистрированное удаление выбранного приложения.", destructive: true)) return "";
+            packageFullName is null ? "WinGet запустит зарегистрированное удаление выбранного приложения."
+            : "Windows удалит приложение и его локальные данные для текущего пользователя.", destructive: true)) return "";
         if (!check && !remove && !ApproveAction("Установить программу", argument,
             "WinGet найдёт пакет с этим точным именем или ID и запустит его установщик.")) return "";
 
         string verb = check ? "show" : remove ? "uninstall" : "install";
         string selector = remove && match is not null ? match.Selector : "--query";
         string target = remove && match is not null ? (selector == "--name" ? match.Name : match.Id) : argument;
-        var result = await WindowsPackages.WinGetAsync(verb, selector, target, _updateStop.Token);
+        var result = packageFullName is not null
+            ? await WindowsPackages.RemoveMsixAsync(packageFullName)
+            : await WindowsPackages.WinGetAsync(verb, selector, target, _updateStop.Token);
         if (check) return ShowSnobDetails(result.Code == 0 ? "Сведения WinGet" : "WinGet · сведения недоступны", result.Output);
         if (result.Code == 0) return remove ? "[✔] Программа удалена." : "[✔] Программа установлена.";
+        if (remove) return ShowSnobDetails("Удаление не завершилось", $"{match?.Name ?? argument}\nКод: 0x{result.Code:X8}\n{result.Output}",
+            showInstalledApps: true);
         return ShowSnobDetails("WinGet · операция не завершилась", $"Код: 0x{result.Code:X8}\n{result.Output}");
     }
 
@@ -131,7 +143,7 @@ public partial class MainWindow
         name.StartsWith("Microsoft.SecHealthUI", StringComparison.OrdinalIgnoreCase) ||
         name.StartsWith("Microsoft.Windows.SecHealthUI", StringComparison.OrdinalIgnoreCase);
 
-    private string ShowSnobDetails(string title, string details)
+    private string ShowSnobDetails(string title, string details, bool showInstalledApps = false)
     {
         AddConsoleEntry(new ConsoleEntry("", title + "\n" + details)
         {
@@ -140,10 +152,20 @@ public partial class MainWindow
                 var info = LiteralConsoleLine(details);
                 TextSelection.Allow(info);
                 var scroll = new ScrollViewer { Content = info, MaxHeight = 310, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-                return SubsyCard(new StackPanel { Children = { LiteralConsoleLine(title, ConsoleInk), scroll } });
+                var content = new StackPanel { Children = { LiteralConsoleLine(title, ConsoleInk), scroll } };
+                if (showInstalledApps)
+                    content.Children.Add(SubsyButton("Открыть установленные приложения", OpenInstalledApps));
+                return SubsyCard(content);
             }
         });
         return "";
+    }
+
+    private void OpenInstalledApps()
+    {
+        try { Process.Start(new ProcessStartInfo("ms-settings:appsfeatures") { UseShellExecute = true })?.Dispose(); }
+        catch (System.ComponentModel.Win32Exception ex)
+        { Notify("Windows", "Не удалось открыть установленные приложения. " + ex.Message); }
     }
 
     private async Task<string> RunSnobYettaAsync(string? action)
