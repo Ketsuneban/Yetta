@@ -3,7 +3,7 @@ namespace Yetta.Core;
 /// <summary>Normalize command words only; quoted paths, flags and free text retain their bytes.</summary>
 public static class CommandAliases
 {
-    private static readonly string[] Groups = ["help", "win", "test", "yetta", "dax", "subsy", "tty", "marvine", "script", "snob"];
+    private static readonly string[] Groups = ["help", "test", "yetta", "subsy", "tty", "marvine", "script", "snob"];
     private static readonly Dictionary<string, string> Root = new(StringComparer.OrdinalIgnoreCase)
         { ["marv"] = "marvine", ["scr"] = "script", ["cls"] = "clear", ["?"] = "help" };
     public static string Normalize(string input)
@@ -13,7 +13,7 @@ public static class CommandAliases
         if (tokens.Count == 0) return raw;
         string root = tokens[0].Value.TrimStart('/').ToLowerInvariant();
         if (Root.TryGetValue(root, out var alias)) root = alias;
-        string[] roots = [.. Groups, "clear", "status", "info", "settings", "guard", "logs", "activity", "overview", "home", "recovery", "sources", "version", "about", "access", "theme", "notifications"];
+        string[] roots = [.. Groups, "clear", "activity", "overview", "home", "recovery", "sources", "version", "about", "access", "theme", "notifications"];
         root = Expand(root, roots);
         string first = Groups.Contains(root) ? "/" + root : root;
         var replacements = new List<(int Start, int End, string Value)> { (tokens[0].Start, tokens[0].End, first) };
@@ -22,7 +22,7 @@ public static class CommandAliases
             string word = tokens[1].Value;
             string[] options = root switch
             {
-                "yetta" => ["update", "version", "download"], "dax" => ["status", "diagnostics"],
+                "yetta" => ["update", "version", "download"], "dax" => ["diagnostics"],
                 "subsy" => ["demo", "gallery"], "tty" => ["info", "update"],
                 "marvine" => ["subsy", "colorset"], "script" => ["list", "run", "stop"], "test" => ["warn"], _ => []
             };

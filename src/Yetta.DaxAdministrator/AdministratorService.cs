@@ -76,6 +76,10 @@ internal sealed class AdministratorService : ServiceBase
                         ? Decide(authorized, (DaxAdministratorOperation)request[1])
                         : DaxAdministratorState.NotGranted;
                     await pipe.WriteAsync(new byte[] { WireVersion, (byte)result }, deadline.Token);
+                    // DisconnectNamedPipe discards unread bytes. Let this client consume the
+                    // reply and close its handle before serving the next connection.
+                    try { await pipe.ReadExactlyAsync(new byte[1], deadline.Token); }
+                    catch (EndOfStreamException) { /* The client closed after consuming the reply. */ }
                 }
                 catch (OperationCanceledException) when (!stop.IsCancellationRequested) { }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.SecurityException)

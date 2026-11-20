@@ -45,7 +45,11 @@ internal sealed class DaxAgentGate : IDisposable
             try
             {
                 if (agents.Length == 0)
-                    using (Process.Start(new ProcessStartInfo(AgentFile) { WorkingDirectory = AppContext.BaseDirectory })) { }
+                {
+                    var start = new ProcessStartInfo(AgentFile) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
+                    start.Environment["YETTA_DESKTOP_PATH"] = Environment.ProcessPath;
+                    using var agent = Process.Start(start);
+                }
             }
             finally { foreach (var agent in agents) agent.Dispose(); }
         }

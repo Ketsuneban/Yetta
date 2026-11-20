@@ -5,6 +5,7 @@ const string feed = """
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry><link rel="alternate" href="https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.25-preview"/></entry>
+  <entry><link rel="alternate" href="https://github.com/Ketsuneban/Yetta/releases/tag/v0.3.0-preview"/></entry>
   <entry><link rel="alternate" href="https://evil.example/Ketsuneban/Yetta/releases/tag/v9.9.9-preview"/></entry>
   <entry><link rel="alternate" href="https://github.com/Ketsuneban/Yetta/releases/tag/../../evil"/></entry>
 </feed>
@@ -23,3 +24,9 @@ if (YettaUpdater.FindReleaseByTag("../../evil") is not null ||
     throw new Exception("Release tag validation failed.");
 
 Console.WriteLine("PASS release feed and tag validation");
+
+if (YettaUpdater.FindReleaseByTag("v0.3.2-preview") is not null ||
+    YettaUpdater.FindReleaseByTag("v0.3.3-preview") is not { Unified: false } ||
+    YettaUpdater.FindReleaseByTag("v0.6.0-preview") is not { Unified: true } unified ||
+    !unified.InstallerUrl.AbsolutePath.EndsWith("/YettaInstaller.exe") || unified.ChecksumUrl.Host != "api.github.com")
+    throw new Exception("Installation floor or unified asset selection failed.");

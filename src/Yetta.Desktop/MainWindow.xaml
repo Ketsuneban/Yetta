@@ -96,50 +96,20 @@
     </Style>
 
     <!-- Narrow, rounded theme-aware scrolling for content; navigation has no visible scrollbar. -->
-    <Style x:Key="ModernThumb" TargetType="{x:Type Thumb}">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type Thumb}">
-            <Border x:Name="ThumbSurface" Background="{DynamicResource TextSecondary}"
-                    CornerRadius="4" Margin="1,2" Opacity="0.65"/>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource AccentBrush}"/>
-                <Setter TargetName="ThumbSurface" Property="Opacity" Value="1"/>
-              </Trigger>
-              <Trigger Property="IsDragging" Value="True">
-                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource AccentBrush}"/>
-                <Setter TargetName="ThumbSurface" Property="Opacity" Value="1"/>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
+    <Style x:Key="FlagChoice" TargetType="RadioButton">
+      <Setter Property="Cursor" Value="Hand"/><Setter Property="Template"><Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border x:Name="Segment" CornerRadius="10" Padding="8,3" Background="Transparent">
+            <ContentPresenter VerticalAlignment="Center"/></Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Segment" Property="Background" Value="{DynamicResource SelectedBrush}"/></Trigger>
+            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Segment" Property="Background" Value="{DynamicResource AccentBrush}"/></Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
     </Style>
-    <Style x:Key="ModernScrollBar" TargetType="{x:Type ScrollBar}">
-      <Setter Property="Width" Value="9"/>
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type ScrollBar}">
-            <Grid Background="Transparent">
-              <Track x:Name="PART_Track" IsDirectionReversed="True">
-                <Track.DecreaseRepeatButton>
-                  <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" IsTabStop="False"/>
-                </Track.DecreaseRepeatButton>
-                <Track.Thumb>
-                  <Thumb Style="{StaticResource ModernThumb}" MinHeight="28"/>
-                </Track.Thumb>
-                <Track.IncreaseRepeatButton>
-                  <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" IsTabStop="False"/>
-                </Track.IncreaseRepeatButton>
-              </Track>
-            </Grid>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
+    <Style x:Key="FlatTile" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Setter.Value></Setter>
     </Style>
-    <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ModernScrollBar}"/>
     <Style x:Key="AccessComboItem" TargetType="{x:Type ComboBoxItem}">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
@@ -379,8 +349,8 @@
                        Foreground="{DynamicResource TextSecondary}"/>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Style="{StaticResource SecondaryButton}" Click="OnOpenPageFinder"
-                  Content="Найти раздел" ToolTip="Ctrl+K" Margin="0,0,10,0"/>
+          <Button Style="{StaticResource FlatTile}" Click="OnOpenPageFinder"
+                  ToolTip="Ctrl+K" Margin="0,0,8,0"><Border Background="{DynamicResource SelectedBrush}" CornerRadius="6" Padding="12,8"><TextBlock Text="Найти раздел" Foreground="{DynamicResource AccentBrush}" FontSize="11"/></Border></Button>
           <Border VerticalAlignment="Center"
                   Background="{DynamicResource SelectedBrush}" CornerRadius="6" Padding="12,8">
             <TextBlock x:Name="ThemeIndicator" Text="{DynamicResource Local.ui.xaml.0021}" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
@@ -399,11 +369,15 @@
       <Border Grid.Row="2">
         <Grid Margin="34,0">
           <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondary}"><Run Text="{DynamicResource Local.ui.xaml.0027}"/><Hyperlink NavigateUri="https://icons8.ru/" RequestNavigate="OnFooterLink"><Run Text="{DynamicResource Local.ui.xaml.0028}"/></Hyperlink></TextBlock>
-          <TextBlock x:Name="FooterVersion" HorizontalAlignment="Right" VerticalAlignment="Center"
-                     FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <Border CornerRadius="9" BorderThickness="1" BorderBrush="#F09B45" Padding="6,0" Margin="0,0,6,0"><TextBlock Text="BETA" Foreground="#F09B45" FontWeight="SemiBold" FontSize="10"/></Border>
+          <TextBlock x:Name="FooterVersion" VerticalAlignment="Center"
+                     FontSize="11" Foreground="{DynamicResource TextSecondary}"/></StackPanel>
         </Grid>
       </Border>
-      <StackPanel x:Name="ToastHost" Grid.RowSpan="3" Panel.ZIndex="20" Width="324" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12,12,22,56"/>
+      <StackPanel Grid.RowSpan="3" Panel.ZIndex="20" Width="324" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12,12,22,56">
+        <StackPanel x:Name="ToastHost"/><ContentControl x:Name="UpdateHost"/>
+      </StackPanel>
     </Grid>
     </Grid>
   </Grid>

@@ -40,8 +40,8 @@ public partial class MainWindow
         var button = ActionButton(label, click, primary);
         if (!primary)
         {
-            button.Background = Dracula ? Hex("#505469") : Hex("#344353");
-            button.Foreground = Brushes.White;
+            button.Background = Dracula ? Hex("#505469") : ConsolePanel;
+            button.Foreground = ConsoleInk;
         }
         button.MinWidth = 0;
         button.MinHeight = 34;
@@ -55,7 +55,7 @@ public partial class MainWindow
         var request = state.Prompt;
         var root = new StackPanel();
         root.Children.Add(LiteralConsoleLine("Subsy  ·  " + state.Source));
-        var label = LiteralConsoleLine(request.Label, Brushes.White);
+        var label = LiteralConsoleLine(request.Label, ConsoleInk);
         label.FontSize = 15;
         root.Children.Add(label);
         var form = new StackPanel();
@@ -114,8 +114,8 @@ public partial class MainWindow
             var field = new TextBox
             {
                 MaxLength = 512, Padding = new Thickness(8), Margin = new Thickness(0, 2, 0, 6),
-                Background = new SolidColorBrush(Color.FromRgb(53, 61, 69)), Foreground = Brushes.White,
-                CaretBrush = Brushes.White, BorderThickness = new Thickness(0), MinHeight = 32
+                Background = ConsoleSurface, Foreground = ConsoleInk,
+                CaretBrush = ConsoleInk, BorderThickness = new Thickness(0), MinHeight = 32
             };
             System.Windows.Automation.AutomationProperties.SetName(field, name);
             form.Children.Add(field);
@@ -189,8 +189,8 @@ public partial class MainWindow
                 var secret = new PasswordBox
                 {
                     MaxLength = 256, PasswordChar = '*', Padding = new Thickness(8),
-                    Background = new SolidColorBrush(Color.FromRgb(53, 61, 69)),
-                    Foreground = Brushes.White, BorderThickness = new Thickness(0), MinHeight = 32
+                    Background = ConsoleSurface,
+                    Foreground = ConsoleInk, BorderThickness = new Thickness(0), MinHeight = 32
                 };
                 System.Windows.Automation.AutomationProperties.SetName(secret, request.Label);
                 form.Children.Add(secret);
@@ -200,7 +200,7 @@ public partial class MainWindow
                     revealed = Field("Пароль");
                     revealed.MaxLength = 256;
                     revealed.Visibility = Visibility.Collapsed;
-                    var show = new CheckBox { Content = "Показать пароль", Foreground = Brushes.White,
+                    var show = new CheckBox { Content = "Показать пароль", Foreground = ConsoleInk,
                         Margin = new Thickness(0, 5, 0, 4) };
                     show.Checked += (_, _) =>
                     {
@@ -262,7 +262,7 @@ public partial class MainWindow
                 }
                 foreach (string option in request.Options)
                 {
-                    var box = new CheckBox { Content = option, Foreground = Brushes.White,
+                    var box = new CheckBox { Content = option, Foreground = ConsoleInk,
                         Margin = new Thickness(0, 0, 0, 6) };
                     box.Checked += (_, _) => Count();
                     box.Unchecked += (_, _) => Count();
@@ -277,7 +277,7 @@ public partial class MainWindow
 
             case SubsyPromptKind.Pages:
                 form.Children.Add(BuildPager(request.Options.Length,
-                    index => LiteralConsoleLine(request.Options[index], Brushes.White),
+                    index => LiteralConsoleLine(request.Options[index], ConsoleInk),
                     index => Submit(index + 1)));
                 break;
         }
@@ -415,9 +415,9 @@ public partial class MainWindow
             {
                 Children =
                 {
-                    LiteralConsoleLine(title, Brushes.White),
+                    LiteralConsoleLine(title, ConsoleInk),
                     BuildPager((rows.Length + pageSize - 1) / pageSize, page => LiteralConsoleLine(
-                        string.Join("\n", rows.Skip(page * pageSize).Take(pageSize)), Brushes.White))
+                        string.Join("\n", rows.Skip(page * pageSize).Take(pageSize)), ConsoleInk))
                 }
             })
         });

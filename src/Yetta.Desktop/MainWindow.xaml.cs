@@ -11,7 +11,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using Microsoft.Toolkit.Uwp.Notifications;
+
 using Yetta.Core;
 
 namespace Yetta.Desktop;
@@ -19,12 +19,12 @@ namespace Yetta.Desktop;
 public partial class MainWindow : Window
 {
     private static readonly Version CurrentVersion = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 5, 1);
-    private static readonly string ReleaseVersion = CurrentVersion.ToString(3) + "-preview";
+    private static readonly string ReleaseVersion = CurrentVersion.ToString(3);
     private readonly CancellationTokenSource _updateStop = new();
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private CancellationTokenSource? _downloadCancel;
     private Version? _dismissedAutoVersion;
-    private Version? _downloadingVersion;
+
     private DateTimeOffset _nextAutoUpdateErrorNotice;
     private readonly SettingsStore _store = new();
     private readonly TallowNotificationStore _activityStore = new();
@@ -36,11 +36,8 @@ public partial class MainWindow : Window
     private string _commandDraft = "";
     private readonly List<(DateTime Time, string Source, string Message)> _notifications = [];
     private string _page = "overview";
-    private string _consoleMode = "Marvine";
     private ConsoleTranscript? _consoleOutput;
     private TextBox? _consoleInput;
-    private EmbeddedShellSession? _embeddedShell;
-    private DaxProcessMonitor? _processMonitor;
     private readonly DaxAgentGate _daxGate;
 
     private Brush Ink => Resource("TextPrimary");
@@ -92,15 +89,10 @@ public partial class MainWindow : Window
         Navigate("overview");
         _daxGate = new DaxAgentGate(this, OnDaxStatusChanged);
         SystemEvents.UserPreferenceChanged += OnWindowsPreferenceChanged;
-        ToastNotificationManagerCompat.OnActivated += args =>
-        {
-            if (args.Argument.Contains("cancel-update", StringComparison.Ordinal))
-                Dispatcher.BeginInvoke(new Action(() => { _dismissedAutoVersion = _downloadingVersion; _downloadCancel?.Cancel(); }));
-        };
         Loaded += (_, _) => _ = WatchUpdatesAsync();
         Loaded += (_, _) => _ = WatchAdministratorAsync();
         Activated += (_, _) => _ = RefreshAdministratorAsync();
-        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate.Dispose(); _processMonitor?.Dispose(); _processMonitor = null; _embeddedShell?.Dispose(); _embeddedShell = null; _scripts.Dispose(); };
+        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate.Dispose(); _scripts.Dispose(); };
     }
 
     private void ShowDaxNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
@@ -116,7 +108,7 @@ public partial class MainWindow : Window
         IconAssets.SetNav(NavOverview, 7, TallowText.Get("ui.main.0001"));
         IconAssets.SetNav(NavInfo, 2, TallowText.Get("ui.main.0002"));
         IconAssets.SetNav(NavConsole, 1, TallowText.Get("ui.main.0003"));
-        IconAssets.SetNav(NavDevelopers, 1, "Для разработчиков");
+        IconAssets.SetNavLogo(NavDevelopers, "Profiles/Developers.png", "Для разработчиков");
         IconAssets.SetNavLogo(NavGuard, "dax-logo.png", TallowText.Get("ui.main.0004"));
         IconAssets.SetNav(NavLogs, 8, TallowText.Get("ui.main.0005"));
         IconAssets.SetNav(NavActivity, 31, TallowText.Get("ui.main.0006"));
@@ -248,10 +240,6 @@ public partial class MainWindow : Window
     private void Navigate(string page)
     {
         if (!_navigation.ContainsKey(page) || page == "developers" && !AdministratorActive) return;
-        _processMonitor?.Dispose();
-        _processMonitor = null;
-        _embeddedShell?.Dispose();
-        _embeddedShell = null;
         _page = page;
         _consoleOutput = null;
         _subsyViews.Clear();
@@ -461,9 +449,12 @@ public partial class MainWindow : Window
             TallowText.Get("ui.main.0027"));
         var tiles = new WrapPanel();
         tiles.Children.Add(SummaryTile(TallowText.Get("ui.main.0028"), ReleaseVersion, null));
-        tiles.Children.Add(SummaryTile(TallowText.Get("ui.main.0029"),
+        var accessTile = SummaryTile(TallowText.Get("ui.main.0029"),
             AccessProfiles.DisplayName(_settings.ActiveProfile),
-            AccessProfiles.Description(_settings.ActiveProfile)));
+            AccessProfiles.Description(_settings.ActiveProfile));
+        var accessButton = new Button { Content = accessTile, Style = (Style)FindResource("FlatTile"), ToolTip = "Подробнее об уровне доступа" };
+        accessButton.Click += (_, _) => ShowAccessInfo();
+        tiles.Children.Add(accessButton);
         var daxTile = SummaryTile(TallowText.Get("ui.main.0030"), TallowText.Get("ui.main.0031"),
             TallowText.Get("ui.main.0032"));
         daxTile.Cursor = Cursors.Hand;
@@ -513,19 +504,6 @@ public partial class MainWindow : Window
             string.Join(", ", _settings.InstalledProfiles.Select(AccessProfiles.DisplayName)), 12, muted: true));
         ContentPanel.Children.Add(Card(status));
 
-        AddSection(TallowText.Get("ui.main.0049"));
-        var capabilities = new StackPanel();
-        capabilities.Children.Add(Text(IsProcessAdministrator()
-            ? TallowText.Get("ui.main.0050")
-            : TallowText.Get("ui.main.0051"), 13, heading: true));
-        capabilities.Children.Add(Text(
-            "Интерфейс использует токен текущего процесса Windows. Состояние Administrator подтверждает служба DAX.",
-            12, muted: true));
-        capabilities.Children.Add(Text(
-            "Встроенная оболочка PowerShell доступна при уровне «Пользователь».",
-            12, muted: true));
-        ContentPanel.Children.Add(Card(capabilities));
-
         AddSection(TallowText.Get("ui.main.0054"));
         var specs = new (string Label, string Value)[]
         {
@@ -549,7 +527,7 @@ public partial class MainWindow : Window
         }
         deviceCard.Children.Add(Text(TallowText.Get("ui.main.0063") +
             (Path.GetDirectoryName(_store.FilePath) ?? TallowText.Get("ui.main.0064")), 12, muted: true));
-        deviceCard.Children.Add(ActionButton("Скопировать сводку", () =>
+        var copySummary = ActionButton("Скопировать сводку", () =>
         {
             try
             {
@@ -562,7 +540,9 @@ public partial class MainWindow : Window
             {
                 ShowYettaNotice("Буфер обмена", "Не удалось скопировать сводку.", WarningKind.Caution);
             }
-        }));
+        });
+        copySummary.Margin = new Thickness(0, 12, 0, 0);
+        deviceCard.Children.Add(copySummary);
         ContentPanel.Children.Add(Card(deviceCard));
         AddNotice(TallowText.Get("ui.main.0065"), TallowText.Get("ui.main.0066"));
     }
@@ -570,84 +550,10 @@ public partial class MainWindow : Window
     private void BuildGuard()
     {
         AddIntro("Yetta / DAX Guard", "Менеджер уровней доступа",
-            "Для уровня Administrator требуется отдельная служба DAX и разрешение Windows.");
+            "Выбери профиль, чтобы посмотреть его возможности и условия активации.");
 
-        var current = new StackPanel();
-        current.Children.Add(Text(TallowText.Get("ui.main.0070"), 10, heading: true, muted: true));
-        var active = Text(AccessProfiles.DisplayName(_settings.ActiveProfile), 25, heading: true);
-        active.Foreground = Accent;
-        active.Margin = new Thickness(0, 8, 0, 8);
-        current.Children.Add(active);
-        current.Children.Add(Text(AccessProfiles.Description(_settings.ActiveProfile), 12, muted: true));
+        BuildProfilePicker();
 
-        var choices = new ComboBox
-        {
-            Style = (Style)FindResource("AccessCombo"),
-            Margin = new Thickness(0, 16, 0, 0),
-            MaxWidth = 350,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            MinWidth = 280,
-            Padding = new Thickness(10, 7, 10, 7)
-        };
-        foreach (string profile in AccessProfiles.All.Where(p => _settings.InstalledProfiles.Contains(p)))
-        {
-            var item = new ComboBoxItem
-            {
-                Tag = profile,
-                Content = (profile == _settings.ActiveProfile ? "✓  " : "    ") + AccessProfiles.DisplayName(profile),
-                Foreground = Ink,
-                Background = Brushes.Transparent
-            };
-            choices.Items.Add(item);
-            if (profile == _settings.ActiveProfile) choices.SelectedItem = item;
-        }
-        choices.SelectionChanged += async (_, _) =>
-        {
-            if (choices.SelectedItem is ComboBoxItem { Tag: string profile } && profile != _settings.ActiveProfile)
-                await SelectAccessProfileAsync(profile);
-        };
-        current.Children.Add(choices);
-        ContentPanel.Children.Add(Card(current));
-
-        AddSection(TallowText.Get("ui.main.0071"), TallowText.Get("ui.main.0072"));
-        foreach (string profile in AccessProfiles.All)
-        {
-            if (profile == "Administrator")
-            {
-                BuildAdministratorCard();
-                continue;
-            }
-            bool installed = _settings.InstalledProfiles.Contains(profile);
-            bool applied = profile == _settings.ActiveProfile;
-            var row = new Grid();
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var description = new StackPanel();
-            string code = profile switch
-            {
-                "Guest" => "GUEST",
-                "User" => "USER", "Administrator" => "ADMIN",
-                _ => "SYS"
-            };
-            var headingLine = new StackPanel { Orientation = Orientation.Horizontal };
-            headingLine.Children.Add(Text(code + "   ", 12, heading: true, muted: true));
-            headingLine.Children.Add(Text(AccessProfiles.DisplayName(profile), 15, heading: true));
-            description.Children.Add(headingLine);
-            description.Children.Add(Text(AccessProfiles.Description(profile), 12, muted: true));
-            Grid.SetColumn(description, 0);
-            row.Children.Add(description);
-
-            var button = ActionButton(
-                applied ? TallowText.Get("ui.main.0073") : installed ? TallowText.Get("ui.main.0074") : TallowText.Get("ui.main.0075"),
-                async () => await SelectAccessProfileAsync(profile), !applied && installed, enabled: !applied);
-            button.VerticalAlignment = VerticalAlignment.Center;
-            button.Margin = new Thickness(13, 0, 0, 0);
-            Grid.SetColumn(button, 1);
-            row.Children.Add(button);
-            ContentPanel.Children.Add(Card(row));
-        }
-        AddSection(TallowText.Get("ui.main.0076"), TallowText.Get("ui.main.0077"));
         var ttyPanel = new StackPanel();
         ttyPanel.Children.Add(Text("•••• •••• •••• •••• •••• •••• •••• ••••", 17, heading: true));
         ttyPanel.Children.Add(Text(
@@ -689,7 +595,6 @@ public partial class MainWindow : Window
         }, true));
         ttyPanel.Children.Add(ttyActions);
         ContentPanel.Children.Add(Card(ttyPanel));
-        AddNotice("Уровень System", "Профиль System пока недоступен.");
     }
 
     private void OnFooterLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -819,155 +724,24 @@ public partial class MainWindow : Window
 
     private void BuildConsole()
     {
-        bool marvine = _consoleMode == "Marvine";
         ConsoleHost.Background = ConsoleSurface;
         var layout = new DockPanel();
         ConsoleHost.Child = layout;
-        var tabs = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        DockPanel.SetDock(tabs, Dock.Top);
-        var toolbar = new DockPanel { LastChildFill = true };
+        var toolbar = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
         DockPanel.SetDock(toolbar, Dock.Top);
         layout.Children.Add(toolbar);
-        foreach (string mode in new[] { "Marvine", "Windows PowerShell" })
-        {
-            var tab = SubsyButton(mode, () =>
-            {
-                if (_consoleMode == mode) return;
-                _consoleMode = mode;
-                Navigate("console");
-            });
-            bool selected = mode == _consoleMode;
-            tab.Background = selected ? ConsoleAccent : Brushes.Transparent;
-            tab.Foreground = selected ? Hex("#18222C") : ConsoleMuted;
-            tab.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
-            System.Windows.Automation.AutomationProperties.SetItemStatus(tab, selected ? "Выбрано" : "");
-            tabs.Children.Add(tab);
-        }
-        if (marvine)
-        {
-            BuildMarvineWorkspace(layout, toolbar);
-            toolbar.Children.Add(tabs);
-            return;
-        }
-
-        toolbar.Children.Add(tabs);
-        var body = new StackPanel();
-        var info = new EdgeScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        layout.Children.Add(info);
-        if (!AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
-        {
-            var note = Text(
-                TallowText.Get("ui.main.0123") +
-                TallowText.Get("ui.main.0124"), 13);
-            note.Foreground = Brushes.White;
-            body.Children.Add(note);
-            body.Children.Add(ActionButton(TallowText.Get("ui.main.0125"), () => Navigate(TallowText.Get("ui.main.0126"))));
-        }
-        else if (_daxGate.Status.State != DaxState.Ready)
-        {
-            body.Children.Add(LiteralConsoleLine("PowerShell сейчас недоступен. " + DaxStatusText(_daxGate.Status)));
-            body.Children.Add(ActionButton("Диагностика DAX", () => Navigate("recovery")));
-            body.Children.Add(ActionButton("Проверить снова", async () =>
-            {
-                await _daxGate.CheckAsync();
-                if (_page == "console" && _consoleMode != "Marvine") Navigate("console");
-            }, true));
-        }
-        else if (IsProcessAdministrator())
-        {
-            var note = Text(
-                TallowText.Get("ui.main.0127") +
-                TallowText.Get("ui.main.0128"), 13);
-            note.Foreground = Brushes.White;
-            body.Children.Add(note);
-        }
-        else if (!_settings.EmbeddedShellConsentGranted)
-        {
-            var note = Text(
-                TallowText.Get("ui.main.0129") +
-                TallowText.Get("ui.main.0130"), 13);
-            note.Foreground = Brushes.White;
-            note.Margin = new Thickness(0, 0, 0, 15);
-            body.Children.Add(note);
-            body.Children.Add(ActionButton(TallowText.Get("ui.main.0131"), () =>
-            {
-                if (ConsentDialog.Confirm(this,
-                    TallowText.Get("ui.main.0132"),
-                    TallowText.Get("ui.main.0133") +
-                    TallowText.Get("ui.main.0134") +
-                    TallowText.Get("ui.main.0135") +
-                    TallowText.Get("ui.main.0136"),
-                    YettaWarningLevel.Consent))
-                {
-                    _settings.EmbeddedShellConsentGranted = true;
-                    SavePreferences();
-                    Navigate("console");
-                }
-            }, true));
-        }
-        else
-        {
-            layout.Children.Remove(info);
-            var footer = new StackPanel();
-            DockPanel.SetDock(footer, Dock.Bottom);
-            layout.Children.Add(footer);
-            var input = BuildTerminalInput(TallowText.Get("ui.main.0139"), RunPowerShell);
-            _consoleInput = input;
-            var display = AttachTranscript(layout);
-            var session = new Button { Content = TallowText.Get("ui.main.0140"), Style = (Style)FindResource("SecondaryButton"),
-                Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(8, 0, 0, 0) };
-            session.Click += (_, _) =>
-            {
-                if (_embeddedShell is null) { Navigate("console"); return; }
-                _processMonitor?.Dispose();
-                _processMonitor = null;
-                _embeddedShell.Dispose();
-                _embeddedShell = null;
-                MarkStopped();
-            };
-            var row = new DockPanel { Margin = new Thickness(0, 8, 0, 0) };
-            DockPanel.SetDock(session, Dock.Right);
-            row.Children.Add(session);
-            row.Children.Add(BuildCommandRow(input, "PS", RunPowerShell));
-            footer.Children.Add(row);
-            display.Append(LiteralConsoleLine(TallowText.Get("ui.main.0138")));
-            void MarkStopped()
-            {
-                input.IsReadOnly = true;
-                session.Content = "Новая сессия";
-                display.Append(LiteralConsoleLine("Сессия завершена."));
-            }
-            try
-            {
-                _embeddedShell = EmbeddedShellSession.Start(line =>
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        if (_consoleOutput == display && !input.IsReadOnly)
-                            display.Append(LiteralConsoleLine(line));
-                    })));
-                _processMonitor = new DaxProcessMonitor(_embeddedShell.ProcessId,
-                    message => Notify(TallowText.Get("ui.main.0142"), message));
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or
-                System.ComponentModel.Win32Exception or IOException)
-            {
-                _embeddedShell?.Dispose();
-                _embeddedShell = null;
-                display.Append(LiteralConsoleLine(TallowText.Get("ui.main.0143") + ex.Message));
-                MarkStopped();
-            }
-            input.Focus();
-        }
+        BuildMarvineWorkspace(layout, toolbar);
+        toolbar.Children.Add(Text("Marvine", 16, heading: true));
     }
 
     private TextBox BuildTerminalInput(string hint, Action execute)
     {
         var field = new TextBox
         {
-            Background = Brushes.Transparent, Foreground = Brushes.White, CaretBrush = Brushes.White,
+            Background = Brushes.Transparent, Foreground = ConsoleInk, CaretBrush = ConsoleInk,
             BorderThickness = new Thickness(0), FontFamily = ConsoleFont, FontSize = 14,
             Padding = new Thickness(4, 0, 6, 0), VerticalContentAlignment = VerticalAlignment.Center,
-            MaxLength = _consoleMode == "Marvine" ? 4096 : 32768, ToolTip = hint
+            MaxLength = 4096, ToolTip = hint
         };
         System.Windows.Automation.AutomationProperties.SetName(field, hint);
         SpellCheck.SetIsEnabled(field, false);
@@ -980,56 +754,13 @@ public partial class MainWindow : Window
         return field;
     }
 
-    private async void RunPowerShell()
-    {
-        if (_consoleInput is null || _embeddedShell is not { } shell || _consoleOutput is not { } display) return;
-        if (IsProcessAdministrator() || !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings)) return;
-        if (_daxGate.Status.State != DaxState.Ready)
-        {
-            _consoleOutput?.Append(LiteralConsoleLine("Команда не отправлена. " + DaxStatusText(_daxGate.Status)));
-            _consoleFollow?.ContentChanged();
-            return;
-        }
-        var command = _consoleInput.Text;
-        if (string.IsNullOrWhiteSpace(command)) return;
-        WarningKind? risk = DaxCommandGuard.Classify(command);
-        if (risk is WarningKind level)
-        {
-            bool allowed = YettaWarningWindow.Show(this,
-                new WarningRequest(level,
-                    TallowText.Get("ui.main.0149"),
-                    TallowText.Get("ui.main.0150") +
-                    TallowText.Get("ui.main.0151") +
-                    TallowText.Get("ui.main.0152") + command,
-                    Subject: TallowText.Get("ui.main.0153"),
-                    SourcePath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe"),
-                    CauseType: WarningCauseType.Application,
-                    RequireAcknowledgement: true,
-                    RequireTty: level == WarningKind.Critical,
-                    PotentialDamage: true),
-                _settings.ActiveProfile);
-            DaxAudit.Write("powershell_preflight", allowed ? "allowed" : "denied",
-                "Command pattern category: " + level + ". Command content intentionally omitted.");
-            if (!allowed) return;
-        }
-        _consoleInput.Clear();
-        _consoleOutput?.Append(ConsoleLine("> " + command, true));
-        DaxAudit.Write("powershell", "submitted", "Command sent through user-level shell. Text omitted.");
-        try { await shell.SendAsync(command); }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or
-            ObjectDisposedException)
-        {
-            if (ReferenceEquals(display, _consoleOutput)) display.Append(ConsoleLine(TallowText.Get("ui.main.0154") + ex.Message, false));
-        }
-    }
-
     private TextBlock ConsoleLine(string message, bool prompt)
     {
         var line = new TextBlock
         {
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 13,
-            Foreground = Brushes.White,
+            Foreground = ConsoleInk,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 9)
         };
@@ -1038,7 +769,7 @@ public partial class MainWindow : Window
         {
             if (i > 0) line.Inlines.Add(new LineBreak());
             string part = parts[i].TrimEnd('\r');
-            Brush color = Brushes.White;
+            Brush color = ConsoleInk;
             if (!prompt && _settings.MarvineColorset == "EGA")
             {
                 color = part switch
@@ -1053,9 +784,12 @@ public partial class MainWindow : Window
                         => new SolidColorBrush(Color.FromRgb(168, 178, 188)),
                     var text when text.StartsWith("[☄]", StringComparison.Ordinal) || text.StartsWith("[⌘]", StringComparison.Ordinal)
                         => new SolidColorBrush(Color.FromRgb(109, 193, 255)),
-                    _ => new SolidColorBrush(Color.FromRgb(230, 234, 238))
+                    _ => ConsoleInk
                 };
             }
+            if (_settings.MarvineColorset == "EGA" && Ink is SolidColorBrush ink && ink.Color.R < 120)
+                color = part.StartsWith("[✖]") ? Hex("#AD243B") : part.StartsWith("[⚠]") ? Hex("#795400") :
+                    part.StartsWith("[✔]") ? Hex("#006948") : ConsoleInk;
             if (_settings.MarvineColorset == "dracula")
             {
                 color = part switch
@@ -1070,6 +804,8 @@ public partial class MainWindow : Window
                     _ => Hex("#F8F8F2")
                 };
             }
+            part = Regex.Replace(part, @"^\[(Зелёный|Красный|Жёлтый|Серый|Синий|Голубой|Белый)\]\s*", "");
+            if (part.StartsWith('/') && !Dracula) color = ConsoleAccent;
             if (prompt || part.Contains("DAX TTY:", StringComparison.Ordinal))
                 line.Inlines.Add(new Run(part) { Foreground = color });
             else
@@ -1157,9 +893,7 @@ public partial class MainWindow : Window
         try
         {
             string message = response.Message;
-            if (response.Preference is { } preference)
-                message = ApplyWindowsPreference(preference, response.SettingValue);
-            else if (response.Request is not null)
+            if (response.Request is not null)
                 message = await HandleMarvineRequestAsync(response.Request, response.Argument);
             if (message.Length > 0) AddConsoleEntry(new ConsoleEntry("", message));
             samePage = ReferenceEquals(input, _consoleInput);
@@ -1172,10 +906,28 @@ public partial class MainWindow : Window
             if (!_updateStop.IsCancellationRequested)
                 AddConsoleEntry(new ConsoleEntry("", "[✖] Marvine: " + FriendlyMarvineError(ex)));
         }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            string code = $"{ex.GetType().FullName}/0x{ex.HResult:X8}";
+            AddConsoleEntry(new ConsoleEntry("", "[✖] Неизвестная ошибка: " + code)
+            {
+                Render = () =>
+                {
+                    var row = new WrapPanel();
+                    row.Children.Add(ConsoleLine("[✖] Неизвестная ошибка", false));
+                    row.Children.Add(SubsyButton("Код ошибки", () =>
+                    {
+                        try { Clipboard.SetText(code); }
+                        catch (System.Runtime.InteropServices.ExternalException) { Notify("Marvine", "Буфер обмена занят."); }
+                    }));
+                    return row;
+                }
+            });
+        }
         finally
         {
             _marvineCommandRunning = false;
-            if (_page == "console" && _consoleMode == "Marvine" && _consoleInput is { } activeInput)
+            if (_page == "console" && _consoleInput is { } activeInput)
                 activeInput.IsReadOnly = false;
         }
 
@@ -1205,28 +957,12 @@ public partial class MainWindow : Window
     {
         switch (request)
         {
-            case "WIN_OPEN": return OpenWindowsPage(argument);
-            case "WIN_WALLPAPER": return SetDesktopWallpaper(argument);
             case "TEST_WARN":
                 return ShowWarningTest(argument ?? "");
-            case "HELP_PAGE":
-            {
-                int page = int.TryParse(argument, out int start) ? Math.Clamp(start, 1, 4) : 1;
-                if (!_settings.MarvineSubsyEnabled) return ConsoleEngine.HelpPage(page, _settings.ActiveProfile);
-                string profile = _settings.ActiveProfile;
-                AddConsoleEntry(new ConsoleEntry("", "Справка Marvine")
-                {
-                    Render = () => SubsyCard(BuildPager(4,
-                        index => ConsoleLine(ConsoleEngine.HelpPage(index + 1, profile), false), initial: page - 1))
-                });
-                return "";
-            }
             case "SUBSY_DEMO":
                 return await PreviewSubsyAsync();
             case "SUBSY_GALLERY":
                 return await PreviewSubsyGalleryAsync();
-            case "DAX_STATUS":
-                return DaxStatusText(await DaxAgentGate.GetStatusAsync(_updateStop.Token));
             case "VERSION":
             {
                 var run = Guid.NewGuid();
@@ -1241,8 +977,8 @@ public partial class MainWindow : Window
                 }
                 if (visual) EndSubsyActivity(run, "Обновления", "Список получен");
                 string title = "Установлена " + ReleaseVersion + (releases.Count == 0
-                    ? " · релизы не найдены" : " · последняя " + releases[0].Tag);
-                return PageMarvineResult(title, releases.Select(item => item.Tag + " · ID " +
+                    ? " · релизы не найдены" : " · последняя " + releases[0].Version);
+                return PageMarvineResult(title, releases.Select(item => item.Version + " · ID " +
                     (item.Id == 0 ? item.Tag : item.Id.ToString())).ToArray());
             }
             case "UPDATE":
@@ -1256,7 +992,7 @@ public partial class MainWindow : Window
                     release = YettaUpdater.FindReleaseByTag(argument);
                 if (release is null && string.IsNullOrWhiteSpace(argument))
                     return "[⚠] Marvine: укажи ID или тег из команды /yetta version.";
-                if (release is null) return "[✖] Marvine: релиз с таким ID не найден среди доступных установщиков.";
+                if (release is null) return "[✖] Marvine: релиз недоступен. Минимальная версия для установки — 0.3.3.";
                 if (!ConfirmYettaAction("Установить Yetta " + release.Tag,
                     "Будет загружен и запущен установщик релиза " + release.Tag + "."))
                     return "[ℹ] Marvine: установка отменена.";
@@ -1314,7 +1050,7 @@ public partial class MainWindow : Window
             }
             case "SCRIPT_RUN":
             {
-                if (!AdministratorActive) return "[✖] Включи профиль Администратор в DAX Guard.";
+                if (!AdministratorActive) return "[✖] DAX отклонил команду из-за недостатка прав пользователя: «script run». Включи профиль Администратор в DAX Guard.";
                 bool elevated;
                 try { elevated = CurrentTokenIsAdministrator(); }
                 catch (SystemException) { return "[✖] Windows не подтвердила права процесса. Запуск отменён."; }
@@ -1352,7 +1088,7 @@ public partial class MainWindow : Window
             }
             case "SCRIPT_STOP":
                 return _settings.ActiveProfile == "Guest"
-                    ? "[✖] Marvine: для остановки скрипта нужен профиль пользователя."
+                    ? "[✖] DAX отклонил команду из-за недостатка прав пользователя: «script stop»."
                     : _scripts.Stop(argument ?? "")
                         ? "[✔] Marvine: скрипт остановлен."
                         : "[ℹ] Marvine: запущенный скрипт с таким ID или путём не найден.";
@@ -1413,6 +1149,8 @@ public partial class MainWindow : Window
         if (_settings.PythonExecutablePath is string configured && Path.IsPathFullyQualified(configured) && File.Exists(configured) &&
             Path.GetFileName(configured).ToLowerInvariant() is "python.exe" or "py.exe")
             return configured;
+        string bundled = Path.Combine(AppContext.BaseDirectory, "Python", "python.exe");
+        if (File.Exists(bundled)) return bundled;
         string launcher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "py.exe");
         if (File.Exists(launcher)) return launcher;
         var picker = new OpenFileDialog
@@ -1546,24 +1284,6 @@ public partial class MainWindow : Window
         }, true));
         ContentPanel.Children.Add(Card(updates));
 
-        AddSection("Встроенная оболочка");
-        var shell = new StackPanel();
-        shell.Children.Add(Text(_settings.EmbeddedShellConsentGranted
-            ? TallowText.Get("ui.main.0172") : TallowText.Get("ui.main.0173"), 12, muted: true));
-        var revoke = ActionButton(TallowText.Get("ui.main.0174"), () =>
-        {
-            _settings.EmbeddedShellConsentGranted = false;
-            _processMonitor?.Dispose();
-            _processMonitor = null;
-            _embeddedShell?.Dispose();
-            _embeddedShell = null;
-            SavePreferences();
-            Navigate("settings");
-        }, enabled: _settings.EmbeddedShellConsentGranted);
-        revoke.Margin = new Thickness(0, 14, 0, 0);
-        shell.Children.Add(revoke);
-        ContentPanel.Children.Add(Card(shell));
-
         AddSection("Локальные данные");
         var local = new StackPanel();
         local.Children.Add(Text("Файл настроек: " + _store.FilePath, 12, muted: true));
@@ -1627,10 +1347,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or
             InvalidDataException or InvalidOperationException or
-            System.ComponentModel.Win32Exception or TaskCanceledException or
+            System.ComponentModel.Win32Exception or OperationCanceledException or
             System.Text.Json.JsonException or System.Xml.XmlException)
         {
-            if (ex is OperationCanceledException && !manual) return "Загрузка отменена";
+            if (ex is OperationCanceledException && (_dismissedAutoVersion is not null || _updateStop.IsCancellationRequested))
+                return "Загрузка отменена";
             string message = FriendlyMarvineError(ex);
             DaxAudit.Write("update", "check_failed", ex.GetType().Name);
             if (consoleProgress is not null) throw;
@@ -1643,57 +1364,50 @@ public partial class MainWindow : Window
             }
             return message;
         }
-        finally { _downloadCancel = null; _downloadingVersion = null; _updateGate.Release(); }
+        finally { _downloadCancel = null; _updateGate.Release(); }
     }
 
     private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false, Action<double>? consoleProgress = null)
     {
         using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
         _downloadCancel = downloadCancel;
-        _downloadingVersion = latest.Version;
-        var notification = new UpdateNotification(latest.Version.ToString());
-        // Registration and shell calls run off the UI thread; local progress remains available if Windows suppresses toasts.
-        await Task.Run(notification.Show);
         var status = Text("Загрузка Yetta " + latest.Version + "…", 13, heading: true);
         var bar = new ProgressBar { Minimum = 0, Maximum = 1, Height = 5, Margin = new Thickness(0, 12, 0, 10) };
-        var cancel = ActionButton("Отменить загрузку", () => downloadCancel.Cancel());
+        var cancel = ActionButton("Отменить загрузку", () => { _dismissedAutoVersion = latest.Version; downloadCancel.Cancel(); });
         var panel = new StackPanel { Children = { status, bar, cancel } };
         var card = new Border { Background = Surface, CornerRadius = new CornerRadius(10), Padding = new Thickness(18),
-            Width = 340, Margin = new Thickness(0, 0, 0, 10), Child = panel };
-        ToastHost.Children.Add(card);
+            HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 10), Child = panel };
+        UpdateHost.Content = card;
         bool active = true;
         int lastPercent = -1;
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        long lastToast = -1000;
+        bool installing = false;
+
         var progress = new Progress<double>(value =>
         {
-            if (!active) return;
+            if (!active || installing) return;
             int percent = (int)(value * 100);
             if (percent == lastPercent) return;
             lastPercent = percent;
             bar.Value = value;
             string stage = value >= 1 ? "Готово к установке" : value >= .99 ? "Проверка файла…" : "Скачивание…";
-            status.Text = stage + "  " + percent + "%";
+            status.Text = $"Yetta {latest.Version} · {stage} {percent}%";
             consoleProgress?.Invoke(value);
-            if (clock.ElapsedMilliseconds - lastToast >= 500 || value >= 1)
-            {
-                lastToast = clock.ElapsedMilliseconds;
-                _ = Task.Run(() => notification.Update(value, stage));
-            }
         });
         try
         {
             // Hashing and streaming never occupy the dispatcher, including cached downloads.
             string path = await Task.Run(() => YettaUpdater.DownloadInstallerAsync(latest, progress, downloadCancel.Token));
             if (automatic && !_settings.AutoUpdatesEnabled) return;
+            installing = true;
             status.Text = "Запуск установщика…";
             bar.IsIndeterminate = true;
             cancel.IsEnabled = false;
-            await Task.Run(() => notification.Update(1, "Установка — ход выполнения в окне установщика"));
             var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
             var start = new ProcessStartInfo(path) { UseShellExecute = true };
-            foreach (string argument in new[] { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/DIR=" + AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar), "/LOG=" + log })
+            foreach (string argument in new[] { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/DIR=" + Path.GetDirectoryName(Environment.ProcessPath!)!, "/LOG=" + log })
                 start.ArgumentList.Add(argument);
+            if (latest.Unified)
+                start.ArgumentList.Add("/PAYLOAD=" + Path.Combine(Path.GetDirectoryName(path)!, latest.PayloadName));
             // Process.Start can synchronously wait for antivirus/installer extraction. Keep Yetta responsive until launch succeeds.
             using var installer = await Task.Run(() => Process.Start(start)) ?? throw new InvalidOperationException("Установщик не запустился.");
             status.Text = "Установка запущена. Yetta откроется после завершения.";
@@ -1703,23 +1417,11 @@ public partial class MainWindow : Window
             // The visible installer owns installation progress and the one restart.
             Close();
         }
-        catch (OperationCanceledException)
-        {
-            await Task.Run(() => notification.Update(0, "Загрузка отменена"));
-            throw;
-        }
-        catch
-        {
-            double current = Math.Max(0, bar.Value);
-            await Task.Run(() => notification.Update(current, "Обновление не завершено. Yetta продолжает работать."));
-            throw;
-        }
         finally
         {
             active = false;
-            ToastHost.Children.Remove(card);
+            UpdateHost.Content = null;
             _downloadCancel = null;
-            _downloadingVersion = null;
         }
     }
 
@@ -1753,14 +1455,6 @@ public partial class MainWindow : Window
 
     private void OpenExternal(string target, string title)
     {
-        // Only constant URLs and the system's real Windows Terminal are passed
-        // by Yetta's own UI. No untrusted command arguments or shell strings.
-        if (target == "wt.exe" && !AccessProfiles.CanLaunchUnprivilegedTerminal(_settings))
-        {
-            ShowYettaNotice(TallowText.Get("ui.main.0220"),
-                TallowText.Get("ui.main.0221"));
-            return;
-        }
         if (_settings.ConfirmExternalLinks && !ConfirmYettaAction(
             TallowText.Get("ui.main.0222"), TallowText.Get("ui.main.0223") + title + TallowText.Get("ui.main.0224"))) return;
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }

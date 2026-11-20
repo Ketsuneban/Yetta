@@ -158,7 +158,9 @@ internal sealed class TrayAgent : ApplicationContext
         public void Dispose() { foreach (var process in Processes) process.Dispose(); }
     }
 
-    private static string AppPath => Path.Combine(AppContext.BaseDirectory, "Yetta.exe");
+    private static string AppPath => Environment.GetEnvironmentVariable("YETTA_DESKTOP_PATH") is { } path &&
+        Path.IsPathFullyQualified(path) && Path.GetFileName(path).Equals("Yetta.exe", StringComparison.OrdinalIgnoreCase)
+        ? path : Path.Combine(AppContext.BaseDirectory, "Yetta.exe");
 
     private void OpenYetta()
     {

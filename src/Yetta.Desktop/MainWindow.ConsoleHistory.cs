@@ -9,7 +9,7 @@ public partial class MainWindow
 {
     private void OpenMarvineHistory()
     {
-        if (_page != "console" || _consoleMode != "Marvine" || _consoleInput is not { IsReadOnly: false } input) return;
+        if (_page != "console" || _consoleInput is not { IsReadOnly: false } input) return;
         var dialog = new Window
         {
             Owner = this, Title = "История команд Marvine", Width = 540, Height = 400, MinWidth = 340, MinHeight = 240,
@@ -28,7 +28,7 @@ public partial class MainWindow
         panel.Children.Add(accept);
         var list = new ListBox
         {
-            Background = ConsolePanel, Foreground = Brushes.White, FontFamily = ConsoleFont,
+            Background = ConsolePanel, Foreground = ConsoleInk, FontFamily = ConsoleFont,
             BorderThickness = new Thickness(0), Padding = new Thickness(4)
         };
         System.Windows.Automation.AutomationProperties.SetName(list, "Найденные команды");

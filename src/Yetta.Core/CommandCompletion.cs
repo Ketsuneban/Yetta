@@ -3,16 +3,33 @@ namespace Yetta.Core;
 public sealed record CommandSuggestion(string Label, string Command);
 public static class CommandCompletion
 {
-    private static readonly string[] Commands = ["/help", "/win", "/script", "/yetta", "/test", "/help 4", "/help 1", "/help 2", "/help 3", "/test warn",
-        "/yetta version", "/yetta update", "/yetta download", "/dax status", "/dax diagnostics", "/subsy demo", "/subsy gallery",
-        "/tty info", "/tty update", "/marvine subsy enable", "/marvine subsy disable", "/marvine colorset EGA",
-        "/marvine colorset No Color", "/marvine colorset dracula", "/script list", "/script run", "/script stop", "/snob help", "clear", "status", "info", "settings", "guard", "logs", "activity", "overview", "recovery", "sources", "access", "version", "theme",
-        "/win help", "/win wallpaper", .. WindowsCommands.Pages.Keys.Select(page => "/win open " + page),
-        .. WindowsCommands.Preferences.SelectMany(p => p.Toggle
-            ? new[] { "/win " + p.Key + " on", "/win " + p.Key + " off" } : new[] { "/win " + p.Key })];
+    private static readonly string[] Commands = [.. ConsoleEngine.Syntax.Keys.Select(k => "/" + k),
+        "/test warn", "/script run", "/script stop", "/script list", "/yetta update", "/yetta version", "/yetta download",
+        "/tty info", "/tty update", "/marvine colorset EGA", "/marvine colorset No Color", "/marvine colorset dracula",
+        "/marvine subsy enable", "/marvine subsy disable", "/subsy demo", "/subsy gallery"];
 
     public static IReadOnlyList<CommandSuggestion> Get(string input)
     {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim() == "/") return [];
+        var typedTokens = CommandTokens.Read(input.TrimStart(), out bool closed);
+        if (!closed) return [];
+        if (typedTokens.Count == 1 && !char.IsWhiteSpace(input[^1]))
+        {
+            string typedRoot = typedTokens[0].Value.TrimStart('/');
+            if (!ConsoleEngine.Syntax.ContainsKey(typedRoot))
+                return ConsoleEngine.Syntax.Keys.Where(k => k.StartsWith(typedRoot, StringComparison.OrdinalIgnoreCase))
+                    .Select(k => new CommandSuggestion(k, k + " ")).ToArray();
+        }
+        if (typedTokens.Count == 2 && !char.IsWhiteSpace(input[^1]))
+        {
+            string group = CommandAliases.Normalize(typedTokens[0].Value).TrimStart('/');
+            string typedAction = typedTokens[1].Value;
+            var children = Commands.Where(c => c.StartsWith("/" + group + " ", StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Split(' ')[1]).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (children.Length > 0 && !children.Contains(typedAction, StringComparer.OrdinalIgnoreCase))
+                return children.Where(v => v.StartsWith(typedAction, StringComparison.OrdinalIgnoreCase))
+                    .Select(v => new CommandSuggestion(v, group + " " + v + " ")).ToArray();
+        }
         string raw = CommandAliases.Normalize(input.TrimStart());
         var tokens = CommandTokens.Read(raw, out _);
         bool space = raw.Length > 0 && char.IsWhiteSpace(raw[^1]);
@@ -27,12 +44,13 @@ public static class CommandCompletion
             if (position == 2) return Options(WarningTestCommand.Kinds);
             if (position == 3) return Options(["Yetta", "DAX", "Tallow", "Windows"]);
             var choices = new List<string>();
+            if (position == 4) choices.Add("\"Тестовое предупреждение\"");
             foreach (string flag in new[] { "pass", "tty", "check" })
             {
                 if (tokens.Skip(4).Take(position - 4).Any(t => t.Value.StartsWith(flag + ":", StringComparison.OrdinalIgnoreCase))) continue;
                 choices.Add(flag + ":true"); choices.Add(flag + ":false");
             }
-            if (!tokens.Skip(4).Any(t => t.Quoted)) choices.Add("\"Тестовое предупреждение\"");
+
             return Options(choices);
 
             IReadOnlyList<CommandSuggestion> Options(IEnumerable<string> values)

@@ -4,6 +4,58 @@
              xmlns:local="clr-namespace:Yetta.Desktop"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
+    <Style x:Key="ModernThumb" TargetType="{x:Type Thumb}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Thumb}">
+            <Border x:Name="ThumbSurface" Background="{DynamicResource TextSecondary}"
+                    CornerRadius="4" Margin="1,2" Opacity="0.65"/>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="ThumbSurface" Property="Opacity" Value="1"/>
+              </Trigger>
+              <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="ThumbSurface" Property="Opacity" Value="1"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="ModernScrollBar" TargetType="{x:Type ScrollBar}">
+      <Setter Property="Width" Value="9"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ScrollBar}">
+            <Grid Background="Transparent">
+              <Track Orientation="{TemplateBinding Orientation}" x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton x:Name="Decrease" Command="ScrollBar.PageUpCommand" Opacity="0" IsTabStop="False"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb x:Name="Handle" Style="{StaticResource ModernThumb}" MinHeight="28"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton x:Name="Increase" Command="ScrollBar.PageDownCommand" Opacity="0" IsTabStop="False"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+            <ControlTemplate.Triggers><Trigger Property="Orientation" Value="Horizontal">
+              <Setter TargetName="Handle" Property="MinHeight" Value="0"/><Setter TargetName="Handle" Property="MinWidth" Value="28"/>
+              <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+              <Setter TargetName="Decrease" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}"/>
+              <Setter TargetName="Increase" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}"/>
+            </Trigger></ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter Property="Height" Value="9"/><Setter Property="Width" Value="Auto"/></Trigger></Style.Triggers>
+    </Style>
+    <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ModernScrollBar}"/>
+
     <Style TargetType="{x:Type local:EdgeScrollViewer}">
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Background" Value="{DynamicResource WindowBackground}"/>
@@ -32,11 +84,11 @@
                   </LinearGradientBrush></Rectangle.OpacityMask>
                 </Rectangle>
               </Grid>
-              <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1"
+              <ScrollBar Style="{StaticResource ModernScrollBar}" x:Name="PART_VerticalScrollBar" Grid.Column="1"
                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
                   Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
                   Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"/>
-              <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal"
+              <ScrollBar Style="{StaticResource ModernScrollBar}" x:Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal"
                   Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
                   Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
                   Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"/>

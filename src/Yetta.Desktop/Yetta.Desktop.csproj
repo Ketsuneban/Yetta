@@ -9,11 +9,11 @@
     <RootNamespace>Yetta.Desktop</RootNamespace>
     <Company>Tallow</Company>
     <Authors>Tallow</Authors>
-    <Version>0.5.1</Version>
+    <Version>0.6.0</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.2" />
+    <PackageReference Include="Microsoft.Security.Extensions" Version="1.4.0" />
     <ProjectReference Include="../Yetta.Core/Yetta.Core.csproj" />
     <Resource Include="Assets/26.png" />
     <Resource Include="Assets/27.png" />
@@ -26,9 +26,16 @@
     <Resource Include="Assets/yetta-icons-atlas.png" />
     <Resource Include="Assets/icons/*.png" />
     <Resource Include="Assets/Causes/*.png" />
+    <Resource Include="Assets/Profiles/*.png" />
     <Resource Include="Assets/States/*.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../local.json" Link="local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundleDax)' == 'true'">
+    <AssemblyMetadata Include="DaxInstallerSha256" Value="$(DaxInstallerSha256)" />
+    <Content Include="../../artifacts/python/**/*" Link="Python/%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="Always" />
+    <Content Include="../../artifacts/tray/Yetta.DAX.exe" Link="Yetta.DAX.exe" CopyToPublishDirectory="Always" />
+    <Content Include="../../artifacts/setup/YettaDaxAdministratorSetup.exe" Link="YettaDaxAdministratorSetup.exe" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

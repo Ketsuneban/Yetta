@@ -51,13 +51,13 @@ static class Program
         Layout(700, 430);
         var output = Descendants(root).OfType<RichTextBox>().Single();
         output.SelectAll();
-        if (!output.Selection.Text.Contains("script stop")) throw new Exception("Script help unavailable from console.");
-        input.Text = "win mouse-speed";
+        if (!output.Selection.Text.Contains("stop —")) throw new Exception("Script help unavailable from console.");
+        input.Text = "script list";
         ((Button)window.FindName("NavInfo")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         nav.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         root = (FrameworkElement)host.Child;
         Layout(700, 430);
-        if (Descendants(root).OfType<TextBox>().Single().Text != "win mouse-speed")
+        if (Descendants(root).OfType<TextBox>().Single().Text != "script list")
             throw new Exception("Returning to Marvine lost the draft.");
         var bitmap = new RenderTargetBitmap(700, 430, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(root);
@@ -69,22 +69,6 @@ static class Program
         Console.WriteLine("PASS Marvine at two sizes, expanded options, script help, selection and draft");
     }
 
-    private static void VerifyWindowsPreferences()
-    {
-        foreach (var pref in WindowsCommands.Preferences)
-        {
-            int before = WindowsPersonalization.Read(pref.Key);
-            int next = before == pref.Minimum ? pref.Maximum : pref.Minimum;
-            try
-            {
-                WindowsPersonalization.Write(pref.Key, next);
-                if (WindowsPersonalization.Read(pref.Key) != next) throw new Exception("Setting readback: " + pref.Key);
-            }
-            finally { WindowsPersonalization.Write(pref.Key, before); }
-        }
-        Console.WriteLine("PASS Windows user preferences: change, read back and restore");
-    }
-
     private static void VerifyPython()
     {
         var python = Environment.GetEnvironmentVariable("YETTA_SMOKE_PYTHON");
@@ -93,7 +77,8 @@ static class Program
         try
         {
             var file = Path.Combine(folder.FullName, "Проба с пробелами.py");
-            File.WriteAllText(file, "import sys\nprint('Привет', flush=True)\nprint('stderr', file=sys.stderr)");
+            File.WriteAllText(Path.Combine(folder.FullName, "helper.py"), "greeting = 'Привет'");
+            File.WriteAllText(file, "import sys, helper\nprint(helper.greeting, flush=True)\nprint('stderr', file=sys.stderr)");
             using var scripts = new MarvineScriptManager();
             var lines = new System.Collections.Concurrent.ConcurrentQueue<ScriptOutput>();
             using var exit = new ManualResetEventSlim();
@@ -169,10 +154,7 @@ static class Program
             throw new Exception("Cross-entry selection, trimming or form retention failed");
         transcript.Reset();
         if (transcript.Children.Count != 0) throw new Exception("Clear must also reset the grouped document.");
-        VerifyWindowsPreferences();
         VerifyPython();
-        if (!UpdateNotification.Template.Contains("value=\"{value}\"") || !UpdateNotification.Template.Contains("status=\"{status}\""))
-            throw new Exception("Toast progress must use data bindings.");
         var owner = new Window { Width = 100, Height = 100, Left = -10000, Top = -10000, ShowInTaskbar = false };
         owner.Show();
         Directory.CreateDirectory("artifacts/ui-preview");
@@ -203,14 +185,17 @@ static class Program
                     using var output = File.Create("artifacts/ui-preview/" + kind + ".png"); encoder.Save(output);
                 }, renderOnly: true);
         }
+        foreach (string profile in AccessProfiles.All.Append("Developers"))
+            if (IconAssets.Asset("Profiles/" + profile + ".png", 44).Source is null)
+                throw new Exception("Missing profile icon: " + profile);
         foreach (int stateIcon in new[] { 1, 2, 3 })
             if (IconAssets.Asset("States/" + stateIcon + ".png", 38).Source is null) throw new Exception("Missing state icon");
         if (YettaWarningWindow.State(new WarningRequest(WarningKind.Information, "i", "info", PotentialDamage: true), true) != WarningState.None ||
             YettaWarningWindow.State(new WarningRequest(WarningKind.Standard, "s", "decision"), false) != WarningState.Safe)
             throw new Exception("Badge policy confused information or Guest with Windows safe mode.");
-        var parsedIdentity = PublisherInspector.Parse("""{"Status":"Valid","Signer":"Example Publisher","Thumbprint":"AB","Message":"OK"}""");
+        var parsedIdentity = PublisherInspector.Describe(Microsoft.Security.Extensions.SignatureState.SignedAndTrusted, "Example Publisher", "OK");
         if (!parsedIdentity.Verified || !parsedIdentity.Publisher.Contains("Example Publisher")) throw new Exception("Verified signer missing");
-        var invalidIdentity = PublisherInspector.Parse("""{"Status":"HashMismatch","Signer":"Untrusted Claim","Message":"Changed"}""");
+        var invalidIdentity = PublisherInspector.Describe(Microsoft.Security.Extensions.SignatureState.Invalid, "Untrusted Claim", "Changed");
         if (invalidIdentity.Verified || invalidIdentity.Publisher.Contains("Untrusted Claim")) throw new Exception("Broken signature trusted its publisher");
         string unsignedFile = Path.Combine(Path.GetTempPath(), "Yetta signature's test; " + Guid.NewGuid() + ".ps1");
         File.WriteAllText(unsignedFile, "# Unsigned PowerShell script; verification never executes this file");
@@ -248,6 +233,6 @@ static class Program
         }
         Console.WriteLine("PASS Authenticode, owner metadata, semantic badges and sticky console scrolling");
         owner.Close();
-        Console.WriteLine("PASS selectable output, bound toast progress and rendered warning layouts");
+        Console.WriteLine("PASS selectable output, Marvine and rendered warning layouts");
     }
 }

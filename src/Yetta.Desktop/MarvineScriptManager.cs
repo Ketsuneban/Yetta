@@ -91,7 +91,16 @@ internal sealed class MarvineScriptManager : IDisposable
         if (name.Equals("py.exe", StringComparison.OrdinalIgnoreCase)) start.ArgumentList.Add("-3");
         start.Environment["PYTHONIOENCODING"] = "utf-8";
         start.Environment["PYTHONUTF8"] = "1";
+        start.ArgumentList.Add("-X");
+        start.ArgumentList.Add("utf8");
         start.ArgumentList.Add("-u");
+        if (File.Exists(Path.Combine(Path.GetDirectoryName(interpreterPath)!, "python314._pth")))
+        {
+            // The embeddable runtime isolates sys.path. Add only the selected script's directory
+            // and run it as __main__, preserving argv and imports from neighbouring files.
+            start.ArgumentList.Add("-c");
+            start.ArgumentList.Add("import os, runpy, sys; del sys.argv[0]; sys.path.insert(0, os.path.dirname(sys.argv[0])); runpy.run_path(sys.argv[0], run_name='__main__')");
+        }
         start.ArgumentList.Add(path);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Python не запустился.");
         process.EnableRaisingEvents = true;

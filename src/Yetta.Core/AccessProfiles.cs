@@ -60,13 +60,4 @@ public static class AccessProfiles
         "System" => TallowText.Get("core.access.0008"),
         _ => TallowText.Get("core.access.0009")
     };
-
-    public static bool CanLaunchUnprivilegedTerminal(AppSettings settings)
-    {
-        settings.Normalize();
-        return settings.ActiveProfile == "User";
-    }
-
-    public static bool CanLaunchElevatedShell(AppSettings settings) => false;
-
 }
