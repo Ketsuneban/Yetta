@@ -92,7 +92,7 @@ public partial class MainWindow : Window
         Loaded += (_, _) => _ = WatchUpdatesAsync();
         Loaded += (_, _) => _ = WatchAdministratorAsync();
         Activated += (_, _) => _ = RefreshAdministratorAsync();
-        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate.Dispose(); _scripts.Dispose(); };
+        Closed += (_, _) => { SystemEvents.UserPreferenceChanged -= OnWindowsPreferenceChanged; _updateStop.Cancel(); _downloadCancel?.Cancel(); _consoleFollow?.Dispose(); _daxGate?.Dispose(); _scripts?.Dispose(); };
     }
 
     private void ShowDaxNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
@@ -154,7 +154,15 @@ public partial class MainWindow : Window
     private void ApplyTheme()
     {
         const bool glass = false;
-        var ui = new Windows.UI.ViewManagement.UISettings();
+        Windows.UI.ViewManagement.UISettings? ui = null;
+        try { ui = new Windows.UI.ViewManagement.UISettings(); }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or UnauthorizedAccessException)
+        { DaxAudit.Write("theme", "uisettings_failed", ex.GetType().Name); }
+        if (ui is null)
+        {
+            ThemeIndicator.Text = "Windows 11";
+            return;
+        }
         static Color Native(Windows.UI.Color c) => Color.FromArgb(c.A, c.R, c.G, c.B);
         static Color Mix(Color a, Color b, double amount) => Color.FromRgb(
             (byte)(a.R * (1 - amount) + b.R * amount),

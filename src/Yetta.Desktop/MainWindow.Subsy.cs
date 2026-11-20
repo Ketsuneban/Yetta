@@ -341,6 +341,17 @@ public partial class MainWindow
     private UIElement BuildPager(int total, Func<int, UIElement> content,
         Action<int>? select = null, int initial = 0)
     {
+        if (total <= 0)
+        {
+            var empty = new StackPanel();
+            empty.Children.Add(new TextBlock
+            {
+                Text = "Нет страниц.",
+                Foreground = (Brush)Application.Current.Resources["TextSecondary"],
+                Margin = new Thickness(0, 8, 0, 8)
+            });
+            return empty;
+        }
         int page = Math.Clamp(initial, 0, total - 1);
         var root = new StackPanel();
         var display = new ContentControl();

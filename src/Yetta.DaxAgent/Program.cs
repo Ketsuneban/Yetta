@@ -15,7 +15,7 @@ namespace Yetta.DaxAgent;
 /// </summary>
 internal static class Program
 {
-    private const string MutexName = "Local\\YettaDaxAgent_0_6_1";
+    private const string MutexName = "Local\\YettaDaxAgent_0_6_2";
     [STAThread]
     private static void Main()
     {
