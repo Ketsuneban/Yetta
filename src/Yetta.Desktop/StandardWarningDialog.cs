@@ -94,6 +94,22 @@ internal static class StandardWarningDialog
         return button;
     }
 
+    private static Button LinkButton(string label, Color color)
+    {
+        var button = new Button
+        {
+            Content = label, Foreground = new SolidColorBrush(color), Cursor = Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(3, 4, 3, 4),
+            Margin = new Thickness(0, 0, 0, 6), FontSize = 13,
+            Style = (Style)Application.Current.FindResource("DialogCloseButton")
+        };
+        var labelTemplate = new FrameworkElementFactory(typeof(TextBlock));
+        labelTemplate.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding());
+        labelTemplate.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        button.ContentTemplate = new DataTemplate { VisualTree = labelTemplate };
+        return button;
+    }
+
     private static T? Ancestor<T>(DependencyObject? node) where T : DependencyObject
     {
         while (node is not null)
@@ -117,12 +133,12 @@ internal static class StandardWarningDialog
         {
             Owner = owner,
             Title = TallowText.Get("ui.warning.0007") + request.Reason,
-            Width = 720,
+            Width = 660,
             Height = request.IsPreview ? 560 + (request.RequirePassword ? 75 : 0) + (request.RequireTty ? 95 : 0) + (request.RequireAcknowledgement ? 40 : 0)
                 : request.RequireTty || request.Kind == WarningKind.Critical || profile == "System"
                     ? 650 : request.Description.Length > 250 ? 600 : 540,
             MinWidth = 540,
-            MinHeight = 430,
+            MinHeight = 340,
             MaxWidth = SystemParameters.WorkArea.Width * 0.95,
             MaxHeight = SystemParameters.WorkArea.Height * 0.9,
             WindowStyle = WindowStyle.None,
@@ -178,6 +194,7 @@ internal static class StandardWarningDialog
         }
         window.Closing += (_, args) =>
         {
+            if (fatal && !finishing && owner.IsVisible) { args.Cancel = true; return; }
             if (finishing || !UiMotion.AnimationsEnabled) return;
             args.Cancel = true;
             window.Dispatcher.BeginInvoke(new Action(() => { if (window.IsVisible) Finish(false); }));
@@ -187,17 +204,17 @@ internal static class StandardWarningDialog
         var header = new Border
         {
             Background = new SolidColorBrush(palette.Header),
-            Padding = new Thickness(30, 20, 12, 20)
+            Padding = new Thickness(24, 12, 12, 14)
         };
         var headerGrid = new Grid();
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var heading = new StackPanel();
         var component = WarningCauseResolver.Type(request) switch { WarningCauseType.Dax => "DAX", WarningCauseType.Tallow => "Tallow", _ => "Yetta" };
-        var caption = Text("Контроль действий " + component, 12, White);
-        caption.Margin = new Thickness(0, 0, 0, 22);
+        var caption = Text(request.ReportOnly ? component + " · Сообщение" : "Контроль действий " + component, 12, Muted);
+        caption.Margin = new Thickness(0, 0, 0, 6);
         heading.Children.Add(caption);
-        heading.Children.Add(Text(request.Reason, 23, White, bold: true));
+        heading.Children.Add(Text(request.Reason, 20, White, bold: true));
         headerGrid.Children.Add(heading);
         var close = new Button
         {
@@ -211,7 +228,7 @@ internal static class StandardWarningDialog
         UiMotion.AttachButtonFeedback(close);
         close.Click += (_, _) => Finish(false);
         Grid.SetColumn(close, 1);
-        headerGrid.Children.Add(close);
+        if (!fatal) headerGrid.Children.Add(close);
         header.Child = headerGrid;
         header.MouseLeftButtonDown += (_, e) =>
         {
@@ -246,13 +263,17 @@ internal static class StandardWarningDialog
         }
         var cause = CauseIcon(request, 48);
         cause.Margin = new Thickness(0, 0, 15, 0);
-        if (!string.IsNullOrWhiteSpace(request.SourcePath))
+        if (!fatal && request.SourcePath is { Length: > 0 } sourcePath)
         {
-            cause.Cursor = Cursors.Hand;
-            cause.ToolTip = "Показать причину в Проводнике";
-            cause.MouseLeftButtonUp += (_, _) => WarningFileNavigation.Reveal(request.SourcePath);
+            cause.Margin = new Thickness(0);
+            var explore = new Button { Content = cause, Cursor = Cursors.Hand, Margin = new Thickness(0, 0, 12, 0),
+                Padding = new Thickness(3), Style = (Style)Application.Current.FindResource("DialogCloseButton"),
+                ToolTip = "Показать причину в Проводнике", VerticalAlignment = VerticalAlignment.Center };
+            System.Windows.Automation.AutomationProperties.SetName(explore, "Показать причину в Проводнике");
+            explore.Click += (_, _) => WarningFileNavigation.Reveal(sourcePath);
+            subject.Children.Add(explore);
         }
-        subject.Children.Add(cause);
+        else subject.Children.Add(cause);
         var identity = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         string displayName = WarningCauseResolver.Type(request) switch
         {
@@ -273,28 +294,27 @@ internal static class StandardWarningDialog
         body.Children.Add(subject);
         var content = new StackPanel();
         var description = Text(request.Description, 14, White);
-        description.LineHeight = 23;
+        description.LineHeight = 22;
+        TextSelection.Allow(description);
         description.Margin = new Thickness(0, 0, 0, 14);
         content.Children.Add(description);
-        var more = Text("Подробнее", 13, new SolidColorBrush(palette.Accent));
-        more.Cursor = Cursors.Hand;
-        more.Margin = new Thickness(0, 0, 0, 10);
-        content.Children.Add(more);
+        var more = LinkButton("Подробнее", palette.Accent);
+        if (!fatal) content.Children.Add(more);
         var evidence = new StackPanel { Visibility = Visibility.Collapsed };
-        evidence.Children.Add(Text(request.TechnicalDetails ?? "Тип: " + request.Kind +
-            " · Источник: " + WarningCauseResolver.Type(request), 12, Muted));
+        var technical = Text(request.TechnicalDetails ?? "Тип: " + request.Kind +
+            " · Источник: " + WarningCauseResolver.Type(request), 12, Muted);
+        TextSelection.Allow(technical);
+        evidence.Children.Add(technical);
         var paths = (request.RelatedPaths ?? Array.Empty<string>()).Concat(request.SourcePath is { Length: > 0 } source ? new[] { source } : Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase);
         foreach (string path in paths)
         {
-            var link = Text(path, 12, new SolidColorBrush(palette.Accent));
-            link.TextWrapping = TextWrapping.Wrap;
-            link.Margin = new Thickness(0, 8, 0, 0);
-            link.Cursor = Cursors.Hand;
+            var link = LinkButton(path, palette.Accent);
             link.ToolTip = "Показать в Проводнике";
-            link.MouseLeftButtonUp += (_, _) => WarningFileNavigation.Reveal(path);
+            link.Click += (_, _) => WarningFileNavigation.Reveal(path);
             evidence.Children.Add(link);
         }
         var signatureDetails = Text("", 12, Muted);
+        TextSelection.Allow(signatureDetails);
         evidence.Children.Add(signatureDetails);
         window.Loaded += async (_, _) =>
         {
@@ -323,12 +343,12 @@ internal static class StandardWarningDialog
             catch (OperationCanceledException) { }
             finally { window.Closed -= CancelInspection; }
         };
-        content.Children.Add(evidence);
-        more.MouseLeftButtonUp += (_, _) =>
+        if (!fatal) content.Children.Add(evidence);
+        more.Click += (_, _) =>
         {
             bool expanded = evidence.Visibility != Visibility.Visible;
             evidence.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-            more.Text = expanded ? "Свернуть подробности" : "Подробнее";
+            more.Content = expanded ? "Свернуть подробности" : "Подробнее";
         };
         var explanation = new EdgeScrollViewer { Content = content, EdgePreviewHeight = 0, Background = new SolidColorBrush(palette.Surface),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
@@ -347,12 +367,12 @@ internal static class StandardWarningDialog
             Padding = new Thickness(26, 16, 26, 18),
             Child = footerStack
         };
-        bool oneAction = !request.IsPreview && (request.Kind is WarningKind.Information or WarningKind.Fatal or WarningKind.Dax or WarningKind.Agreement);
-        bool needsKey = request.IsPreview ? request.RequireTty : !fatal && !oneAction &&
-            (request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
-        bool needsCheck = (request.IsPreview || !fatal) && request.RequireAcknowledgement;
+        bool oneAction = !request.OffersDecision;
+        bool needsKey = !oneAction && (request.IsPreview ? request.RequireTty :
+            request.RequireTty || request.Kind == WarningKind.Critical || profile == "System");
+        bool needsCheck = !fatal && !request.ReportOnly && request.RequireAcknowledgement;
         PasswordBox? confirmationPassword = null;
-        if (request.IsPreview && request.RequirePassword)
+        if (!oneAction && request.IsPreview && request.RequirePassword)
         {
             footerStack.Children.Add(Text("Пароль подтверждения · для теста: test", 12.5, Muted));
             confirmationPassword = new PasswordBox { MaxLength = 128, Height = 42,
@@ -494,7 +514,7 @@ internal static class StandardWarningDialog
         buttonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         buttonRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var controls = new Grid();
-        string action = request.IsPreview ? "Разрешить" : request.Kind switch
+        string action = fatal ? "Сброс" : request.ReportOnly ? "Закрыть" : !oneAction && request.IsPreview ? "Разрешить" : request.Kind switch
         {
             WarningKind.Information => TallowText.Get("ui.warning.0017"),
             WarningKind.Fatal => TallowText.Get("ui.warning.0018"),
@@ -509,6 +529,8 @@ internal static class StandardWarningDialog
         if (oneAction)
         {
             controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            allow.HorizontalAlignment = HorizontalAlignment.Right;
+            allow.MinWidth = 140;
             controls.Children.Add(allow);
         }
         else

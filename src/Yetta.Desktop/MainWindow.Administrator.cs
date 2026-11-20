@@ -90,13 +90,7 @@ public partial class MainWindow
     private void ShowAccessInfo()
     {
         var panel = ProfileDetails(_settings.ActiveProfile);
-        panel.Margin = new Thickness(24);
-        var info = new Window
-        {
-            Title = "Уровень доступа", Owner = this, Background = Surface, Content = panel,
-            Width = 430, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false
-        };
+        var info = MiniWindow("Уровень доступа", panel);
         var link = ActionButton("Открыть DAX Guard →", () => { info.Close(); Navigate("guard"); });
         link.Margin = new Thickness(0, 20, 0, 0);
         panel.Children.Add(link);
@@ -163,11 +157,15 @@ public partial class MainWindow
             apply.Margin = new Thickness(0, 0, 10, 0);
             actions.Children.Add(apply);
             if (profile == "Administrator" && _administratorState is DaxAdministratorState.Active or DaxAdministratorState.Inactive)
-                actions.Children.Add(ActionButton("Отозвать доступ", async () =>
+            {
+                var revoke = ActionButton("Отозвать доступ", async () =>
                 {
                     if (ConfirmDaxAction("Отозвать Administrator", "Для восстановления доступа потребуется согласие администратора Windows."))
                         await ChangeAdministratorAsync(DaxAdministratorOperation.Revoke);
-                }));
+                });
+                revoke.Margin = new Thickness(0);
+                actions.Children.Add(revoke);
+            }
             body.Children.Add(actions);
             details.Content = body;
             UiMotion.AnimatePage(body);
@@ -190,10 +188,15 @@ public partial class MainWindow
             string actual = Convert.ToHexString(await SHA256.HashDataAsync(file, _updateStop.Token));
             if (!actual.Equals(BundledAdministratorHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Контрольная сумма установщика DAX не совпала.");
-            using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Verb = "runas" });
+            Notify("DAX Guard", "Подтверди подключение профиля в окне контроля учётных записей Windows.");
+            var setup = new ProcessStartInfo(path) { UseShellExecute = true, Verb = "runas" };
+            foreach (var flag in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" })
+                setup.ArgumentList.Add(flag);
+            using var process = Process.Start(setup);
             if (process is null) return false;
             await process.WaitForExitAsync(_updateStop.Token);
             if (process.ExitCode != 0) { Notify("DAX Guard", "Установка профиля не завершена."); return false; }
+            Notify("DAX Guard", "Служба профиля установлена. Проверяю права текущей учётной записи…");
             return true;
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)

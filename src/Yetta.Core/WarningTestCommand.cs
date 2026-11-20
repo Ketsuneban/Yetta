@@ -15,6 +15,12 @@ public sealed record WarningTestCommand(string Kind, string Cause, bool Password
             !args[1].Value.Equals("warn", StringComparison.OrdinalIgnoreCase)) return false;
         string? kind = Kinds.FirstOrDefault(x => x.Equals(args[2].Value, StringComparison.OrdinalIgnoreCase));
         if (kind is null) { invalid = args[2].Value; return false; }
+        if (kind == "Fatal")
+        {
+            if (args.Count != 3) { invalid = args[3].Value; return false; }
+            result = new(kind, "Yetta", false, false, false, "Тест фатального предупреждения.");
+            return true;
+        }
         string cause = "Yetta"; int next = 3;
         if (next < args.Count && !IsFlag(args[next].Value)) cause = args[next++].Value;
         if (string.IsNullOrWhiteSpace(cause)) { invalid = "пустая причина"; return false; }

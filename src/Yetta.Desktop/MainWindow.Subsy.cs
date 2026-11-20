@@ -40,7 +40,9 @@ public partial class MainWindow
         var button = ActionButton(label, click, primary);
         if (!primary)
         {
-            button.Background = Dracula ? Hex("#505469") : ConsolePanel;
+            button.Background = Dracula ? Hex("#505469") : ConsoleSurface;
+            button.BorderBrush = ConsoleMuted;
+            button.BorderThickness = new Thickness(1);
             button.Foreground = ConsoleInk;
         }
         button.MinWidth = 0;
@@ -284,6 +286,12 @@ public partial class MainWindow
         Add("Отмена", () => Submit(null));
         form.Children.Add(buttons);
         return SubsyCard(root);
+    }
+
+    private string ShowMarvineHelp(string text)
+    {
+        if (!_settings.MarvineSubsyEnabled) return text;
+        return PageMarvineResult("Справка Marvine", text.Split('\n', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private UIElement BuildPager(int total, Func<int, UIElement> content,

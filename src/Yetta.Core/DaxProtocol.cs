@@ -23,7 +23,8 @@ public sealed record DaxStatus(DaxState State, string AgentVersion, bool Desktop
 
 public static class DaxProtocol
 {
-    public const string PipeName = "Yetta-DAX-Local-v1";
+    public const string LegacyPipeName = "Yetta-DAX-Local-v1";
+    public const string PipeName = "Yetta-DAX-Local-v2";
     public const string StatusRequest = "TALLOW_STATUS_V2";
     public const int MaxFrameLength = 256;
 

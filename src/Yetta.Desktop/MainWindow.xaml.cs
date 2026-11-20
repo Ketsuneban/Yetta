@@ -97,7 +97,7 @@ public partial class MainWindow : Window
 
     private void ShowDaxNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
         YettaWarningWindow.Show(this, new WarningRequest(kind, title, message, Subject: "DAX", Publisher: "Tallow",
-            CauseType: WarningCauseType.Dax), _settings.ActiveProfile, nonModal: true);
+            CauseType: WarningCauseType.Dax, ReportOnly: true), _settings.ActiveProfile, nonModal: true);
 
     private bool ConfirmDaxAction(string title, string message) => YettaWarningWindow.Show(this,
         new WarningRequest(WarningKind.Agreement, title, message, Subject: "DAX", Publisher: "Tallow",
@@ -120,7 +120,7 @@ public partial class MainWindow : Window
 
     private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
         YettaWarningWindow.Show(this,
-            new WarningRequest(kind, title, message, Subject: "Yetta"),
+            new WarningRequest(kind, title, message, Subject: "Yetta", ReportOnly: true),
             _settings.ActiveProfile, nonModal: true);
 
     private bool ConfirmYettaAction(string title, string message) =>
@@ -286,7 +286,7 @@ public partial class MainWindow : Window
             case "recovery": BuildRecovery(); break;
             case "settings": BuildSettings(); break;
             case "sources": BuildSources(); break;
-            case "developers": ContentPanel.Children.Add(Card(Text("Здесь появятся инструменты разработчика.", 14, muted: true))); break;
+            case "developers": BuildDeveloperSecurity(); break;
         }
         MainScroll.ScrollToTop();
         UiMotion.AnimatePage(ContentPanel);
@@ -294,7 +294,7 @@ public partial class MainWindow : Window
 
     private TextBlock Text(string value, double size = 13, bool heading = false, bool muted = false)
     {
-        return new TextBlock
+        var label = new TextBlock
         {
             Text = value,
             TextWrapping = TextWrapping.Wrap,
@@ -303,6 +303,8 @@ public partial class MainWindow : Window
             Foreground = muted ? Muted : Ink,
             LineHeight = size * 1.55
         };
+        if (!heading) TextSelection.Allow(label);
+        return label;
     }
 
     private Border Card(UIElement child)
@@ -955,8 +957,11 @@ public partial class MainWindow : Window
 
     private async Task<string> HandleMarvineRequestAsync(string request, string? argument)
     {
+        if (request.StartsWith("SNOB_", StringComparison.Ordinal)) return await RunSnobAsync(request, argument);
         switch (request)
         {
+            case "HELP":
+                return ShowMarvineHelp(argument ?? "");
             case "TEST_WARN":
                 return ShowWarningTest(argument ?? "");
             case "SUBSY_DEMO":
@@ -1070,12 +1075,17 @@ public partial class MainWindow : Window
                 string rights = elevated ? "Администратор Windows" : "текущий пользователь Windows";
                 if (!ConfirmYettaAction("Запустить Python-скрипт", $"Файл: {path}\nИнтерпретатор: {interpreter}\nПрава: {rights}."))
                     return "[ℹ] Запуск отменён.";
-                var dax = await DaxAgentGate.GetStatusAsync(_updateStop.Token);
+                var dax = await _daxGate.WaitForScriptAgentAsync(_updateStop.Token);
                 var grant = await DaxAdministratorClient.RequestAsync(DaxAdministratorOperation.Status, _updateStop.Token);
                 if (dax.State != DaxState.Ready || grant != DaxAdministratorState.Active)
                 {
                     DaxAudit.Write("script", "denied", $"{dax.State}, {grant}");
-                    return "[✖] DAX: " + DaxStateLabel(dax.State) + (grant == DaxAdministratorState.Active ? "." : ". Профиль Администратор недоступен.");
+                    return grant != DaxAdministratorState.Active
+                        ? "[✖] DAX не подтвердил активный профиль Администратор. Проверь профиль в DAX Guard."
+                        : "[✖] DAX: " + DaxStateLabel(dax.State) +
+                          (dax.State == DaxState.Notice && !dax.DesktopPresent ? " · не найден файл Yetta." :
+                           dax.State == DaxState.Notice && !dax.CatalogPresent ? " · не найден каталог локализации." :
+                           ". Открой DAX Recovery для диагностики.");
                 }
                 if (elevated && await DaxAgentGate.RequestAsync("AUTHORIZE_SCRIPT", _updateStop.Token) != "AUTHORIZED")
                 {
@@ -1367,7 +1377,7 @@ public partial class MainWindow : Window
         finally { _downloadCancel = null; _updateGate.Release(); }
     }
 
-    private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false, Action<double>? consoleProgress = null)
+    private async Task InstallReleaseAsync(UpdateRelease latest, bool automatic = false, Action<double>? consoleProgress = null, bool defaultDirectory = false)
     {
         using var downloadCancel = CancellationTokenSource.CreateLinkedTokenSource(_updateStop.Token);
         _downloadCancel = downloadCancel;
@@ -1404,8 +1414,9 @@ public partial class MainWindow : Window
             cancel.IsEnabled = false;
             var log = Path.Combine(Path.GetDirectoryName(path)!, "YettaSetup-" + latest.Version + ".log");
             var start = new ProcessStartInfo(path) { UseShellExecute = true };
-            foreach (string argument in new[] { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/DIR=" + Path.GetDirectoryName(Environment.ProcessPath!)!, "/LOG=" + log })
+            foreach (string argument in new[] { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/LOG=" + log })
                 start.ArgumentList.Add(argument);
+            if (!defaultDirectory) start.ArgumentList.Add("/DIR=" + Path.GetDirectoryName(Environment.ProcessPath!)!);
             if (latest.Unified)
                 start.ArgumentList.Add("/PAYLOAD=" + Path.Combine(Path.GetDirectoryName(path)!, latest.PayloadName));
             // Process.Start can synchronously wait for antivirus/installer extraction. Keep Yetta responsive until launch succeeds.

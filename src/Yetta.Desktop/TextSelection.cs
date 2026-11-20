@@ -12,10 +12,15 @@ internal static class TextSelection
     internal static void Enable() => EventManager.RegisterClassHandler(typeof(TextBlock),
         UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler(Begin));
 
+    private static readonly DependencyProperty SelectableProperty = DependencyProperty.RegisterAttached(
+        "Selectable", typeof(bool), typeof(TextSelection), new PropertyMetadata(false));
+
+    internal static void Allow(TextBlock label) => label.SetValue(SelectableProperty, true);
+
     private static void Begin(object sender, MouseButtonEventArgs e)
     {
         var label = (TextBlock)sender;
-        if (e.Handled || label.Text.Length == 0 || label.Inlines.Any(inline => inline is Hyperlink)) return;
+        if (e.Handled || !(bool)label.GetValue(SelectableProperty) || label.Text.Length == 0 || label.Inlines.Any(inline => inline is Hyperlink)) return;
         for (DependencyObject? node = label; node is Visual; node = VisualTreeHelper.GetParent(node))
             if (node is ButtonBase or TextBoxBase or ComboBox or Selector || node is FrameworkElement { Cursor: { } cursor } && cursor == Cursors.Hand)
                 return;

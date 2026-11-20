@@ -28,9 +28,19 @@ internal sealed class DaxAgentGate : IDisposable
         _timer.Tick += async (_, _) => await CheckAsync();
         owner.Loaded += async (_, _) =>
         {
-            TryLaunch();
-            _timer.Start();
-            await CheckAsync();
+            try
+            {
+                if (await GetStatusAsync() is { State: DaxState.Unavailable })
+                {
+                    await TryStopDaxAsync(DaxProtocol.LegacyPipeName);
+                    if (_disposed) return;
+                    TryLaunch();
+                }
+                if (_disposed) return;
+                _timer.Start();
+                await CheckAsync();
+            }
+            catch (OperationCanceledException) { }
         };
     }
 
@@ -41,17 +51,9 @@ internal sealed class DaxAgentGate : IDisposable
         if (!File.Exists(AgentFile)) return;
         try
         {
-            var agents = Process.GetProcessesByName("Yetta.DAX");
-            try
-            {
-                if (agents.Length == 0)
-                {
-                    var start = new ProcessStartInfo(AgentFile) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
-                    start.Environment["YETTA_DESKTOP_PATH"] = Environment.ProcessPath;
-                    using var agent = Process.Start(start);
-                }
-            }
-            finally { foreach (var agent in agents) agent.Dispose(); }
+            var start = new ProcessStartInfo(AgentFile) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
+            start.Environment["YETTA_DESKTOP_PATH"] = Environment.ProcessPath;
+            using var agent = Process.Start(start);
         }
         catch (Exception ex) when (ex is Win32Exception or UnauthorizedAccessException or IOException)
         {
@@ -59,11 +61,14 @@ internal sealed class DaxAgentGate : IDisposable
         }
     }
 
-    internal static async Task<string> RequestAsync(string command, CancellationToken token = default)
+    internal static Task<string> RequestAsync(string command, CancellationToken token = default) =>
+        RequestAsync(command, DaxProtocol.PipeName, token);
+
+    private static async Task<string> RequestAsync(string command, string pipeName, CancellationToken token = default)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(TimeSpan.FromSeconds(2));
-        using var client = new NamedPipeClientStream(".", DaxProtocol.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         try
         {
             await client.ConnectAsync(800, deadline.Token);
@@ -93,6 +98,25 @@ internal sealed class DaxAgentGate : IDisposable
         {
             return new(DaxState.Incompatible, "", false, false);
         }
+    }
+
+    internal static async Task TryStopDaxAsync(string pipeName = DaxProtocol.PipeName)
+    {
+        try { await RequestAsync("STOP_FOR_UPDATE", pipeName); }
+        catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
+        { DaxAudit.Write("connection", "stop_unavailable", ex.GetType().Name); }
+    }
+
+    internal async Task<DaxStatus> WaitForScriptAgentAsync(CancellationToken token)
+    {
+        var status = await GetStatusAsync(token);
+        if (status.State == DaxState.Unavailable) TryLaunch();
+        for (int retry = 0; retry < 3 && status.State is DaxState.Unavailable or DaxState.Working; retry++)
+        {
+            await Task.Delay(300, token);
+            status = await GetStatusAsync(token);
+        }
+        return status;
     }
 
     internal async Task CheckAsync()

@@ -42,7 +42,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="Shell" Background="{TemplateBinding Background}"
-                    BorderBrush="Transparent" BorderThickness="0"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="7" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="Center"/>
@@ -71,7 +71,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonChrome" Background="{TemplateBinding Background}"
-                    BorderBrush="Transparent" BorderThickness="0"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="7" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
