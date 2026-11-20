@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Management;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -49,7 +50,7 @@ public partial class MainWindow
         return w;
     }
 
-    private bool ApproveAction(string title, string target, string reason, bool destructive = false)
+    private bool ApproveAction(string title, string target, string reason, bool destructive = false, string? holdLabel = null)
     {
         var panel = new StackPanel();
         var headline = Text(title, 19, heading: true);
@@ -64,7 +65,7 @@ public partial class MainWindow
         var dialog = MiniWindow("Подтверждение действия", panel);
         var buttons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right };
         var cancel = ActionButton("Отмена", () => dialog.DialogResult = false);
-        var confirm = ActionButton(destructive ? "Удерживай для удаления" : "Продолжить",
+        var confirm = ActionButton(destructive ? holdLabel ?? "Удерживай для удаления" : "Продолжить",
             () => { if (!destructive) dialog.DialogResult = true; }, primary: true);
         cancel.Margin = new Thickness(0, 0, 8, 0);
         confirm.Margin = new Thickness(0);
@@ -112,6 +113,57 @@ public partial class MainWindow
         return dialog.ShowDialog() == true;
     }
 
+    private Border BuildDefenderSwitchPreview()
+    {
+        bool previewEnabled = true;
+        var previewIcon = IconAssets.Asset("Defender/Enabled.png", 26);
+        previewIcon.Margin = new Thickness(0, 0, 10, 0);
+        var previewStatus = Text("Включено", 12, muted: true);
+        var toggle = new ToggleButton
+        {
+            Style = (Style)FindResource("SettingToggle"), IsChecked = previewEnabled,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0)
+        };
+        toggle.Resources["HoverBackground"] = Surface;
+        var previewPill = new Border
+        {
+            Child = previewStatus, Background = Surface, CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(0, 3, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        System.Windows.Automation.AutomationProperties.SetName(toggle, "Демонстрационный переключатель Defender");
+        toggle.Click += (_, _) =>
+        {
+            bool next = toggle.IsChecked == true;
+            toggle.IsChecked = previewEnabled;
+            if (!next && !ApproveAction("Выключить в предпросмотре?", "Windows Defender · демо",
+                "Подтверждение изменит только вид переключателя и значка.",
+                destructive: true, holdLabel: "Удерживай для подтверждения"))
+                return;
+
+            previewEnabled = next;
+            toggle.IsChecked = next;
+            previewIcon.Source = IconAssets.Asset(next ? "Defender/Enabled.png" : "Defender/Disabled.png", 26).Source;
+            previewStatus.Text = next ? "✓ Включено" : "✓ Выключено";
+            if (UiMotion.AnimationsEnabled)
+                previewPill.BeginAnimation(OpacityProperty, new DoubleAnimation(.4, 1, TimeSpan.FromMilliseconds(180)));
+        };
+
+        var row = new DockPanel();
+        DockPanel.SetDock(toggle, Dock.Right);
+        row.Children.Add(toggle);
+        row.Children.Add(previewIcon);
+        row.Children.Add(new StackPanel
+        {
+            Children = { Text("Предпросмотр переключателя", 13, heading: true), previewPill }
+        });
+        return new Border
+        {
+            Child = row, Background = Resource("HoverBackground"), CornerRadius = new CornerRadius(8),
+            Margin = new Thickness(0, 8, 0, 0), Padding = new Thickness(12, 8, 12, 8)
+        };
+    }
+
     private void BuildDeveloperSecurity()
     {
         AddSection("Безопасность");
@@ -143,6 +195,7 @@ public partial class MainWindow
             catch (System.ComponentModel.Win32Exception ex) { ShowYettaNotice("Безопасность Windows не открылась", ex.Message, WarningKind.Caution); }
         }));
         panel.Children.Add(controls);
+        panel.Children.Add(BuildDefenderSwitchPreview());
         ContentPanel.Children.Add(Card(panel));
         panel.Loaded += async (_, _) => await RefreshAsync();
 
