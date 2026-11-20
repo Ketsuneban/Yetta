@@ -54,14 +54,20 @@ jobs:
         run: dotnet run --project tests/Yetta.Updater.Smoke/Yetta.Updater.Smoke.csproj --configuration Release
       - name: Compile desktop application
         run: dotnet build src/Yetta.Desktop/Yetta.Desktop.csproj --configuration Release --no-restore -warnaserror
-      - name: Set up Python for the Marvine process test
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
+      - name: Prepare the bundled Windows Python runtime
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'python-embed.zip'
+          $url = 'https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip'
+          Invoke-WebRequest -Uri $url -OutFile $archive
+          # Published at https://www.python.org/downloads/release/python-31410/
+          $digest = '90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159'
+          if ((Get-FileHash $archive).Hash -ne $digest) { throw 'Python archive checksum mismatch.' }
+          Expand-Archive $archive -DestinationPath artifacts/python
       - name: Verify desktop layout, profiles and Python
         shell: pwsh
         run: |
-          $env:YETTA_SMOKE_PYTHON = (Get-Command python.exe).Source
+          $env:YETTA_SMOKE_PYTHON = (Resolve-Path 'artifacts/python/python.exe').Path
           dotnet run --project tests/Yetta.Desktop.Smoke/Yetta.Desktop.Smoke.csproj --configuration Release
       - name: Upload warning layout previews
         uses: actions/upload-artifact@v4
@@ -107,7 +113,12 @@ jobs:
           $uninstaller = Join-Path $env:ProgramFiles "Yetta DAX\unins000.exe"
           try {
             dotnet run --project tests/Yetta.Administrator.Smoke -c Release
-            if ($LASTEXITCODE -ne 0) { throw "DAX Administrator smoke test failed." }
+            if ($LASTEXITCODE -ne 0) {
+              Get-Service -Name $service
+              Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue |
+                Where-Object ProviderName -Match 'DAX|\.NET Runtime' | Select-Object -First 12 TimeCreated,ProviderName,Message | Format-List
+              throw "DAX Administrator smoke test failed."
+            }
             Restart-Service -Name $service -ErrorAction Stop
             dotnet run --project tests/Yetta.Administrator.Smoke -c Release --no-build -- --revoked
             if ($LASTEXITCODE -ne 0) { throw "Revocation did not persist across restarts." }

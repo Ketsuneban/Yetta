@@ -1150,6 +1150,8 @@ public partial class MainWindow : Window
         if (_settings.PythonExecutablePath is string configured && Path.IsPathFullyQualified(configured) && File.Exists(configured) &&
             Path.GetFileName(configured).ToLowerInvariant() is "python.exe" or "py.exe")
             return configured;
+        string bundled = Path.Combine(AppContext.BaseDirectory, "Python", "python.exe");
+        if (File.Exists(bundled)) return bundled;
         string launcher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "py.exe");
         if (File.Exists(launcher)) return launcher;
         var picker = new OpenFileDialog

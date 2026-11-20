@@ -33,6 +33,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(BundleDax)' == 'true'">
     <AssemblyMetadata Include="DaxInstallerSha256" Value="$(DaxInstallerSha256)" />
+    <Content Include="../../artifacts/python/**/*" Link="Python/%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="Always" />
     <Content Include="../../artifacts/tray/Yetta.DAX.exe" Link="Yetta.DAX.exe" CopyToPublishDirectory="Always" />
     <Content Include="../../artifacts/setup/YettaDaxAdministratorSetup.exe" Link="YettaDaxAdministratorSetup.exe" CopyToPublishDirectory="Always" />
   </ItemGroup>

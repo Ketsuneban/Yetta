@@ -77,7 +77,8 @@ static class Program
         try
         {
             var file = Path.Combine(folder.FullName, "Проба с пробелами.py");
-            File.WriteAllText(file, "import sys\nprint('Привет', flush=True)\nprint('stderr', file=sys.stderr)");
+            File.WriteAllText(Path.Combine(folder.FullName, "helper.py"), "greeting = 'Привет'");
+            File.WriteAllText(file, "import sys, helper\nprint(helper.greeting, flush=True)\nprint('stderr', file=sys.stderr)");
             using var scripts = new MarvineScriptManager();
             var lines = new System.Collections.Concurrent.ConcurrentQueue<ScriptOutput>();
             using var exit = new ManualResetEventSlim();

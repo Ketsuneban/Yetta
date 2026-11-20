@@ -11,7 +11,7 @@ public partial class App : Application
     {
         if (e.Args.SequenceEqual(["--verify-bundle"]))
         {
-            bool complete = new[] { "Yetta.DAX.exe", "YettaDaxAdministratorSetup.exe", "local.json" }
+            bool complete = new[] { "Yetta.DAX.exe", "YettaDaxAdministratorSetup.exe", "local.json", "Python/python.exe", "Python/python314.zip" }
                 .All(name => System.IO.File.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, name)));
             Shutdown(complete ? 0 : 2);
             return;
