@@ -19,6 +19,11 @@ internal sealed class MarvineScriptManager : IDisposable
     }
     private readonly Dictionary<string, Script> _scripts = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _sync = new();
+    internal event Action<Guid, int>? Started;
+    internal int? ProcessId(Guid run)
+    {
+        lock (_sync) return _scripts.Values.FirstOrDefault(s => s.Run == run)?.Process.Id;
+    }
 
     internal IReadOnlyList<(string Id, string Path, bool Running)> List()
     {
@@ -55,6 +60,7 @@ internal sealed class MarvineScriptManager : IDisposable
             var run = Guid.NewGuid();
             var script = new Script(run, id, path, process);
             _scripts.Add(id, script);
+            Started?.Invoke(run, process.Id);
             script.Completion = Task.Run(() => ReportExitAsync(process, run, id, onOutput));
             return run;
         }

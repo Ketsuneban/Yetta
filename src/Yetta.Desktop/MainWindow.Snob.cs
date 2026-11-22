@@ -188,8 +188,8 @@ public partial class MainWindow
             argument = "Microsoft Edge";
 
         bool check = request == "SNOB_CHECK";
-        if (!check && _settings.ActiveProfile == "Guest")
-            return "[✖] Для установки и удаления приложений выбери профиль Пользователь в DAX Guard.";
+        if (!check && await AuthorizeOperationAsync(DaxOperation.ManagePackages) is { Allowed: false } denied)
+            return "[✖] " + denied.Reason;
 
         if (request == "SNOB_INSTALL" && argument.Equals("Yetta.yetta", StringComparison.OrdinalIgnoreCase))
         {

@@ -1,25 +1,7 @@
-# Access Manager specification
+# Access Manager — current preview
 
-Access Manager is the single user-facing place to inspect the current access profile, install a higher profile, and revoke installed capabilities.
+Guest and User are logical application profiles. Safe User was merged into Guest. Administrator is an installed grant maintained by the LocalService component; it does not elevate arbitrary scripts. System remains unavailable.
 
-## Profiles
+DaxPolicy defines the common operation matrix. Read operations, application updates and stopping owned scripts remain available under Guest. Package mutation requires User or Administrator. Python launch requires Administrator and a Ready DAX companion, with a fresh service status check before execution.
 
-1. **Guest** — default after installation; minimal app capabilities.
-2. **Safe User** — read-only inspection of resources the granted Windows token can actually read. It must not claim universal access to every protected file.
-3. **User** — operations available to the current standard user account.
-4. **Administrator** — operations requiring an elevated administrator token. Initial elevation must use the genuine Windows consent mechanism.
-5. **System** — selected operations performed by a dedicated, hardened service running with the necessary system privileges. This profile is not an assertion that Windows protections can all be bypassed.
-
-## Installation and persistence
-
-The user explicitly installs a profile and grants the required Windows permission during setup. The app may then reuse the installed capability without repeatedly prompting for the same ordinary operation, until the user revokes it or the authorization expires/is invalidated.
-
-A displayed profile is not sufficient proof of access. The manager must query and display actual token/service capabilities, installation health, and limitations.
-
-## Enforcement
-
-DAX Guard is mandatory for every Yetta-initiated operation. If the active profile is below the operation's declared minimum, the operation is denied before execution. There is no fallback to a more privileged context without explicit profile installation.
-
-## Revocation and recovery
-
-Revocation must stop new privileged requests, invalidate sessions/tokens, disable or remove the privileged service safely, and record the result. A failed or partial revocation must be clearly reported.
+Initial installation uses real Windows UAC. Grant ownership belongs to the account approving installation. Revoke persists across service restarts and requires reinstallation to restore the grant. Each component retains the real Windows token and account identity.

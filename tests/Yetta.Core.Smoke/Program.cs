@@ -270,3 +270,15 @@ Assert(ConsoleEngine.Execute(@"marvine open ""C:\Work\My Folder""", c) is
     { Request: "MARVINE_OPEN", Argument: @"""C:\Work\My Folder""" }, "Marvine preserves a quoted workspace path");
 Assert(ConsoleEngine.Execute("marvine open ..", c) is { Request: "MARVINE_OPEN", Argument: ".." } &&
     CommandCompletion.Get("marvine op").Any(item => item.Label == "open"), "relative workspaces and completion");
+
+foreach (var profile in new[] { "Guest", "User", "Administrator", "System", "unknown" })
+{
+    Assert(DaxPolicy.Decide(DaxOperation.StopScript, profile, DaxAdministratorState.Revoked, DaxState.Unavailable).Allowed,
+        "owned script stop remains available: " + profile);
+    Assert(!DaxPolicy.Decide(DaxOperation.RunScript, profile, DaxAdministratorState.Revoked, DaxState.Ready).Allowed,
+        "revoked grant denies script: " + profile);
+}
+Assert(!DaxPolicy.Decide(DaxOperation.ManagePackages, "Guest", DaxAdministratorState.Active, DaxState.Ready).Allowed, "Guest denies package changes");
+Assert(DaxPolicy.Decide(DaxOperation.ManagePackages, "User", DaxAdministratorState.Unavailable, DaxState.Unavailable).Allowed, "User package policy");
+Assert(DaxPolicy.Decide(DaxOperation.RunScript, "Administrator", DaxAdministratorState.Active, DaxState.Ready).Allowed, "verified script policy");
+Assert(!DaxPolicy.Decide(DaxOperation.RunScript, "Administrator", DaxAdministratorState.Active, DaxState.Unavailable).Allowed, "offline agent denies script");

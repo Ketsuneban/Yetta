@@ -39,6 +39,7 @@ internal sealed class DaxProcessMonitor : IDisposable
 
     private readonly DispatcherTimer _timer;
     private readonly int _rootPid;
+    private readonly DateTime _rootStarted;
     private readonly HashSet<int> _known = [];
     private readonly Action<string> _report;
     private bool _checking;
@@ -47,10 +48,12 @@ internal sealed class DaxProcessMonitor : IDisposable
     internal DaxProcessMonitor(int rootPid, Action<string> report)
     {
         _rootPid = rootPid;
+        using var root = Process.GetProcessById(rootPid);
+        _rootStarted = root.StartTime.ToUniversalTime();
         _report = report;
         _known.Add(rootPid);
-        DaxAudit.Write("process", "started", "PowerShell process in Yetta: PID " + rootPid);
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        DaxAudit.Write("process", "started", "Yetta script process: PID " + rootPid);
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += async (_, _) => await ScanAsync();
         _timer.Start();
     }
@@ -96,6 +99,13 @@ internal sealed class DaxProcessMonitor : IDisposable
 
     private Dictionary<int, string> ReadTree()
     {
+        // PID reuse must never enroll an unrelated process.
+        try
+        {
+            using var root = Process.GetProcessById(_rootPid);
+            if (root.StartTime.ToUniversalTime() != _rootStarted) return [];
+        }
+        catch (ArgumentException) { return []; }
         var snapshots = Process.GetProcesses();
         try
         {
@@ -136,6 +146,6 @@ internal sealed class DaxProcessMonitor : IDisposable
         if (_disposed) return;
         _disposed = true;
         _timer.Stop();
-        DaxAudit.Write("process", "stopped", "Stopped tracking Yetta PowerShell PID " + _rootPid);
+        DaxAudit.Write("process", "stopped", "Stopped tracking Yetta script PID " + _rootPid);
     }
 }

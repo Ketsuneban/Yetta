@@ -140,7 +140,13 @@ internal static class WindowsPackages
             if (process is null) return (-1, "WinGet не запустился.");
             var output = process.StandardOutput.ReadToEndAsync(token);
             var error = process.StandardError.ReadToEndAsync(token);
-            await process.WaitForExitAsync(token);
+            try { await process.WaitForExitAsync(token); }
+            catch (OperationCanceledException)
+            {
+                try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { }
+                throw;
+            }
             string combined = (await output + "\n" + await error).Trim();
             return (process.ExitCode, combined.Length > 14000 ? combined[^14000..] : combined);
         }

@@ -4,13 +4,13 @@ using System.Net.Http.Headers;
 namespace Yetta.Core;
 
 /// <summary>
-/// Non-privileged text-only updater. Periodically retrieves the public main
-/// branch catalog. It never fetches or executes code or changes security policy.
+/// Non-privileged text-only updater. Periodically retrieves the installed release
+/// catalog. It never fetches or executes code or changes security policy.
 /// </summary>
 public sealed class TallowTextUpdates : IDisposable
 {
     private static readonly Uri CatalogUri =
-        new("https://raw.githubusercontent.com/Ketsuneban/Yetta/refs/heads/main/local.json");
+        new("https://raw.githubusercontent.com/Ketsuneban/Yetta/v0.7.0-preview/local.json");
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(12) };
     private readonly CancellationTokenSource _stop = new();
     private FileSystemWatcher? _watcher;
