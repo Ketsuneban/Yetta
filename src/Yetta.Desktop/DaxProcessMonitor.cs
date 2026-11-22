@@ -48,8 +48,15 @@ internal sealed class DaxProcessMonitor : IDisposable
     internal DaxProcessMonitor(int rootPid, Action<string> report)
     {
         _rootPid = rootPid;
-        using var root = Process.GetProcessById(rootPid);
-        _rootStarted = root.StartTime.ToUniversalTime();
+        try
+        {
+            using var root = Process.GetProcessById(rootPid);
+            _rootStarted = root.StartTime.ToUniversalTime();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception)
+        {
+            _rootStarted = DateTime.MinValue;
+        }
         _report = report;
         _known.Add(rootPid);
         DaxAudit.Write("process", "started", "Yetta script process: PID " + rootPid);
@@ -105,7 +112,7 @@ internal sealed class DaxProcessMonitor : IDisposable
             using var root = Process.GetProcessById(_rootPid);
             if (root.StartTime.ToUniversalTime() != _rootStarted) return [];
         }
-        catch (ArgumentException) { return []; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception) { return []; }
         var snapshots = Process.GetProcesses();
         try
         {
