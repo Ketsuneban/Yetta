@@ -136,15 +136,26 @@ public partial class MainWindow
         _marvineDirectoryLabel.TextTrimming = TextTrimming.CharacterEllipsis;
         _marvineDirectoryLabel.TextWrapping = TextWrapping.NoWrap;
         _marvineDirectoryLabel.ToolTip = MarvineDirectory;
-        footer.Children.Add(_marvineDirectoryLabel);
-        footer.Children.Add(BuildCommandRow(input, "/", RunMarvine));
+        var workspace = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var browse = SubsyButton("Папка…", () =>
+        {
+            var picker = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = MarvineDirectory };
+            if (picker.ShowDialog(this) == true)
+                AddConsoleEntry(new ConsoleEntry("", OpenMarvineDirectory(picker.FolderName)));
+        });
+        DockPanel.SetDock(browse, Dock.Right);
+        workspace.Children.Add(browse);
+        workspace.Children.Add(_marvineDirectoryLabel);
+        DockPanel.SetDock(workspace, Dock.Top);
+        layout.Children.Insert(0, workspace);
+        footer.Children.Add(BuildCommandRow(input, "❯", RunMarvine));
         var shortcuts = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
         bool showAll = false;
         void RefreshSuggestions()
         {
             shortcuts.Children.Clear();
             var suggestions = CommandCompletion.Get(input.Text);
-            foreach (var group in suggestions.GroupBy(s => s.Label.Split(':')[0]).Take(showAll ? int.MaxValue : 5))
+            foreach (var group in suggestions.GroupBy(s => s.Label.Split(':')[0]).Take(showAll ? int.MaxValue : 3))
             {
                 var suggestion = group.First();
                 if (suggestion.Label.EndsWith(":true") || suggestion.Label.EndsWith(":false"))
@@ -181,7 +192,7 @@ public partial class MainWindow
                 });
                 shortcuts.Children.Add(chip);
             }
-            if (suggestions.Select(x => x.Label.Split(':')[0]).Distinct().Count() > 5)
+            if (suggestions.Select(x => x.Label.Split(':')[0]).Distinct().Count() > 3)
                 shortcuts.Children.Add(SubsyButton(showAll ? "Свернуть варианты" : "Все варианты (" + suggestions.Count + ")", () =>
                 { showAll = !showAll; RefreshSuggestions(); }));
             var args = CommandTokens.Read(CommandAliases.Normalize(input.Text), out _);
@@ -247,7 +258,7 @@ public partial class MainWindow
         RefreshSuggestions();
         var options = new ScrollViewer
         {
-            Content = shortcuts, MaxHeight = 118, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = shortcuts, MaxHeight = 88, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false
         };
         footer.Children.Add(options);
@@ -289,44 +300,18 @@ public partial class MainWindow
 
     private UIElement WelcomeBanner()
     {
-        var layout = new Grid { Margin = new Thickness(0, 0, 0, 12) };
-        var columns = new Grid();
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5, GridUnitType.Star) });
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Star) });
-
-        var identity = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(4, 2, 12, 0) };
-        var greeting = LiteralConsoleLine("Добро пожаловать");
-        greeting.TextAlignment = TextAlignment.Center;
-        greeting.Foreground = ConsoleInk;
-        var mark = LiteralConsoleLine("   ╭────────╮\n  ╱  ◇    ◇  ╲\n  ╲__________╱\n    ╰╯╰╯╰╯", ConsoleAccent);
-        mark.TextAlignment = TextAlignment.Center;
-        var profile = LiteralConsoleLine(AccessProfiles.DisplayName(_settings.ActiveProfile) + " · " + _settings.MarvineColorset);
-        profile.TextAlignment = TextAlignment.Center;
-        identity.Children.Add(greeting);
-        identity.Children.Add(mark);
-        identity.Children.Add(profile);
-        columns.Children.Add(identity);
-
-        var tips = new StackPanel { Margin = new Thickness(14, 0, 4, 0) };
-        tips.Children.Add(LiteralConsoleLine("Начало работы", ConsoleAccent));
-        tips.Children.Add(LiteralConsoleLine("/help — справка · /script — Python", ConsoleInk));
-        tips.Children.Add(LiteralConsoleLine("Последняя команда", ConsoleAccent));
-        tips.Children.Add(LiteralConsoleLine(_enteredCommands.LastOrDefault() ?? "Команд пока нет"));
-        var side = new Border { Child = tips, BorderBrush = ConsolePanel, BorderThickness = new Thickness(1, 0, 0, 0) };
-        Grid.SetColumn(side, 1);
-        columns.Children.Add(side);
-
-        var outline = new Border { BorderBrush = ConsoleAccent, BorderThickness = new Thickness(1),
-            Margin = new Thickness(0, 10, 0, 0), CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12, 15, 12, 8), Child = columns };
-        layout.Children.Add(outline);
-        var title = LiteralConsoleLine($"Marvine · Yetta {ReleaseVersion}", ConsoleAccent);
+        var body = new StackPanel { Margin = new Thickness(24), MaxWidth = 560,
+            HorizontalAlignment = HorizontalAlignment.Left };
+        var title = LiteralConsoleLine("Marvine", ConsoleInk);
+        title.FontSize = 26;
         title.FontWeight = FontWeights.SemiBold;
-        title.Margin = new Thickness(0);
-        layout.Children.Add(new Border { Child = title, Background = ConsoleSurface,
-            Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(5, 0, 5, 0),
-            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
-        return layout;
+        body.Children.Add(title);
+        body.Children.Add(LiteralConsoleLine("Рабочее пространство Yetta · " + ReleaseVersion, ConsoleMuted));
+        var tips = LiteralConsoleLine("help — команды и справка\nmarvine open <путь> — рабочая папка\nscript run — открыть Python в Subsy", ConsoleInk);
+        tips.Margin = new Thickness(0, 20, 0, 16);
+        body.Children.Add(tips);
+        body.Children.Add(LiteralConsoleLine("Tab — дополнить · ↑ ↓ — история · Ctrl+R — поиск", ConsoleMuted));
+        return body;
     }
 
     private TextBlock LiteralConsoleLine(string value, Brush? foreground = null) => new()

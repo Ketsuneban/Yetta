@@ -26,6 +26,8 @@ internal static class DaxAudit
             lock (Gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+                if (File.Exists(FilePath) && new FileInfo(FilePath).Length >= 4 * 1024 * 1024)
+                    File.Move(FilePath, FilePath + ".previous", overwrite: true);
                 var row = new { utc = DateTimeOffset.UtcNow, actor = "Tallow", category, result, summary };
                 File.AppendAllText(FilePath, JsonSerializer.Serialize(row) + Environment.NewLine);
             }

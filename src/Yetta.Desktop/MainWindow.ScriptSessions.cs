@@ -42,6 +42,7 @@ public partial class MainWindow
         System.Windows.Automation.AutomationProperties.SetName(input, "Строка для скрипта");
         var stateLabel = Text("Скрипт выполняется", 12, muted: true);
         var run = Guid.Empty;
+        DaxProcessMonitor? monitor = null;
         bool running = true, closed = false, sending = false;
         PromptState? prompt = null;
         var send = SubsyButton("Отправить", () => { }, true);
@@ -132,6 +133,8 @@ public partial class MainWindow
                 if (output.Exited)
                 {
                     running = false;
+                    monitor?.Dispose();
+                    monitor = null;
                     if (prompt is { } current)
                     {
                         current.Result = "Скрипт завершён";
@@ -187,16 +190,26 @@ public partial class MainWindow
             await SendAsync();
         };
         window.Closing += (_, e) => { if (running && !Stop()) e.Cancel = true; };
-        window.Closed += (_, _) => { closed = true; follow.Dispose(); };
+        window.Closed += (_, _) =>
+        {
+            closed = true;
+            monitor?.Dispose();
+            _scriptSessions.Remove(run);
+            follow.Dispose();
+        };
         try
         {
             run = _scripts.Start(id, path, interpreter, EnqueueScriptOutput, directory);
             _scriptSessions.Add(run, Receive);
+            if (_scripts.ProcessId(run) is int processId)
+                monitor = new DaxProcessMonitor(processId, message => DaxAudit.Write("process", "observed", message));
             window.Show();
             input.Focus();
         }
         catch
         {
+            monitor?.Dispose();
+            _scriptSessions.Remove(run);
             follow.Dispose();
             if (run != Guid.Empty) { closed = true; Stop(); }
             throw;

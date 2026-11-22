@@ -1065,7 +1065,8 @@ public partial class MainWindow : Window
             }
             case "SCRIPT_RUN":
             {
-                if (!AdministratorActive) return "[✖] DAX отклонил команду из-за недостатка прав пользователя: «script run». Включи профиль Администратор в DAX Guard.";
+                if (await AuthorizeOperationAsync(DaxOperation.RunScript) is { Allowed: false } denied)
+                    return "[✖] " + denied.Reason;
                 bool elevated;
                 try { elevated = CurrentTokenIsAdministrator(); }
                 catch (SystemException) { return "[✖] Windows не подтвердила права процесса. Запуск отменён."; }
@@ -1108,9 +1109,7 @@ public partial class MainWindow : Window
                 return "[✔] Marvine: скрипт " + id + " запущен.";
             }
             case "SCRIPT_STOP":
-                return _settings.ActiveProfile == "Guest"
-                    ? "[✖] DAX отклонил команду из-за недостатка прав пользователя: «script stop»."
-                    : _scripts.Stop(ResolveMarvinePath(argument ?? ""), argument?.Trim().Trim('"'))
+                return _scripts.Stop(ResolveMarvinePath(argument ?? ""), argument?.Trim().Trim('"'))
                         ? "[✔] Marvine: скрипт остановлен."
                         : "[ℹ] Marvine: запущенный скрипт с таким ID или путём не найден.";
             default:
