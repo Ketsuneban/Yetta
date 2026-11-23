@@ -2,7 +2,7 @@
 [Setup]
 AppId=YettaDaxAdministrator
 AppName=Yetta DAX Administrator
-AppVersion=0.7.0
+AppVersion=0.7.1
 AppPublisher=Tallow
 DefaultDirName={autopf}\Yetta DAX
 DisableDirPage=yes

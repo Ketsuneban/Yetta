@@ -193,16 +193,16 @@ static class Program
         foreach (var kind in Enum.GetValues<WarningKind>())
         {
             var request = new WarningRequest(kind, "test", "test", Subject: "Tallow");
-            if (YettaWarningWindow.ObjectIcon(request) != 6)
+            if (YettaWarningWindow.ObjectIcon(request) != 18)
                 throw new Exception("Severity replaced the actual cause: " + kind);
             var file = request with { SourcePath = @"C:\YettaSmokeNonexistent\script.py" };
-            if (YettaWarningWindow.ObjectIcon(file) != 1)
+            if (YettaWarningWindow.ObjectIcon(file) != 8)
                 throw new Exception("A file became its registered application: " + kind);
         }
-        for (int icon = 1; icon <= 16; icon++)
+        for (int icon = 1; icon <= 18; icon++)
             if (IconAssets.Asset("Causes/" + icon + ".png", 44).Source is null)
                 throw new Exception("Missing cause icon " + icon);
-        Console.WriteLine("PASS all warning severities preserve causes and all 16 assets load");
+        Console.WriteLine("PASS all warning severities preserve causes and all 18 assets load");
         if (viewer.Template.FindName("ViewportVisual", viewer) is not FrameworkElement { OpacityMask: LinearGradientBrush })
             throw new Exception("Sharp content must fade before the blurred edge is composited.");
         var transcript = new ConsoleTranscript(3);

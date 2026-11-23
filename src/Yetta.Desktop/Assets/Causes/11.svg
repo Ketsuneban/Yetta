@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" role="img">
+  <title>Windows — Fluent UI Color adapted</title>
+  <defs>
+    <linearGradient id="win-tl" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#36DFF1"/>
+      <stop offset="0.55" stop-color="#0FAFFF"/>
+      <stop offset="1" stop-color="#2764E7"/>
+    </linearGradient>
+    <linearGradient id="win-tr" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#29C3FF"/>
+      <stop offset="0.55" stop-color="#0078D4"/>
+      <stop offset="1" stop-color="#2764E7"/>
+    </linearGradient>
+    <linearGradient id="win-bl" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#0FAFFF"/>
+      <stop offset="0.55" stop-color="#2764E7"/>
+      <stop offset="1" stop-color="#2052CB"/>
+    </linearGradient>
+    <linearGradient id="win-br" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#4894FE"/>
+      <stop offset="0.55" stop-color="#2764E7"/>
+      <stop offset="1" stop-color="#4A43CB"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="16" height="16" rx="1.15" fill="url(#win-tl)"/>
+  <rect x="25.6" y="6" width="16.4" height="16" rx="1.15" fill="url(#win-tr)"/>
+  <rect x="6" y="25.6" width="16" height="16.4" rx="1.15" fill="url(#win-bl)"/>
+  <rect x="25.6" y="25.6" width="16.4" height="16.4" rx="1.15" fill="url(#win-br)"/>
+  <path d="M8 7.25H20M27.5 7.25H39.6" stroke="#E8FFFF" stroke-width=".8" stroke-linecap="round" opacity=".33"/>
+</svg>

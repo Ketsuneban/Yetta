@@ -17,6 +17,7 @@ internal static class WarningCauseResolver
         {
             "YETTA" => WarningCauseType.Yetta, "DAX" => WarningCauseType.Dax,
             "TALLOW" or "TAL" => WarningCauseType.Tallow, "WINDOWS" => WarningCauseType.Windows,
+            "POWERSHELL" or "CMD" or "TERMINAL" or "ТЕРМИНАЛ" or "КОМАНДНАЯ СТРОКА" => WarningCauseType.Terminal,
             _ => WarningCauseType.Auto
         };
     }
@@ -25,6 +26,9 @@ internal static class WarningCauseResolver
 
     internal static Image Render(WarningRequest request, double size)
     {
+        if (Type(request) == WarningCauseType.Terminal ||
+            Type(request) == WarningCauseType.Application && request.SourcePath is { } terminal && WarningCause.IsTerminal(terminal))
+            return IconAssets.Asset("Causes/12.png", size);
         // A document's registered editor icon does not identify the document itself.
         if (Type(request) == WarningCauseType.Application && request.SourcePath is { } path &&
             File.Exists(path) && ShellIcon.Load(path) is { } source)
@@ -80,16 +84,14 @@ internal static class WarningCauseResolver
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
             bool windows = Under(full, Environment.GetFolderPath(Environment.SpecialFolder.Windows));
-            bool config = ext == ".reg" || (windows && ext is ".ini" or ".cfg" or ".conf" or ".config" or ".xml" or ".json") ||
+            bool yetta = Under(full, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yetta")) ||
+                Under(full, AppContext.BaseDirectory);
+            bool config = ext == ".reg" || ((windows || yetta) && ext is ".ini" or ".cfg" or ".conf" or ".config" or ".xml" or ".json") ||
                 full.Equals(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "drivers", "etc", "hosts"), StringComparison.OrdinalIgnoreCase);
             // Offline / recall-on-open / recall-on-data-access: inspect metadata without hydrating a placeholder.
             bool cloud = ((int)attributes & (0x1000 | 0x40000 | 0x400000)) != 0;
             bool protectedFile = windows || (attributes & (FileAttributes.ReadOnly | FileAttributes.System | FileAttributes.Encrypted)) != 0 || HasProtection(full, attributes);
-            bool personal = new[] { Environment.SpecialFolder.MyDocuments, Environment.SpecialFolder.DesktopDirectory,
-                Environment.SpecialFolder.MyPictures, Environment.SpecialFolder.MyMusic, Environment.SpecialFolder.MyVideos }
-                .Any(folder => Under(full, Environment.GetFolderPath(folder)));
-            bool important = personal && WarningCause.Icon(WarningCauseType.File, new(full)) is 3 or 13;
-            return new(full, (attributes & FileAttributes.Directory) != 0, cloud, protectedFile, config, important);
+            return new(full, (attributes & FileAttributes.Directory) != 0, cloud, protectedFile, config);
         }
         catch (UnauthorizedAccessException) { return new(path, IsProtected: true); }
         catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException or System.Security.SecurityException)
