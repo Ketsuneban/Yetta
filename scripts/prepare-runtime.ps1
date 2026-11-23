@@ -11,7 +11,8 @@ try {
   $archive = [IO.Compression.ZipFile]::OpenRead($zip)
   try {
     foreach ($entry in $archive.Entries) {
-      if ($entry.FullName -notmatch '^(runtime/(Yetta.Runtime|Yetta.Runtime.Windows)[.]dll|tray/Yetta[.]DAX[.]exe|setup/YettaDaxAdministratorSetup[.]exe|manifest[.]json|LICENSE[.]imported[.]txt)$') { throw "Unexpected runtime entry: $($entry.FullName)" }
+      if ($entry.FullName -in @('runtime/','tray/','setup/')) { continue }
+      if ($entry.FullName -notmatch '^(runtime/(Yetta[.]Runtime|Yetta[.]Runtime[.]Windows)[.]dll|tray/Yetta[.]DAX[.]exe|setup/YettaDaxAdministratorSetup[.]exe|manifest[.]json|LICENSE[.]imported[.]txt)$') { throw "Unexpected runtime entry: $($entry.FullName)" }
     }
   } finally { $archive.Dispose() }
   $artifacts = Join-Path $root 'artifacts'
