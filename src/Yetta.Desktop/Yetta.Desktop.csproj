@@ -9,7 +9,7 @@
     <RootNamespace>Yetta.Desktop</RootNamespace>
     <Company>Tallow</Company>
     <Authors>Tallow</Authors>
-    <Version>0.7.1</Version>
+    <Version>0.7.2</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -28,6 +28,7 @@
     <Resource Include="Assets/icons/*.png" />
     <Resource Include="Assets/Causes/*.png" />
     <Resource Include="Assets/Profiles/*.png" />
+    <Resource Include="Assets/Navigation/*.png" />
     <Resource Include="Assets/States/*.png" />
     <Resource Include="Assets/Defender/*.png" />
   </ItemGroup>

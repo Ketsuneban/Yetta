@@ -123,10 +123,13 @@ public partial class MainWindow
         }
         foreach (string item in AccessProfiles.All)
         {
-            var tab = new Button { Style = (Style)FindResource("FlatTile"), MinHeight = 36,
-                Content = new Border { Background = Brushes.Transparent, Padding = new Thickness(3, 8, 3, 8),
-                    Child = new TextBlock { Text = AccessProfiles.DisplayName(item), Foreground = Ink,
-                        TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap } } };
+            var label = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            label.Children.Add(IconAssets.Asset("Profiles/" + item + ".png", 22));
+            label.Children.Add(new TextBlock { Text = AccessProfiles.DisplayName(item), Foreground = Ink,
+                Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap });
+            var tab = new Button { Style = (Style)FindResource("FlatTile"), MinHeight = 40,
+                Content = new Border { Background = Brushes.Transparent, Padding = new Thickness(3, 6, 3, 6), Child = label } };
             tab.Click += (_, _) => Select(item);
             rail.Children.Add(tab);
         }

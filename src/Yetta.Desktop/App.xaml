@@ -106,7 +106,7 @@
         <Border x:Name="Chrome" CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
           <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
         </Border>
-        <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#9BC6FF"/><Setter TargetName="Chrome" Property="Background" Value="#FF192231"/></Trigger></ControlTemplate.Triggers>
+        <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#CCA9F0"/><Setter TargetName="Chrome" Property="Background" Value="#FF302B3A"/></Trigger></ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="WarningTextInput" TargetType="TextBox">
@@ -155,14 +155,17 @@
     <Style TargetType="{x:Type Window}">
       <Setter Property="FontFamily" Value="{x:Static SystemFonts.MessageFontFamily}"/>
     </Style>
-    <SolidColorBrush x:Key="WindowBackground" Color="#080D15"/>
-    <SolidColorBrush x:Key="SidebarBackground" Color="#101B27"/>
-    <SolidColorBrush x:Key="CardBackground" Color="#172737"/>
-    <SolidColorBrush x:Key="HoverBackground" Color="#273B4A"/>
-    <SolidColorBrush x:Key="AccentBrush" Color="#78E8D0"/>
-    <SolidColorBrush x:Key="AccentForeground" Color="#06221E"/>
-    <SolidColorBrush x:Key="TextPrimary" Color="#EAF6F5"/>
-    <SolidColorBrush x:Key="TextSecondary" Color="#92A8AD"/>
-    <SolidColorBrush x:Key="SelectedBrush" Color="#20453F"/>
+    <SolidColorBrush x:Key="WindowBackground" Color="#24212B"/>
+    <SolidColorBrush x:Key="SidebarBackground" Color="#2A2633"/>
+    <SolidColorBrush x:Key="CardBackground" Color="#302B3A"/>
+    <SolidColorBrush x:Key="HoverBackground" Color="#3E364A"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#CCA9F0"/>
+    <LinearGradientBrush x:Key="AccentFillBrush" StartPoint="0,0" EndPoint="1,1">
+      <GradientStop Color="#AE4FB9" Offset="0"/><GradientStop Color="#9450C2" Offset="0.44"/><GradientStop Color="#794DC5" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="AccentForeground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#F3EFF8"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#BDB2CA"/>
+    <SolidColorBrush x:Key="SelectedBrush" Color="#493A60"/>
   </Application.Resources>
 </Application>

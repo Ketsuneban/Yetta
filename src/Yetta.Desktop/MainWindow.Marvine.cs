@@ -72,7 +72,7 @@ public partial class MainWindow
     {
         var row = new DockPanel();
         var send = SubsyButton("Выполнить", () => { input.Focus(); execute(); }, true);
-        send.Background = ConsoleAccent;
+        send.Background = Dracula ? ConsoleAccent : Resource("AccentFillBrush");
         send.Foreground = Dracula ? Hex("#18222C") : Resource("AccentForeground");
         send.MinHeight = 40;
         send.Margin = new Thickness(8, 0, 0, 0);

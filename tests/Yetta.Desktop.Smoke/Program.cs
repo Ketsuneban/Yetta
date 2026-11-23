@@ -87,6 +87,29 @@ static class Program
         Console.WriteLine("PASS Marvine at two sizes, expanded options, script help, selection and draft");
     }
 
+    private static void VerifyWindowEntrance()
+    {
+        var original = new TranslateTransform(0, 0);
+        var surface = new Border { Width = 180, Height = 100, Background = Brushes.White,
+            RenderTransform = original, Child = new TextBox { Text = "draft preserved" } };
+        var window = new Window { Content = surface, SizeToContent = SizeToContent.WidthAndHeight,
+            ShowInTaskbar = false, WindowStyle = WindowStyle.None, Left = -10000, Top = -10000 };
+        window.Show();
+        window.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(() => { }));
+        if (UiMotion.AnimationsEnabled && !SystemParameters.HighContrast && ReferenceEquals(surface.RenderTransform, original))
+            throw new Exception("New top-level window did not receive the entrance transition.");
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        if (!ReferenceEquals(surface.RenderTransform, original) || surface.Opacity != 1 ||
+            ((TextBox)surface.Child).Text != "draft preserved")
+            throw new Exception("Window entrance did not restore transform, opacity or input.");
+        window.Close();
+        Console.WriteLine("PASS whole-window entrance and restoration");
+    }
+
     private static void VerifyPython()
     {
         var python = Environment.GetEnvironmentVariable("YETTA_SMOKE_PYTHON");
@@ -189,6 +212,10 @@ static class Program
              viewer.Template.FindName("BottomPreview", viewer) is not UIElement { Visibility: Visibility.Visible }))
             throw new InvalidOperationException("Only the lower edge should show at the top of a scrollable viewport.");
 
+        foreach (var asset in new[] { "Home", "Info", "Sources", "ActivityEmpty", "ActivityUnread", "Settings", "Guard", "Logs", "Recovery" })
+            if (IconAssets.Asset("Navigation/" + asset + ".png", 24).Source is null) throw new Exception("Missing navigation icon " + asset);
+        if (app.Resources["AccentFillBrush"] is not LinearGradientBrush { GradientStops.Count: 3 })
+            throw new Exception("Purple gradient resource missing.");
         Console.WriteLine("PASS scrollable viewport and edge preview");
         foreach (var kind in Enum.GetValues<WarningKind>())
         {
@@ -219,6 +246,7 @@ static class Program
         VerifyPython();
         var owner = new Window { Width = 100, Height = 100, Left = -10000, Top = -10000, ShowInTaskbar = false };
         owner.Show();
+        VerifyWindowEntrance();
         Directory.CreateDirectory("artifacts/ui-preview");
         VerifyMarvineLayout();
         foreach (var kind in new[] { WarningKind.Standard, WarningKind.Critical, WarningKind.Dax })
