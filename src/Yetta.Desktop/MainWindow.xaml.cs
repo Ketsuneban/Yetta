@@ -105,18 +105,24 @@ public partial class MainWindow : Window
 
     private void InitializeIconsAndCursors()
     {
-        IconAssets.SetNav(NavOverview, 7, TallowText.Get("ui.main.0001"));
-        IconAssets.SetNav(NavInfo, 2, TallowText.Get("ui.main.0002"));
-        IconAssets.SetNav(NavConsole, 1, TallowText.Get("ui.main.0003"));
+        IconAssets.SetNavLogo(NavOverview, "Navigation/Home.png", TallowText.Get("ui.main.0001"));
+        IconAssets.SetNavLogo(NavInfo, "Navigation/Info.png", TallowText.Get("ui.main.0002"));
+        IconAssets.SetNavLogo(NavConsole, "Causes/12.png", TallowText.Get("ui.main.0003"));
         IconAssets.SetNavLogo(NavDevelopers, "Profiles/Developers.png", "Для разработчиков");
-        IconAssets.SetNavLogo(NavGuard, "dax-logo.png", TallowText.Get("ui.main.0004"));
-        IconAssets.SetNav(NavLogs, 8, TallowText.Get("ui.main.0005"));
-        IconAssets.SetNav(NavActivity, 31, TallowText.Get("ui.main.0006"));
-        IconAssets.SetNav(NavRecovery, 9, TallowText.Get("ui.main.0007"));
-        IconAssets.SetNav(NavSettings, 3, TallowText.Get("ui.main.0008"));
-        IconAssets.SetNavLogo(NavSources, "external-link.png", TallowText.Get("ui.main.0009"));
+        IconAssets.SetNavLogo(NavGuard, "Navigation/Guard.png", TallowText.Get("ui.main.0004"));
+        IconAssets.SetNavLogo(NavLogs, "Navigation/Logs.png", TallowText.Get("ui.main.0005"));
+        _hasUnreadActivity = _notifications.Count > 0;
+        UpdateActivityIcon();
+        IconAssets.SetNavLogo(NavRecovery, "Navigation/Recovery.png", TallowText.Get("ui.main.0007"));
+        IconAssets.SetNavLogo(NavSettings, "Navigation/Settings.png", TallowText.Get("ui.main.0008"));
+        IconAssets.SetNavLogo(NavSources, "Navigation/Sources.png", TallowText.Get("ui.main.0009"));
         Cursor = Cursors.Arrow;
     }
+
+    private bool _hasUnreadActivity;
+    private void UpdateActivityIcon() => IconAssets.SetNavLogo(NavActivity,
+        "Navigation/" + (_hasUnreadActivity ? "ActivityUnread" : "ActivityEmpty") + ".png",
+        TallowText.Get("ui.main.0006"));
 
     private void ShowYettaNotice(string title, string message, WarningKind kind = WarningKind.Dax) =>
         YettaWarningWindow.Show(this,
@@ -158,34 +164,38 @@ public partial class MainWindow : Window
         try { ui = new Windows.UI.ViewManagement.UISettings(); }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or UnauthorizedAccessException)
         { DaxAudit.Write("theme", "uisettings_failed", ex.GetType().Name); }
-        if (ui is null)
-        {
-            ThemeIndicator.Text = "Windows 11";
-            return;
-        }
         static Color Native(Windows.UI.Color c) => Color.FromArgb(c.A, c.R, c.G, c.B);
         static Color Mix(Color a, Color b, double amount) => Color.FromRgb(
             (byte)(a.R * (1 - amount) + b.R * amount),
             (byte)(a.G * (1 - amount) + b.G * amount),
             (byte)(a.B * (1 - amount) + b.B * amount));
-        Color background = SystemParameters.HighContrast ? SystemColors.WindowColor
-            : Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Background));
-        Color foreground = SystemParameters.HighContrast ? SystemColors.WindowTextColor
-            : Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground));
-        Color accent = SystemParameters.HighContrast ? SystemColors.HighlightColor
-            : Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Accent));
-        bool dark = background.R + background.G + background.B < 384;
-        Color surface = Mix(background, foreground, dark ? 0.10 : 0.035);
-        SetColor("WindowBackground", Mix(background, foreground, dark ? 0.075 : 0.012));
-        SetColor("SidebarBackground", Mix(background, foreground, dark ? 0.085 : 0.025));
-        SetColor("CardBackground", surface);
-        SetColor("HoverBackground", Mix(background, foreground, dark ? 0.18 : 0.10));
+        Color foreground = ui is null ? SystemColors.WindowTextColor :
+            Native(ui.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground));
+        bool dark = foreground.R + foreground.G + foreground.B > 384;
+        Color C(string hex) => (Color)ColorConverter.ConvertFromString(hex);
+        Color background = dark ? C("#24212B") : C("#F5F2F8");
+        foreground = dark ? C("#F3EFF8") : C("#292431");
+        Color accent = dark ? C("#CCA9F0") : C("#794DC5");
+        if (SystemParameters.HighContrast)
+        {
+            background = SystemColors.WindowColor;
+            foreground = SystemColors.WindowTextColor;
+            accent = SystemColors.HighlightColor;
+        }
+        SetColor("WindowBackground", background);
+        SetColor("SidebarBackground", SystemParameters.HighContrast ? background : dark ? C("#2A2633") : C("#ECE7F2"));
+        SetColor("CardBackground", SystemParameters.HighContrast ? background : dark ? C("#302B3A") : C("#FCFAFF"));
+        SetColor("HoverBackground", SystemParameters.HighContrast ? SystemColors.ControlColor : dark ? C("#3E364A") : C("#E7DEEF"));
         SetColor("AccentBrush", accent);
-        SetColor("AccentForeground", accent.R * 0.299 + accent.G * 0.587 + accent.B * 0.114 > 145
-            ? Colors.Black : Colors.White);
+        SetColor("AccentForeground", SystemParameters.HighContrast ? SystemColors.HighlightTextColor : Colors.White);
+        SetBrush("AccentFillBrush", SystemParameters.HighContrast ? SystemColors.HighlightBrush :
+            new LinearGradientBrush(new GradientStopCollection {
+                new(C("#AE4FB9"), 0), new(C("#9450C2"), 0.44), new(C("#794DC5"), 1)
+            }, new Point(0, 0), new Point(1, 1)));
         SetColor("TextPrimary", foreground);
-        SetColor("TextSecondary", Mix(foreground, background, 0.35));
-        SetColor("SelectedBrush", Mix(background, accent, dark ? 0.27 : 0.15));
+        SetColor("TextSecondary", SystemParameters.HighContrast ? foreground : Mix(foreground, background, 0.30));
+        SetColor("SelectedBrush", SystemParameters.HighContrast ? SystemColors.HighlightColor :
+            dark ? C("#493A60") : C("#E7DAF4"));
         GlassDialog.IsGlass = glass;
         ApplyBackdrop();
         ThemeIndicator.Text = "Windows 11";
@@ -249,6 +259,7 @@ public partial class MainWindow : Window
     {
         if (!_navigation.ContainsKey(page) || page == "developers" && !AdministratorActive) return;
         _page = page;
+        if (page == "activity") { _hasUnreadActivity = false; UpdateActivityIcon(); }
         _consoleOutput = null;
         _subsyViews.Clear();
         _diagnosticsStatus = null;
@@ -618,6 +629,8 @@ public partial class MainWindow : Window
     {
         _notifications.RemoveAll(x => x.Time < DateTime.Now.AddHours(-_settings.NotificationRetentionHours));
         _notifications.Add((DateTime.Now, source, message));
+        _hasUnreadActivity = _page != "activity";
+        UpdateActivityIcon();
         if (_notifications.Count > 1000) _notifications.RemoveAt(0);
         try { _activityStore.Add(source, message, _settings.NotificationRetentionHours); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -648,11 +661,8 @@ public partial class MainWindow : Window
         close.Click += (_, _) => ToastHost.Children.Remove(toast);
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
-        var icon = new Image
-        {
-            Source = new BitmapImage(new Uri("pack://application:,,,/Assets/31.png")),
-            Width = 25, Height = 25, Margin = new Thickness(0, 0, 10, 0)
-        };
+        var icon = IconAssets.Asset("Navigation/ActivityUnread.png", 25);
+        icon.Margin = new Thickness(0, 0, 10, 0);
         DockPanel.SetDock(icon, Dock.Left);
         header.Children.Add(icon);
         header.Children.Add(Text(source, 13, heading: true));

@@ -201,15 +201,14 @@ internal static class GlassDialog
             Margin = new Thickness(9, 0, 0, 0),
             Padding = new Thickness(14, 8, 14, 8),
             Foreground = primary
-                ? new SolidColorBrush(Color.FromRgb(17, 31, 54))
+                ? (Brush)Application.Current.FindResource("AccentForeground")
                 : WhiteText,
             FontWeight = FontWeights.SemiBold,
             Cursor = System.Windows.Input.Cursors.Hand,
             BorderThickness = new Thickness(1),
             BorderBrush = new SolidColorBrush(Color.FromArgb(115, 205, 220, 255)),
             Background = primary
-                ? new LinearGradientBrush(Color.FromRgb(211, 232, 255),
-                    Color.FromRgb(151, 186, 240), 90)
+                ? (Brush)Application.Current.FindResource("AccentFillBrush")
                 : new LinearGradientBrush(Color.FromArgb(90, 125, 147, 186),
                     Color.FromArgb(65, 70, 84, 120), 90)
         };

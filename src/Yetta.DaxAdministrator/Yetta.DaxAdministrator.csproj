@@ -4,7 +4,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <AssemblyName>Yetta.DAX.Administrator</AssemblyName>
     <Company>Tallow</Company>
-    <Version>0.7.1</Version>
+    <Version>0.7.2</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

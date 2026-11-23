@@ -7,6 +7,8 @@ public partial class App : Application
 {
     private TallowTextUpdates? _live;
 
+    public App() => WindowMotion.Register();
+
     protected override void OnStartup(StartupEventArgs e)
     {
         if (e.Args.SequenceEqual(["--verify-bundle"]))

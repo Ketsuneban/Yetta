@@ -10,7 +10,7 @@ namespace Yetta.Core;
 public sealed class TallowTextUpdates : IDisposable
 {
     private static readonly Uri CatalogUri =
-        new("https://raw.githubusercontent.com/Ketsuneban/Yetta/v0.7.1-preview/local.json");
+        new("https://raw.githubusercontent.com/Ketsuneban/Yetta/v0.7.2-preview/local.json");
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(12) };
     private readonly CancellationTokenSource _stop = new();
     private FileSystemWatcher? _watcher;

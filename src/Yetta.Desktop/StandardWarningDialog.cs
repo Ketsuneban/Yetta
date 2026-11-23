@@ -35,8 +35,8 @@ internal static class StandardWarningDialog
         WarningKind.Critical => new(Color.FromRgb(255, 131, 131), Color.FromRgb(90, 26, 27), Color.FromRgb(52, 17, 19), Color.FromRgb(29, 11, 12)),
         WarningKind.Fatal => new(Color.FromRgb(222, 222, 222), Color.FromRgb(24, 24, 24), Color.FromRgb(11, 11, 11), Color.FromRgb(3, 3, 3)),
         WarningKind.Agreement => new(Color.FromRgb(208, 208, 208), Color.FromRgb(54, 54, 54), Color.FromRgb(39, 39, 39), Color.FromRgb(22, 22, 22)),
-        WarningKind.Dax => new(Color.FromRgb(135, 184, 255), Color.FromRgb(24, 48, 85), Color.FromRgb(16, 32, 57), Color.FromRgb(9, 19, 35)),
-        _ => new(Color.FromRgb(100, 185, 239), Color.FromRgb(55, 55, 55), Color.FromRgb(43, 43, 43), Color.FromRgb(20, 20, 20))
+        WarningKind.Dax => new(Color.FromRgb(204, 169, 240), Color.FromRgb(61, 47, 78), Color.FromRgb(43, 35, 54), Color.FromRgb(32, 27, 40)),
+        _ => new(Color.FromRgb(204, 169, 240), Color.FromRgb(57, 51, 65), Color.FromRgb(43, 38, 50), Color.FromRgb(30, 26, 35))
     };
 
     internal static void PlayWarningSound()
@@ -628,7 +628,6 @@ internal static class StandardWarningDialog
         window.Content = outer;
         if (deny is not null) window.Loaded += (_, _) => deny.Focus();
         if (fatal) window.Topmost = true;
-        window.Loaded += (_, _) => FadeIn(outer);
 
         onWindowCreated?.Invoke(window);
         if (renderOnly) return false;
