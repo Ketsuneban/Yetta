@@ -9,7 +9,7 @@
     <RootNamespace>Yetta.Desktop</RootNamespace>
     <Company>Tallow</Company>
     <Authors>Tallow</Authors>
-    <Version>0.7.0</Version>
+    <Version>0.7.1</Version>
     <ApplicationIcon Condition="Exists('Assets/yetta.ico')">Assets/yetta.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>

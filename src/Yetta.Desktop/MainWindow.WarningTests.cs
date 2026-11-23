@@ -16,6 +16,7 @@ public partial class MainWindow
         {
             "YETTA" => WarningCauseType.Yetta, "DAX" => WarningCauseType.Dax,
             "TALLOW" => WarningCauseType.Tallow, "WINDOWS" => WarningCauseType.Windows,
+            "POWERSHELL" or "CMD" or "TERMINAL" => WarningCauseType.Terminal,
             _ => WarningCauseType.File
         };
         if (type == WarningCauseType.File)

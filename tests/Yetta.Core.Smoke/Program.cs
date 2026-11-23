@@ -207,20 +207,25 @@ finally
 
 Console.WriteLine("All Yetta Core smoke tests passed.");
 
-// Warning cause taxonomy is independent from severity and application association.
-Assert(WarningCause.Icon(WarningCauseType.File, new(@"C:\work\task.PY")) == 1, "Python file is not its interpreter");
-Assert(WarningCause.Icon(WarningCauseType.File, new("run.bat")) == 5, "launch script is executable");
-Assert(WarningCause.Icon(WarningCauseType.File, new("photo.png")) == 13, "media cause");
-Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsImportant: true)) == 2, "personal important file");
-Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsProtected: true, IsImportant: true)) == 4, "protection overrides importance");
-Assert(WarningCause.Icon(WarningCauseType.File, new("system.ini", IsProtected: true, IsWindowsConfiguration: true)) == 14, "Windows configuration keeps its specific cause");
-Assert(WarningCause.Icon(WarningCauseType.File, new("remote.py", IsCloudOnly: true)) == 8, "cloud placeholder overrides extension");
-Assert(WarningCause.Icon(WarningCauseType.File, new("folder.zip", IsDirectory: true)) == 9, "folder overrides extension");
-Assert(WarningCause.Icon(WarningCauseType.Application, new("x.py")) == 11, "application without icon has its own fallback");
-Assert(WarningCause.Icon(WarningCauseType.Tallow) == 6 && WarningCause.Icon(WarningCauseType.Windows) == 7 &&
-    WarningCause.Icon(WarningCauseType.Yetta) == 15 && WarningCause.Icon(WarningCauseType.Dax) == 16, "component cause mapping");
-Assert(WarningCause.Icon(WarningCauseType.File, new("backup.7z")) == 10 &&
-    WarningCause.Icon(WarningCauseType.File, new("README")) == 12, "archive and extensionless fallback");
+// Owner supplied 18-icon taxonomy, independent of severity.
+var causeCases = new (string Path, int Icon)[] {
+    ("unknown.xyz",1), ("README",1), ("image.PNG",4), ("song.flac",5), ("movie.mkv",6),
+    ("note.txt",7), ("run.bat",8), ("run.PY",8), ("run.pyw",8), ("app.exe",8), ("backup.7z",14), ("settings.reg",15)
+};
+foreach (var test in causeCases)
+    Assert(WarningCause.Icon(WarningCauseType.File, new(test.Path)) == test.Icon, "cause: " + test.Path);
+Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsImportant:true)) == 7, "importance no longer overrides file type");
+Assert(WarningCause.Icon(WarningCauseType.File, new("note.txt", IsProtected:true)) == 9, "protected file");
+Assert(WarningCause.Icon(WarningCauseType.File, new("settings.json", IsProtected:true, IsWindowsConfiguration:true)) == 15, "configuration before protection");
+Assert(WarningCause.Icon(WarningCauseType.File, new("run.py", IsCloudOnly:true)) == 10, "cloud before extension");
+Assert(WarningCause.Icon(WarningCauseType.File, new("folder.zip", IsDirectory:true)) == 2, "folder before extension");
+Assert(WarningCause.Icon(WarningCauseType.Application, new("unknown.exe")) == 3, "application fallback");
+Assert(WarningCause.Icon(WarningCauseType.Application, new(@"C:\Windows\System32\cmd.exe")) == 12, "terminal application");
+Assert(WarningCause.Icon(WarningCauseType.Terminal) == 12, "terminal cause");
+Assert(WarningCause.Icon(WarningCauseType.Windows, windowsBuild:22000) == 11 &&
+    WarningCause.Icon(WarningCauseType.Windows, windowsBuild:19045) == 13, "Windows 11 and legacy icons");
+Assert(WarningCause.Icon(WarningCauseType.Yetta) == 16 && WarningCause.Icon(WarningCauseType.Dax) == 17 &&
+    WarningCause.Icon(WarningCauseType.Tallow) == 18, "component icons");
 const string preview = "/test warn Critical \"C:\\My Files\\demo.py\" \"Тест с пробелами\" pass:true tty:false check:true";
 Assert(WarningTestCommand.TryParse(preview, out var parsed) && parsed is { Password: true, Tty: false, Check: true } &&
     parsed.Cause == @"C:\My Files\demo.py", "warning parser preserves quoted Windows paths and flags");
