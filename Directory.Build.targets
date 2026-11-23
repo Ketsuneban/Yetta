@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <RuntimeRoot>$(MSBuildThisFileDirectory)src/</RuntimeRoot>
+    <RuntimeBinaryRoot>$(MSBuildThisFileDirectory)artifacts/runtime/</RuntimeBinaryRoot>
+    <NeedsRuntime Condition="'$(MSBuildProjectName)' == 'Yetta.Desktop' or '$(MSBuildProjectName)' == 'Yetta.DaxAgent' or '$(MSBuildProjectName)' == 'Yetta.Core.Smoke' or '$(MSBuildProjectName)' == 'Yetta.Desktop.Smoke'">true</NeedsRuntime>
+    <NeedsWindowsRuntime Condition="'$(MSBuildProjectName)' == 'Yetta.Desktop' or '$(MSBuildProjectName)' == 'Yetta.Desktop.Smoke'">true</NeedsWindowsRuntime>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(NeedsRuntime)' == 'true' and Exists('$(RuntimeRoot)Yetta.Runtime/Yetta.Runtime.csproj')">
+    <ProjectReference Include="$(RuntimeRoot)Yetta.Runtime/Yetta.Runtime.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(NeedsRuntime)' == 'true' and !Exists('$(RuntimeRoot)Yetta.Runtime/Yetta.Runtime.csproj')">
+    <Reference Include="Yetta.Runtime"><HintPath>$(RuntimeBinaryRoot)Yetta.Runtime.dll</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(NeedsWindowsRuntime)' == 'true' and Exists('$(RuntimeRoot)Yetta.Runtime.Windows/Yetta.Runtime.Windows.csproj')">
+    <ProjectReference Include="$(RuntimeRoot)Yetta.Runtime.Windows/Yetta.Runtime.Windows.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(NeedsWindowsRuntime)' == 'true' and !Exists('$(RuntimeRoot)Yetta.Runtime.Windows/Yetta.Runtime.Windows.csproj')">
+    <Reference Include="Yetta.Runtime.Windows"><HintPath>$(RuntimeBinaryRoot)Yetta.Runtime.Windows.dll</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+  <Target Name="RequireClosedRuntime" BeforeTargets="ResolveReferences" Condition="'$(NeedsRuntime)' == 'true' and !Exists('$(RuntimeRoot)Yetta.Runtime/Yetta.Runtime.csproj') and !Exists('$(RuntimeBinaryRoot)Yetta.Runtime.dll')">
+    <Error Text="Closed runtime is missing. Run scripts/prepare-runtime.ps1 using the verified runtime.lock.json release." />
+  </Target>
+</Project>
