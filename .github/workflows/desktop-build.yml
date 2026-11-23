@@ -42,6 +42,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Prepare verified closed runtime
+        shell: pwsh
+        run: ./scripts/prepare-runtime.ps1
       - name: Install .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -76,16 +79,6 @@ jobs:
           path: artifacts/ui-preview/
           if-no-files-found: error
           retention-days: 7
-      - name: Compile DAX tray companion
-        run: dotnet build src/Yetta.DaxAgent/Yetta.DaxAgent.csproj --configuration Release -warnaserror
-      - name: Publish DAX tray companion
-        shell: pwsh
-        run: |
-          dotnet publish src/Yetta.DaxAgent/Yetta.DaxAgent.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None --output artifacts/tray
-          if ($LASTEXITCODE -ne 0) { throw "DAX publish failed." }
-          if (!(Test-Path "artifacts/tray/Yetta.DAX.exe")) { throw "DAX tray executable missing." }
-      - name: Publish DAX Administrator service
-        run: dotnet publish src/Yetta.DaxAdministrator/Yetta.DaxAdministrator.csproj -c Release -r win-x64 --self-contained true -p:DebugType=None -warnaserror -o artifacts/DaxAdministrator
       - name: Install Inno Setup compiler
         shell: pwsh
         run: |
@@ -100,8 +93,6 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "installer\DaxAdministrator.iss"
-          if ($LASTEXITCODE -ne 0) { throw "DAX Administrator installer compilation failed." }
           $setup = Resolve-Path "artifacts/setup/YettaDaxAdministratorSetup.exe"
           $service = "YettaDaxAdministrator"
           $log = Join-Path $env:RUNNER_TEMP "dax-administrator-install.log"
